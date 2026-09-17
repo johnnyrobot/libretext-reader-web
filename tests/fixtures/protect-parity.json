@@ -1,0 +1,3297 @@
+[
+ {
+  "text": "(((Figure 13.1))) ok",
+  "masked": "(((Figure 13.1))) ok",
+  "spans": {},
+  "roundTrip": "(((Figure 13.1))) ok"
+ },
+ {
+  "text": "(((U.S. Government))) — fin.",
+  "masked": "(((U.S. Government))) — fin.",
+  "spans": {},
+  "roundTrip": "(((U.S. Government))) — fin."
+ },
+ {
+  "text": "(((bio.libretexts.org/)))",
+  "masked": "((([[URL0]])))",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "(((bio.libretexts.org/)))"
+ },
+ {
+  "text": "(commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg).",
+  "masked": "([[URL0]]).",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "(commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg)."
+ },
+ {
+  "text": "(http://www.bbc.com/news/world-europe-25778272),",
+  "masked": "([[URL0]]),",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "(http://www.bbc.com/news/world-europe-25778272),"
+ },
+ {
+  "text": "(http://www.bbc.com/news/world-europe-25778272). for details.",
+  "masked": "([[URL0]]). for details.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "(http://www.bbc.com/news/world-europe-25778272). for details."
+ },
+ {
+  "text": "(i.e.). ok",
+  "masked": "(i.e.). ok",
+  "spans": {},
+  "roundTrip": "(i.e.). ok"
+ },
+ {
+  "text": "(libretexts.org),",
+  "masked": "([[URL0]]),",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "(libretexts.org),"
+ },
+ {
+  "text": "(www.paulekman.com)",
+  "masked": "([[URL0]])",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "(www.paulekman.com)"
+ },
+ {
+  "text": "Figure 13.1. for details.",
+  "masked": "Figure 13.1. for details.",
+  "spans": {},
+  "roundTrip": "Figure 13.1. for details."
+ },
+ {
+  "text": "Figure 13.1; y más.",
+  "masked": "Figure 13.1; y más.",
+  "spans": {},
+  "roundTrip": "Figure 13.1; y más."
+ },
+ {
+  "text": "Figure 13.1? for details.",
+  "masked": "Figure 13.1? for details.",
+  "spans": {},
+  "roundTrip": "Figure 13.1? for details."
+ },
+ {
+  "text": "HTTP://EXAMPLE.COM then (creativecommons.org/licenses/by-nc-sa/3.0/), and Figure 13.1 finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and Figure 13.1 finally.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM",
+   "[[URL1]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "HTTP://EXAMPLE.COM then (creativecommons.org/licenses/by-nc-sa/3.0/), and Figure 13.1 finally."
+ },
+ {
+  "text": "HTTP://EXAMPLE.COM)",
+  "masked": "[[URL0]])",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "HTTP://EXAMPLE.COM)"
+ },
+ {
+  "text": "HTTP://EXAMPLE.COM:",
+  "masked": "[[URL0]]:",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "HTTP://EXAMPLE.COM:"
+ },
+ {
+  "text": "See (((10.1177/0956797611398495)))。",
+  "masked": "See (((10.1177/0956797611398495)))。",
+  "spans": {},
+  "roundTrip": "See (((10.1177/0956797611398495)))。"
+ },
+ {
+  "text": "See (((HTTP://EXAMPLE.COM))) y más.",
+  "masked": "See ((([[URL0]]))) y más.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "See (((HTTP://EXAMPLE.COM))) y más."
+ },
+ {
+  "text": "See (((commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg)))",
+  "masked": "See ((([[URL0]])))",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See (((commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg)))"
+ },
+ {
+  "text": "See (((creativecommons.org/licenses/by-nc-sa/3.0/)))",
+  "masked": "See ((([[URL0]])))",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "See (((creativecommons.org/licenses/by-nc-sa/3.0/)))"
+ },
+ {
+  "text": "See (((en.wikipedia.org/wiki/Mercury_(planet)))) ok",
+  "masked": "See ((([[URL0]]))) ok",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See (((en.wikipedia.org/wiki/Mercury_(planet)))) ok"
+ },
+ {
+  "text": "See (((www.paulekman.com))) ok",
+  "masked": "See ((([[URL0]]))) ok",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "See (((www.paulekman.com))) ok"
+ },
+ {
+  "text": "See (Figure 13.1). y más.",
+  "masked": "See (Figure 13.1). y más.",
+  "spans": {},
+  "roundTrip": "See (Figure 13.1). y más."
+ },
+ {
+  "text": "See (HTTP://EXAMPLE.COM). for details.",
+  "masked": "See ([[URL0]]). for details.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "See (HTTP://EXAMPLE.COM). for details."
+ },
+ {
+  "text": "See (U.S. Government) y más.",
+  "masked": "See (U.S. Government) y más.",
+  "spans": {},
+  "roundTrip": "See (U.S. Government) y más."
+ },
+ {
+  "text": "See ([[mathml:PG1hdGg+]]), for details.",
+  "masked": "See ([[MATH0]]), for details.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "See ([[mathml:PG1hdGg+]]), for details."
+ },
+ {
+  "text": "See (a.b+c@sub.example.co) for details.",
+  "masked": "See ([[EMAIL0]]) for details.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "See (a.b+c@sub.example.co) for details."
+ },
+ {
+  "text": "See (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg) for details.",
+  "masked": "See ([[URL0]]) for details.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg) for details."
+ },
+ {
+  "text": "See (e.g.) ok",
+  "masked": "See (e.g.) ok",
+  "spans": {},
+  "roundTrip": "See (e.g.) ok"
+ },
+ {
+  "text": "See (e.g.). y más.",
+  "masked": "See (e.g.). y más.",
+  "spans": {},
+  "roundTrip": "See (e.g.). y más."
+ },
+ {
+  "text": "See (en.wikipedia.org/wiki/Mercury_(planet)) y más.",
+  "masked": "See ([[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See (en.wikipedia.org/wiki/Mercury_(planet)) y más."
+ },
+ {
+  "text": "See (en.wikipedia.org/wiki/Mercury_(planet)),。",
+  "masked": "See ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)),。"
+  },
+  "roundTrip": "See (en.wikipedia.org/wiki/Mercury_(planet)),。"
+ },
+ {
+  "text": "See (en.wikipedia.org/wiki/Mercury_(planet)). ok",
+  "masked": "See ([[URL0]]). ok",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See (en.wikipedia.org/wiki/Mercury_(planet)). ok"
+ },
+ {
+  "text": "See (john@example.org) — fin.",
+  "masked": "See ([[EMAIL0]]) — fin.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "See (john@example.org) — fin."
+ },
+ {
+  "text": "See (libretexts.org). for details.",
+  "masked": "See ([[URL0]]). for details.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "See (libretexts.org). for details."
+ },
+ {
+  "text": "See 10.1177/0956797611398495commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end.",
+  "masked": "See 10.1177/[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "0956797611398495commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See 10.1177/0956797611398495commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end."
+ },
+ {
+  "text": "See 10.1177/0956797611398495en.wikipedia.org/wiki/Mercury_(planet) end.",
+  "masked": "See 10.1177/[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "0956797611398495en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See 10.1177/0956797611398495en.wikipedia.org/wiki/Mercury_(planet) end."
+ },
+ {
+  "text": "See 10.1177/0956797611398495http://www.bbc.com/news/world-europe-25778272 end.",
+  "masked": "See 10.1177/0956797611398495http://[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See 10.1177/0956797611398495http://www.bbc.com/news/world-europe-25778272 end."
+ },
+ {
+  "text": "See 10.1177/0956797611398495https://LibreTexts.org end.",
+  "masked": "See 10.1177/0956797611398495https://[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "LibreTexts.org"
+  },
+  "roundTrip": "See 10.1177/0956797611398495https://LibreTexts.org end."
+ },
+ {
+  "text": "See 10.1177/0956797611398495libretexts.org end.",
+  "masked": "See 10.1177/[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "0956797611398495libretexts.org"
+  },
+  "roundTrip": "See 10.1177/0956797611398495libretexts.org end."
+ },
+ {
+  "text": "See 10.1177/0956797611398495www.paulekman.com end.",
+  "masked": "See 10.1177/[[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "0956797611398495www.paulekman.com"
+  },
+  "roundTrip": "See 10.1177/0956797611398495www.paulekman.com end."
+ },
+ {
+  "text": "See Figure 13.1) for details.",
+  "masked": "See Figure 13.1) for details.",
+  "spans": {},
+  "roundTrip": "See Figure 13.1) for details."
+ },
+ {
+  "text": "See Figure 13.1: ok",
+  "masked": "See Figure 13.1: ok",
+  "spans": {},
+  "roundTrip": "See Figure 13.1: ok"
+ },
+ {
+  "text": "See HTTP://EXAMPLE.COM; ok",
+  "masked": "See [[URL0]]; ok",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "See HTTP://EXAMPLE.COM; ok"
+ },
+ {
+  "text": "See U.S. Government...",
+  "masked": "See U.S. Government...",
+  "spans": {},
+  "roundTrip": "See U.S. Government..."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]: ok",
+  "masked": "See [[MATH0]]: ok",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]: ok"
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]en.wikipedia.org/wiki/Mercury_(planet) end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]en.wikipedia.org/wiki/Mercury_(planet) end."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]http://www.bbc.com/news/world-europe-25778272 end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]http://www.bbc.com/news/world-europe-25778272 end."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]https://LibreTexts.org end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]https://LibreTexts.org end."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]libretexts.org end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "libretexts.org"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]libretexts.org end."
+ },
+ {
+  "text": "See [[latex:eDpeMg==]]www.paulekman.com end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "www.paulekman.com"
+  },
+  "roundTrip": "See [[latex:eDpeMg==]]www.paulekman.com end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]))",
+  "masked": "See [[MATH0]]))",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]))"
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]en.wikipedia.org/wiki/Mercury_(planet) end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]en.wikipedia.org/wiki/Mercury_(planet) end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]http://www.bbc.com/news/world-europe-25778272 end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]http://www.bbc.com/news/world-europe-25778272 end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]https://LibreTexts.org end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]https://LibreTexts.org end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]libretexts.org end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "libretexts.org"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]libretexts.org end."
+ },
+ {
+  "text": "See [[mathml:PG1hdGg+]]www.paulekman.com end.",
+  "masked": "See [[MATH0]][[URL1]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "www.paulekman.com"
+  },
+  "roundTrip": "See [[mathml:PG1hdGg+]]www.paulekman.com end."
+ },
+ {
+  "text": "See [creativecommons.org/licenses/by-nc-sa/3.0/]。",
+  "masked": "See [[[URL0]]]。",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "See [creativecommons.org/licenses/by-nc-sa/3.0/]。"
+ },
+ {
+  "text": "See [en.wikipedia.org/wiki/Mercury_(planet)] for details.",
+  "masked": "See [[[URL0]]] for details.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See [en.wikipedia.org/wiki/Mercury_(planet)] for details."
+ },
+ {
+  "text": "See [http://www.bbc.com/news/world-europe-25778272]。",
+  "masked": "See [[[URL0]]]。",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See [http://www.bbc.com/news/world-europe-25778272]。"
+ },
+ {
+  "text": "See [https://LibreTexts.org] for details.",
+  "masked": "See [[[URL0]]] for details.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "See [https://LibreTexts.org] for details."
+ },
+ {
+  "text": "See a.b+c@sub.example.co: for details.",
+  "masked": "See [[EMAIL0]]: for details.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "See a.b+c@sub.example.co: for details."
+ },
+ {
+  "text": "See a.b+c@sub.example.cocommons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end.",
+  "masked": "See [[EMAIL0]]/wiki/File:[[FILE1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.cocommons.wikimedia.org",
+   "[[FILE1]]": "A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See a.b+c@sub.example.cocommons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end."
+ },
+ {
+  "text": "See a.b+c@sub.example.coen.wikipedia.org/wiki/Mercury_(planet) end.",
+  "masked": "See [[EMAIL0]]/wiki/Mercury_(planet) end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.coen.wikipedia.org"
+  },
+  "roundTrip": "See a.b+c@sub.example.coen.wikipedia.org/wiki/Mercury_(planet) end."
+ },
+ {
+  "text": "See a.b+c@sub.example.cohttp://www.bbc.com/news/world-europe-25778272 end.",
+  "masked": "See [[EMAIL0]]://[[URL1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.cohttp",
+   "[[URL1]]": "www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See a.b+c@sub.example.cohttp://www.bbc.com/news/world-europe-25778272 end."
+ },
+ {
+  "text": "See a.b+c@sub.example.cohttps://LibreTexts.org end.",
+  "masked": "See [[EMAIL0]]://[[URL1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.cohttps",
+   "[[URL1]]": "LibreTexts.org"
+  },
+  "roundTrip": "See a.b+c@sub.example.cohttps://LibreTexts.org end."
+ },
+ {
+  "text": "See a.b+c@sub.example.colibretexts.org end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.colibretexts.org"
+  },
+  "roundTrip": "See a.b+c@sub.example.colibretexts.org end."
+ },
+ {
+  "text": "See a.b+c@sub.example.cowww.paulekman.com end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.cowww.paulekman.com"
+  },
+  "roundTrip": "See a.b+c@sub.example.cowww.paulekman.com end."
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg10.1177/0956797611398495 end.",
+  "masked": "See [[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg10.1177/0956797611398495"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg10.1177/0956797611398495 end."
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg; ok",
+  "masked": "See [[URL0]]; ok",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg; ok"
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpga.b+c@sub.example.co end.",
+  "masked": "See [[URL1]]:[[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "A_B_1993-09-13.jpga.b+c@sub.example.co",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpga.b+c@sub.example.co end."
+ },
+ {
+  "text": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpgjohn@example.org end.",
+  "masked": "See [[URL1]]:[[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "A_B_1993-09-13.jpgjohn@example.org",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File"
+  },
+  "roundTrip": "See commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpgjohn@example.org end."
+ },
+ {
+  "text": "See creativecommons.org/licenses/by-nc-sa/3.0/ — fin.",
+  "masked": "See [[URL0]] — fin.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "See creativecommons.org/licenses/by-nc-sa/3.0/ — fin."
+ },
+ {
+  "text": "See d67b022f5b1e28272a5d29f61be9d6fb.jpg))。",
+  "masked": "See [[FILE0]]))。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "See d67b022f5b1e28272a5d29f61be9d6fb.jpg))。"
+ },
+ {
+  "text": "See d67b022f5b1e28272a5d29f61be9d6fb.jpg...。",
+  "masked": "See [[FILE0]]...。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "See d67b022f5b1e28272a5d29f61be9d6fb.jpg...。"
+ },
+ {
+  "text": "See doi.org/10.1177/0956797611398495. ok",
+  "masked": "See [[URL0]]. ok",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "See doi.org/10.1177/0956797611398495. ok"
+ },
+ {
+  "text": "See doi.org/10.1177/0956797611398495:。",
+  "masked": "See [[URL0]]",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495:。"
+  },
+  "roundTrip": "See doi.org/10.1177/0956797611398495:。"
+ },
+ {
+  "text": "See doi.org/10.1177/0956797611398495; — fin.",
+  "masked": "See [[URL0]]; — fin.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "See doi.org/10.1177/0956797611398495; — fin."
+ },
+ {
+  "text": "See doi.org/10.1177/0956797611398495? for details.",
+  "masked": "See [[URL0]]? for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "See doi.org/10.1177/0956797611398495? for details."
+ },
+ {
+  "text": "See e.g.)) for details.",
+  "masked": "See e.g.)) for details.",
+  "spans": {},
+  "roundTrip": "See e.g.)) for details."
+ },
+ {
+  "text": "See e.g.; for details.",
+  "masked": "See e.g.; for details.",
+  "spans": {},
+  "roundTrip": "See e.g.; for details."
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet) ok",
+  "masked": "See [[URL0]] ok",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet) ok"
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet)10.1177/0956797611398495 end.",
+  "masked": "See [[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)10.1177/0956797611398495"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet)10.1177/0956797611398495 end."
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet)[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet)[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet)[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet)[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet)a.b+c@sub.example.co end.",
+  "masked": "See [[URL1]][[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet)a.b+c@sub.example.co end."
+ },
+ {
+  "text": "See en.wikipedia.org/wiki/Mercury_(planet)john@example.org end.",
+  "masked": "See [[URL1]][[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "See en.wikipedia.org/wiki/Mercury_(planet)john@example.org end."
+ },
+ {
+  "text": "See http://www.bbc.com/news/world-europe-2577827210.1177/0956797611398495 end.",
+  "masked": "See [[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-2577827210.1177/0956797611398495"
+  },
+  "roundTrip": "See http://www.bbc.com/news/world-europe-2577827210.1177/0956797611398495 end."
+ },
+ {
+  "text": "See http://www.bbc.com/news/world-europe-25778272[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See http://www.bbc.com/news/world-europe-25778272[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See http://www.bbc.com/news/world-europe-25778272[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See http://www.bbc.com/news/world-europe-25778272[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See http://www.bbc.com/news/world-europe-25778272a.b+c@sub.example.co end.",
+  "masked": "See [[URL1]][[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "world-europe-25778272a.b+c@sub.example.co",
+   "[[URL1]]": "http://www.bbc.com/news/"
+  },
+  "roundTrip": "See http://www.bbc.com/news/world-europe-25778272a.b+c@sub.example.co end."
+ },
+ {
+  "text": "See http://www.bbc.com/news/world-europe-25778272john@example.org end.",
+  "masked": "See [[URL1]][[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "world-europe-25778272john@example.org",
+   "[[URL1]]": "http://www.bbc.com/news/"
+  },
+  "roundTrip": "See http://www.bbc.com/news/world-europe-25778272john@example.org end."
+ },
+ {
+  "text": "See https://LibreTexts.org10.1177/0956797611398495 end.",
+  "masked": "See [[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org10.1177/0956797611398495"
+  },
+  "roundTrip": "See https://LibreTexts.org10.1177/0956797611398495 end."
+ },
+ {
+  "text": "See https://LibreTexts.org[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "See https://LibreTexts.org[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See https://LibreTexts.org[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "See https://LibreTexts.org[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See https://LibreTexts.orga.b+c@sub.example.co end.",
+  "masked": "See https://[[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "LibreTexts.orga.b+c@sub.example.co"
+  },
+  "roundTrip": "See https://LibreTexts.orga.b+c@sub.example.co end."
+ },
+ {
+  "text": "See https://LibreTexts.orgjohn@example.org end.",
+  "masked": "See https://[[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "LibreTexts.orgjohn@example.org"
+  },
+  "roundTrip": "See https://LibreTexts.orgjohn@example.org end."
+ },
+ {
+  "text": "See i.e.)) for details.",
+  "masked": "See i.e.)) for details.",
+  "spans": {},
+  "roundTrip": "See i.e.)) for details."
+ },
+ {
+  "text": "See i.e....",
+  "masked": "See i.e....",
+  "spans": {},
+  "roundTrip": "See i.e...."
+ },
+ {
+  "text": "See io.io/a... ok",
+  "masked": "See [[URL0]]... ok",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "See io.io/a... ok"
+ },
+ {
+  "text": "See io.io/a: ok",
+  "masked": "See [[URL0]]: ok",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "See io.io/a: ok"
+ },
+ {
+  "text": "See john@example.org... — fin.",
+  "masked": "See [[EMAIL0]]... — fin.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "See john@example.org... — fin."
+ },
+ {
+  "text": "See john@example.orgcommons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end.",
+  "masked": "See [[EMAIL0]]/wiki/File:[[FILE1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orgcommons.wikimedia.org",
+   "[[FILE1]]": "A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "See john@example.orgcommons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg end."
+ },
+ {
+  "text": "See john@example.orgen.wikipedia.org/wiki/Mercury_(planet) end.",
+  "masked": "See [[EMAIL0]]/wiki/Mercury_(planet) end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orgen.wikipedia.org"
+  },
+  "roundTrip": "See john@example.orgen.wikipedia.org/wiki/Mercury_(planet) end."
+ },
+ {
+  "text": "See john@example.orghttp://www.bbc.com/news/world-europe-25778272 end.",
+  "masked": "See [[EMAIL0]]://[[URL1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orghttp",
+   "[[URL1]]": "www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "See john@example.orghttp://www.bbc.com/news/world-europe-25778272 end."
+ },
+ {
+  "text": "See john@example.orghttps://LibreTexts.org end.",
+  "masked": "See [[EMAIL0]]://[[URL1]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orghttps",
+   "[[URL1]]": "LibreTexts.org"
+  },
+  "roundTrip": "See john@example.orghttps://LibreTexts.org end."
+ },
+ {
+  "text": "See john@example.orglibretexts.org end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orglibretexts.org"
+  },
+  "roundTrip": "See john@example.orglibretexts.org end."
+ },
+ {
+  "text": "See john@example.orgwww.paulekman.com end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.orgwww.paulekman.com"
+  },
+  "roundTrip": "See john@example.orgwww.paulekman.com end."
+ },
+ {
+  "text": "See libretexts.org))。",
+  "masked": "See [[URL0]]))。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "See libretexts.org))。"
+ },
+ {
+  "text": "See libretexts.org10.1177/0956797611398495 end.",
+  "masked": "See libretexts.org10.1177/0956797611398495 end.",
+  "spans": {},
+  "roundTrip": "See libretexts.org10.1177/0956797611398495 end."
+ },
+ {
+  "text": "See libretexts.org:。",
+  "masked": "See [[URL0]]:。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "See libretexts.org:。"
+ },
+ {
+  "text": "See libretexts.org[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "libretexts.org"
+  },
+  "roundTrip": "See libretexts.org[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See libretexts.org[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "libretexts.org"
+  },
+  "roundTrip": "See libretexts.org[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See libretexts.orga.b+c@sub.example.co end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "libretexts.orga.b+c@sub.example.co"
+  },
+  "roundTrip": "See libretexts.orga.b+c@sub.example.co end."
+ },
+ {
+  "text": "See libretexts.orgjohn@example.org end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "libretexts.orgjohn@example.org"
+  },
+  "roundTrip": "See libretexts.orgjohn@example.org end."
+ },
+ {
+  "text": "See www.paulekman.com10.1177/0956797611398495 end.",
+  "masked": "See [[URL0]] end.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com10.1177/0956797611398495"
+  },
+  "roundTrip": "See www.paulekman.com10.1177/0956797611398495 end."
+ },
+ {
+  "text": "See www.paulekman.com;",
+  "masked": "See [[URL0]];",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "See www.paulekman.com;"
+ },
+ {
+  "text": "See www.paulekman.com[[latex:eDpeMg==]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "www.paulekman.com"
+  },
+  "roundTrip": "See www.paulekman.com[[latex:eDpeMg==]] end."
+ },
+ {
+  "text": "See www.paulekman.com[[mathml:PG1hdGg+]] end.",
+  "masked": "See [[URL1]][[MATH0]] end.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "www.paulekman.com"
+  },
+  "roundTrip": "See www.paulekman.com[[mathml:PG1hdGg+]] end."
+ },
+ {
+  "text": "See www.paulekman.coma.b+c@sub.example.co end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "www.paulekman.coma.b+c@sub.example.co"
+  },
+  "roundTrip": "See www.paulekman.coma.b+c@sub.example.co end."
+ },
+ {
+  "text": "See www.paulekman.comjohn@example.org end.",
+  "masked": "See [[EMAIL0]] end.",
+  "spans": {
+   "[[EMAIL0]]": "www.paulekman.comjohn@example.org"
+  },
+  "roundTrip": "See www.paulekman.comjohn@example.org end."
+ },
+ {
+  "text": "See «Figure 13.1»。",
+  "masked": "See «Figure 13.1»。",
+  "spans": {},
+  "roundTrip": "See «Figure 13.1»。"
+ },
+ {
+  "text": "See «[[mathml:PG1hdGg+]]»。",
+  "masked": "See «[[MATH0]]»。",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "See «[[mathml:PG1hdGg+]]»。"
+ },
+ {
+  "text": "See «a.b+c@sub.example.co» y más.",
+  "masked": "See «[[EMAIL0]]» y más.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "See «a.b+c@sub.example.co» y más."
+ },
+ {
+  "text": "See «commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg» for details.",
+  "masked": "See «[[URL0]] for details.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg»"
+  },
+  "roundTrip": "See «commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg» for details."
+ },
+ {
+  "text": "See «i.e.» for details.",
+  "masked": "See «i.e.» for details.",
+  "spans": {},
+  "roundTrip": "See «i.e.» for details."
+ },
+ {
+  "text": "See «libretexts.org» — fin.",
+  "masked": "See «[[URL0]]» — fin.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "See «libretexts.org» — fin."
+ },
+ {
+  "text": "See “[[latex:eDpeMg==]]”",
+  "masked": "See “[[MATH0]]”",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "See “[[latex:eDpeMg==]]”"
+ },
+ {
+  "text": "See “commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg” ok",
+  "masked": "See “[[URL0]] ok",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg”"
+  },
+  "roundTrip": "See “commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg” ok"
+ },
+ {
+  "text": "See “e.g.” for details.",
+  "masked": "See “e.g.” for details.",
+  "spans": {},
+  "roundTrip": "See “e.g.” for details."
+ },
+ {
+  "text": "U.S. Government)) ok",
+  "masked": "U.S. Government)) ok",
+  "spans": {},
+  "roundTrip": "U.S. Government)) ok"
+ },
+ {
+  "text": "U.S. Government,。",
+  "masked": "U.S. Government,。",
+  "spans": {},
+  "roundTrip": "U.S. Government,。"
+ },
+ {
+  "text": "U.S. Government;。",
+  "masked": "U.S. Government;。",
+  "spans": {},
+  "roundTrip": "U.S. Government;。"
+ },
+ {
+  "text": "Ver — (((d67b022f5b1e28272a5d29f61be9d6fb.jpg))) ok",
+  "masked": "Ver — ((([[FILE0]]))) ok",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — (((d67b022f5b1e28272a5d29f61be9d6fb.jpg))) ok"
+ },
+ {
+  "text": "Ver — (((e.g.))) ok",
+  "masked": "Ver — (((e.g.))) ok",
+  "spans": {},
+  "roundTrip": "Ver — (((e.g.))) ok"
+ },
+ {
+  "text": "Ver — (((https://LibreTexts.org))) — fin.",
+  "masked": "Ver — ((([[URL0]]))) — fin.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "Ver — (((https://LibreTexts.org))) — fin."
+ },
+ {
+  "text": "Ver — (((i.e.))) — fin.",
+  "masked": "Ver — (((i.e.))) — fin.",
+  "spans": {},
+  "roundTrip": "Ver — (((i.e.))) — fin."
+ },
+ {
+  "text": "Ver — (((libretexts.org))) — fin.",
+  "masked": "Ver — ((([[URL0]]))) — fin.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "Ver — (((libretexts.org))) — fin."
+ },
+ {
+  "text": "Ver — (10.1177/0956797611398495). ok",
+  "masked": "Ver — (10.1177/0956797611398495). ok",
+  "spans": {},
+  "roundTrip": "Ver — (10.1177/0956797611398495). ok"
+ },
+ {
+  "text": "Ver — (HTTP://EXAMPLE.COM) for details.",
+  "masked": "Ver — ([[URL0]]) for details.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "Ver — (HTTP://EXAMPLE.COM) for details."
+ },
+ {
+  "text": "Ver — (U.S. Government).。",
+  "masked": "Ver — (U.S. Government).。",
+  "spans": {},
+  "roundTrip": "Ver — (U.S. Government).。"
+ },
+ {
+  "text": "Ver — ([[latex:eDpeMg==]]) ok",
+  "masked": "Ver — ([[MATH0]]) ok",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Ver — ([[latex:eDpeMg==]]) ok"
+ },
+ {
+  "text": "Ver — ([[latex:eDpeMg==]]),。",
+  "masked": "Ver — ([[MATH0]]),。",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Ver — ([[latex:eDpeMg==]]),。"
+ },
+ {
+  "text": "Ver — ([[latex:eDpeMg==]]). for details.",
+  "masked": "Ver — ([[MATH0]]). for details.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Ver — ([[latex:eDpeMg==]]). for details."
+ },
+ {
+  "text": "Ver — (creativecommons.org/licenses/by-nc-sa/3.0/).。",
+  "masked": "Ver — ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/).。"
+  },
+  "roundTrip": "Ver — (creativecommons.org/licenses/by-nc-sa/3.0/).。"
+ },
+ {
+  "text": "Ver — (d67b022f5b1e28272a5d29f61be9d6fb.jpg),",
+  "masked": "Ver — ([[FILE0]]),",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — (d67b022f5b1e28272a5d29f61be9d6fb.jpg),"
+ },
+ {
+  "text": "Ver — (i.e.) ok",
+  "masked": "Ver — (i.e.) ok",
+  "spans": {},
+  "roundTrip": "Ver — (i.e.) ok"
+ },
+ {
+  "text": "Ver — (john@example.org). — fin.",
+  "masked": "Ver — ([[EMAIL0]]). — fin.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "Ver — (john@example.org). — fin."
+ },
+ {
+  "text": "Ver — (www.paulekman.com),",
+  "masked": "Ver — ([[URL0]]),",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "Ver — (www.paulekman.com),"
+ },
+ {
+  "text": "Ver — 10.1177/0956797611398495! y más.",
+  "masked": "Ver — 10.1177/0956797611398495! y más.",
+  "spans": {},
+  "roundTrip": "Ver — 10.1177/0956797611398495! y más."
+ },
+ {
+  "text": "Ver — 10.1177/0956797611398495) ok",
+  "masked": "Ver — 10.1177/0956797611398495) ok",
+  "spans": {},
+  "roundTrip": "Ver — 10.1177/0956797611398495) ok"
+ },
+ {
+  "text": "Ver — 10.1177/0956797611398495))。",
+  "masked": "Ver — 10.1177/0956797611398495))。",
+  "spans": {},
+  "roundTrip": "Ver — 10.1177/0956797611398495))。"
+ },
+ {
+  "text": "Ver — HTTP://EXAMPLE.COM.",
+  "masked": "Ver — [[URL0]].",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "Ver — HTTP://EXAMPLE.COM."
+ },
+ {
+  "text": "Ver — HTTP://EXAMPLE.COM... for details.",
+  "masked": "Ver — [[URL0]]... for details.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "Ver — HTTP://EXAMPLE.COM... for details."
+ },
+ {
+  "text": "Ver — U.S. Government!",
+  "masked": "Ver — U.S. Government!",
+  "spans": {},
+  "roundTrip": "Ver — U.S. Government!"
+ },
+ {
+  "text": "Ver — U.S. Government)。",
+  "masked": "Ver — U.S. Government)。",
+  "spans": {},
+  "roundTrip": "Ver — U.S. Government)。"
+ },
+ {
+  "text": "Ver — U.S. Government? — fin.",
+  "masked": "Ver — U.S. Government? — fin.",
+  "spans": {},
+  "roundTrip": "Ver — U.S. Government? — fin."
+ },
+ {
+  "text": "Ver — [10.1177/0956797611398495] ok",
+  "masked": "Ver — [10.1177/0956797611398495] ok",
+  "spans": {},
+  "roundTrip": "Ver — [10.1177/0956797611398495] ok"
+ },
+ {
+  "text": "Ver — [[latex:eDpeMg==]]?。",
+  "masked": "Ver — [[MATH0]]?。",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Ver — [[latex:eDpeMg==]]?。"
+ },
+ {
+  "text": "Ver — [[mathml:PG1hdGg+]]? — fin.",
+  "masked": "Ver — [[MATH0]]? — fin.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Ver — [[mathml:PG1hdGg+]]? — fin."
+ },
+ {
+  "text": "Ver — [d67b022f5b1e28272a5d29f61be9d6fb.jpg] y más.",
+  "masked": "Ver — [[[FILE0]]] y más.",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — [d67b022f5b1e28272a5d29f61be9d6fb.jpg] y más."
+ },
+ {
+  "text": "Ver — [e.g.] y más.",
+  "masked": "Ver — [e.g.] y más.",
+  "spans": {},
+  "roundTrip": "Ver — [e.g.] y más."
+ },
+ {
+  "text": "Ver — [i.e.] ok",
+  "masked": "Ver — [i.e.] ok",
+  "spans": {},
+  "roundTrip": "Ver — [i.e.] ok"
+ },
+ {
+  "text": "Ver — a.b+c@sub.example.co)) ok",
+  "masked": "Ver — [[EMAIL0]])) ok",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Ver — a.b+c@sub.example.co)) ok"
+ },
+ {
+  "text": "Ver — bio.libretexts.org/)",
+  "masked": "Ver — [[URL0]])",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Ver — bio.libretexts.org/)"
+ },
+ {
+  "text": "Ver — bio.libretexts.org/: ok",
+  "masked": "Ver — [[URL0]]: ok",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Ver — bio.libretexts.org/: ok"
+ },
+ {
+  "text": "Ver — bio.libretexts.org/;",
+  "masked": "Ver — [[URL0]];",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Ver — bio.libretexts.org/;"
+ },
+ {
+  "text": "Ver — bio.libretexts.org/?",
+  "masked": "Ver — [[URL0]]?",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Ver — bio.libretexts.org/?"
+ },
+ {
+  "text": "Ver — commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg. for details.",
+  "masked": "Ver — [[URL0]]. for details.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "Ver — commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg. for details."
+ },
+ {
+  "text": "Ver — creativecommons.org/licenses/by-nc-sa/3.0/... y más.",
+  "masked": "Ver — [[URL0]]... y más.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "Ver — creativecommons.org/licenses/by-nc-sa/3.0/... y más."
+ },
+ {
+  "text": "Ver — creativecommons.org/licenses/by-nc-sa/3.0/: ok",
+  "masked": "Ver — [[URL0]]: ok",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "Ver — creativecommons.org/licenses/by-nc-sa/3.0/: ok"
+ },
+ {
+  "text": "Ver — d67b022f5b1e28272a5d29f61be9d6fb.jpg! for details.",
+  "masked": "Ver — [[FILE0]]! for details.",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — d67b022f5b1e28272a5d29f61be9d6fb.jpg! for details."
+ },
+ {
+  "text": "Ver — d67b022f5b1e28272a5d29f61be9d6fb.jpg? for details.",
+  "masked": "Ver — [[FILE0]]? for details.",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — d67b022f5b1e28272a5d29f61be9d6fb.jpg? for details."
+ },
+ {
+  "text": "Ver — doi.org/10.1177/0956797611398495 for details.",
+  "masked": "Ver — [[URL0]] for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Ver — doi.org/10.1177/0956797611398495 for details."
+ },
+ {
+  "text": "Ver — en.wikipedia.org/wiki/Mercury_(planet)) y más.",
+  "masked": "Ver — [[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "Ver — en.wikipedia.org/wiki/Mercury_(planet)) y más."
+ },
+ {
+  "text": "Ver — en.wikipedia.org/wiki/Mercury_(planet). for details.",
+  "masked": "Ver — [[URL0]]. for details.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "Ver — en.wikipedia.org/wiki/Mercury_(planet). for details."
+ },
+ {
+  "text": "Ver — http://www.bbc.com/news/world-europe-25778272",
+  "masked": "Ver — [[URL0]]",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Ver — http://www.bbc.com/news/world-europe-25778272"
+ },
+ {
+  "text": "Ver — http://www.bbc.com/news/world-europe-25778272))",
+  "masked": "Ver — [[URL0]]))",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Ver — http://www.bbc.com/news/world-europe-25778272))"
+ },
+ {
+  "text": "Ver — http://www.bbc.com/news/world-europe-25778272, for details.",
+  "masked": "Ver — [[URL0]], for details.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Ver — http://www.bbc.com/news/world-europe-25778272, for details."
+ },
+ {
+  "text": "Ver — http://www.bbc.com/news/world-europe-25778272; for details.",
+  "masked": "Ver — [[URL0]]; for details.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Ver — http://www.bbc.com/news/world-europe-25778272; for details."
+ },
+ {
+  "text": "Ver — https://LibreTexts.org, for details.",
+  "masked": "Ver — [[URL0]], for details.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "Ver — https://LibreTexts.org, for details."
+ },
+ {
+  "text": "Ver — i.e.)。",
+  "masked": "Ver — i.e.)。",
+  "spans": {},
+  "roundTrip": "Ver — i.e.)。"
+ },
+ {
+  "text": "Ver — i.e.. ok",
+  "masked": "Ver — i.e.. ok",
+  "spans": {},
+  "roundTrip": "Ver — i.e.. ok"
+ },
+ {
+  "text": "Ver — io.io/a,",
+  "masked": "Ver — [[URL0]],",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "Ver — io.io/a,"
+ },
+ {
+  "text": "Ver — john@example.org? y más.",
+  "masked": "Ver — [[EMAIL0]]? y más.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "Ver — john@example.org? y más."
+ },
+ {
+  "text": "Ver — www.paulekman.com y más.",
+  "masked": "Ver — [[URL0]] y más.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "Ver — www.paulekman.com y más."
+ },
+ {
+  "text": "Ver — www.paulekman.com) ok",
+  "masked": "Ver — [[URL0]]) ok",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "Ver — www.paulekman.com) ok"
+ },
+ {
+  "text": "Ver — «U.S. Government» — fin.",
+  "masked": "Ver — «U.S. Government» — fin.",
+  "spans": {},
+  "roundTrip": "Ver — «U.S. Government» — fin."
+ },
+ {
+  "text": "Ver — «d67b022f5b1e28272a5d29f61be9d6fb.jpg»。",
+  "masked": "Ver — «[[FILE0]]»。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Ver — «d67b022f5b1e28272a5d29f61be9d6fb.jpg»。"
+ },
+ {
+  "text": "Ver — «io.io/a» for details.",
+  "masked": "Ver — «[[URL0]] for details.",
+  "spans": {
+   "[[URL0]]": "io.io/a»"
+  },
+  "roundTrip": "Ver — «io.io/a» for details."
+ },
+ {
+  "text": "Ver — “Figure 13.1” y más.",
+  "masked": "Ver — “Figure 13.1” y más.",
+  "spans": {},
+  "roundTrip": "Ver — “Figure 13.1” y más."
+ },
+ {
+  "text": "Véase (((http://www.bbc.com/news/world-europe-25778272))) — fin.",
+  "masked": "Véase ((([[URL0]]))) — fin.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Véase (((http://www.bbc.com/news/world-europe-25778272))) — fin."
+ },
+ {
+  "text": "Véase (((io.io/a)))",
+  "masked": "Véase ((([[URL0]])))",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "Véase (((io.io/a)))"
+ },
+ {
+  "text": "Véase (Figure 13.1) for details.",
+  "masked": "Véase (Figure 13.1) for details.",
+  "spans": {},
+  "roundTrip": "Véase (Figure 13.1) for details."
+ },
+ {
+  "text": "Véase (bio.libretexts.org/).",
+  "masked": "Véase ([[URL0]]).",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Véase (bio.libretexts.org/)."
+ },
+ {
+  "text": "Véase (creativecommons.org/licenses/by-nc-sa/3.0/) ok",
+  "masked": "Véase ([[URL0]]) ok",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "Véase (creativecommons.org/licenses/by-nc-sa/3.0/) ok"
+ },
+ {
+  "text": "Véase (i.e.), y más.",
+  "masked": "Véase (i.e.), y más.",
+  "spans": {},
+  "roundTrip": "Véase (i.e.), y más."
+ },
+ {
+  "text": "Véase 10.1177/0956797611398495 ok",
+  "masked": "Véase 10.1177/0956797611398495 ok",
+  "spans": {},
+  "roundTrip": "Véase 10.1177/0956797611398495 ok"
+ },
+ {
+  "text": "Véase 10.1177/0956797611398495... y más.",
+  "masked": "Véase 10.1177/0956797611398495... y más.",
+  "spans": {},
+  "roundTrip": "Véase 10.1177/0956797611398495... y más."
+ },
+ {
+  "text": "Véase Figure 13.1)) y más.",
+  "masked": "Véase Figure 13.1)) y más.",
+  "spans": {},
+  "roundTrip": "Véase Figure 13.1)) y más."
+ },
+ {
+  "text": "Véase HTTP://EXAMPLE.COM! — fin.",
+  "masked": "Véase [[URL0]]! — fin.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "Véase HTTP://EXAMPLE.COM! — fin."
+ },
+ {
+  "text": "Véase HTTP://EXAMPLE.COM))。",
+  "masked": "Véase [[URL0]]",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM))。"
+  },
+  "roundTrip": "Véase HTTP://EXAMPLE.COM))。"
+ },
+ {
+  "text": "Véase HTTP://EXAMPLE.COM, for details.",
+  "masked": "Véase [[URL0]], for details.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "Véase HTTP://EXAMPLE.COM, for details."
+ },
+ {
+  "text": "Véase [U.S. Government]。",
+  "masked": "Véase [U.S. Government]。",
+  "spans": {},
+  "roundTrip": "Véase [U.S. Government]。"
+ },
+ {
+  "text": "Véase [[[mathml:PG1hdGg+]]]。",
+  "masked": "Véase [[[MATH0]]]。",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Véase [[[mathml:PG1hdGg+]]]。"
+ },
+ {
+  "text": "Véase [[mathml:PG1hdGg+]]. ok",
+  "masked": "Véase [[MATH0]]. ok",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Véase [[mathml:PG1hdGg+]]. ok"
+ },
+ {
+  "text": "Véase [[mathml:PG1hdGg+]];。",
+  "masked": "Véase [[MATH0]];。",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Véase [[mathml:PG1hdGg+]];。"
+ },
+ {
+  "text": "Véase [doi.org/10.1177/0956797611398495] — fin.",
+  "masked": "Véase [[[URL0]]] — fin.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Véase [doi.org/10.1177/0956797611398495] — fin."
+ },
+ {
+  "text": "Véase a.b+c@sub.example.co? for details.",
+  "masked": "Véase [[EMAIL0]]? for details.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Véase a.b+c@sub.example.co? for details."
+ },
+ {
+  "text": "Véase bio.libretexts.org/... — fin.",
+  "masked": "Véase [[URL0]]... — fin.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Véase bio.libretexts.org/... — fin."
+ },
+ {
+  "text": "Véase commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg))。",
+  "masked": "Véase [[URL0]]",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg))。"
+  },
+  "roundTrip": "Véase commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg))。"
+ },
+ {
+  "text": "Véase commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg...",
+  "masked": "Véase [[URL0]]...",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "Véase commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg..."
+ },
+ {
+  "text": "Véase creativecommons.org/licenses/by-nc-sa/3.0/) y más.",
+  "masked": "Véase [[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "Véase creativecommons.org/licenses/by-nc-sa/3.0/) y más."
+ },
+ {
+  "text": "Véase doi.org/10.1177/0956797611398495! for details.",
+  "masked": "Véase [[URL0]]! for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Véase doi.org/10.1177/0956797611398495! for details."
+ },
+ {
+  "text": "Véase doi.org/10.1177/0956797611398495... for details.",
+  "masked": "Véase [[URL0]]... for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Véase doi.org/10.1177/0956797611398495... for details."
+ },
+ {
+  "text": "Véase e.g.! — fin.",
+  "masked": "Véase e.g.! — fin.",
+  "spans": {},
+  "roundTrip": "Véase e.g.! — fin."
+ },
+ {
+  "text": "Véase en.wikipedia.org/wiki/Mercury_(planet)... — fin.",
+  "masked": "Véase [[URL0]]... — fin.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "Véase en.wikipedia.org/wiki/Mercury_(planet)... — fin."
+ },
+ {
+  "text": "Véase http://www.bbc.com/news/world-europe-25778272. — fin.",
+  "masked": "Véase [[URL0]]. — fin.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "Véase http://www.bbc.com/news/world-europe-25778272. — fin."
+ },
+ {
+  "text": "Véase https://LibreTexts.org: for details.",
+  "masked": "Véase [[URL0]]: for details.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "Véase https://LibreTexts.org: for details."
+ },
+ {
+  "text": "Véase io.io/a)) y más.",
+  "masked": "Véase [[URL0]])) y más.",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "Véase io.io/a)) y más."
+ },
+ {
+  "text": "Véase john@example.org) ok",
+  "masked": "Véase [[EMAIL0]]) ok",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "Véase john@example.org) ok"
+ },
+ {
+  "text": "Véase john@example.org;。",
+  "masked": "Véase [[EMAIL0]];。",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "Véase john@example.org;。"
+ },
+ {
+  "text": "Véase libretexts.org) y más.",
+  "masked": "Véase [[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "Véase libretexts.org) y más."
+ },
+ {
+  "text": "Véase libretexts.org. y más.",
+  "masked": "Véase [[URL0]]. y más.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "Véase libretexts.org. y más."
+ },
+ {
+  "text": "Véase www.paulekman.com)) y más.",
+  "masked": "Véase [[URL0]])) y más.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "Véase www.paulekman.com)) y más."
+ },
+ {
+  "text": "Véase «http://www.bbc.com/news/world-europe-25778272» for details.",
+  "masked": "Véase «[[URL0]] for details.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272»"
+  },
+  "roundTrip": "Véase «http://www.bbc.com/news/world-europe-25778272» for details."
+ },
+ {
+  "text": "Véase «www.paulekman.com»",
+  "masked": "Véase «[[URL0]]",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com»"
+  },
+  "roundTrip": "Véase «www.paulekman.com»"
+ },
+ {
+  "text": "Zimbardo’s book, ((([[latex:eDpeMg==]]))) y más.",
+  "masked": "Zimbardo’s book, ((([[MATH0]]))) y más.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Zimbardo’s book, ((([[latex:eDpeMg==]]))) y más."
+ },
+ {
+  "text": "Zimbardo’s book, (((a.b+c@sub.example.co))) — fin.",
+  "masked": "Zimbardo’s book, ((([[EMAIL0]]))) — fin.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Zimbardo’s book, (((a.b+c@sub.example.co))) — fin."
+ },
+ {
+  "text": "Zimbardo’s book, (((doi.org/10.1177/0956797611398495)))",
+  "masked": "Zimbardo’s book, ((([[URL0]])))",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Zimbardo’s book, (((doi.org/10.1177/0956797611398495)))"
+ },
+ {
+  "text": "Zimbardo’s book, (((john@example.org)))。",
+  "masked": "Zimbardo’s book, ((([[EMAIL0]])))。",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "Zimbardo’s book, (((john@example.org)))。"
+ },
+ {
+  "text": "Zimbardo’s book, (10.1177/0956797611398495) for details.",
+  "masked": "Zimbardo’s book, (10.1177/0956797611398495) for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, (10.1177/0956797611398495) for details."
+ },
+ {
+  "text": "Zimbardo’s book, (U.S. Government), for details.",
+  "masked": "Zimbardo’s book, (U.S. Government), for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, (U.S. Government), for details."
+ },
+ {
+  "text": "Zimbardo’s book, (a.b+c@sub.example.co),",
+  "masked": "Zimbardo’s book, ([[EMAIL0]]),",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Zimbardo’s book, (a.b+c@sub.example.co),"
+ },
+ {
+  "text": "Zimbardo’s book, (bio.libretexts.org/), y más.",
+  "masked": "Zimbardo’s book, ([[URL0]]), y más.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Zimbardo’s book, (bio.libretexts.org/), y más."
+ },
+ {
+  "text": "Zimbardo’s book, (d67b022f5b1e28272a5d29f61be9d6fb.jpg).。",
+  "masked": "Zimbardo’s book, ([[FILE0]]).。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Zimbardo’s book, (d67b022f5b1e28272a5d29f61be9d6fb.jpg).。"
+ },
+ {
+  "text": "Zimbardo’s book, (doi.org/10.1177/0956797611398495) y más.",
+  "masked": "Zimbardo’s book, ([[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "Zimbardo’s book, (doi.org/10.1177/0956797611398495) y más."
+ },
+ {
+  "text": "Zimbardo’s book, (http://www.bbc.com/news/world-europe-25778272)。",
+  "masked": "Zimbardo’s book, ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272)。"
+  },
+  "roundTrip": "Zimbardo’s book, (http://www.bbc.com/news/world-europe-25778272)。"
+ },
+ {
+  "text": "Zimbardo’s book, (https://LibreTexts.org) — fin.",
+  "masked": "Zimbardo’s book, ([[URL0]]) — fin.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "Zimbardo’s book, (https://LibreTexts.org) — fin."
+ },
+ {
+  "text": "Zimbardo’s book, (https://LibreTexts.org).。",
+  "masked": "Zimbardo’s book, ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org).。"
+  },
+  "roundTrip": "Zimbardo’s book, (https://LibreTexts.org).。"
+ },
+ {
+  "text": "Zimbardo’s book, 10.1177/0956797611398495; for details.",
+  "masked": "Zimbardo’s book, 10.1177/0956797611398495; for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, 10.1177/0956797611398495; for details."
+ },
+ {
+  "text": "Zimbardo’s book, 10.1177/0956797611398495? ok",
+  "masked": "Zimbardo’s book, 10.1177/0956797611398495? ok",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, 10.1177/0956797611398495? ok"
+ },
+ {
+  "text": "Zimbardo’s book, Figure 13.1!",
+  "masked": "Zimbardo’s book, Figure 13.1!",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, Figure 13.1!"
+ },
+ {
+  "text": "Zimbardo’s book, U.S. Government。",
+  "masked": "Zimbardo’s book, U.S. Government。",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, U.S. Government。"
+ },
+ {
+  "text": "Zimbardo’s book, [[latex:eDpeMg==]] y más.",
+  "masked": "Zimbardo’s book, [[MATH0]] y más.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "Zimbardo’s book, [[latex:eDpeMg==]] y más."
+ },
+ {
+  "text": "Zimbardo’s book, [[mathml:PG1hdGg+]] ok",
+  "masked": "Zimbardo’s book, [[MATH0]] ok",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Zimbardo’s book, [[mathml:PG1hdGg+]] ok"
+ },
+ {
+  "text": "Zimbardo’s book, [[mathml:PG1hdGg+]]) y más.",
+  "masked": "Zimbardo’s book, [[MATH0]]) y más.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Zimbardo’s book, [[mathml:PG1hdGg+]]) y más."
+ },
+ {
+  "text": "Zimbardo’s book, [[mathml:PG1hdGg+]],",
+  "masked": "Zimbardo’s book, [[MATH0]],",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Zimbardo’s book, [[mathml:PG1hdGg+]],"
+ },
+ {
+  "text": "Zimbardo’s book, [www.paulekman.com] y más.",
+  "masked": "Zimbardo’s book, [[[URL0]]] y más.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "Zimbardo’s book, [www.paulekman.com] y más."
+ },
+ {
+  "text": "Zimbardo’s book, a.b+c@sub.example.co! — fin.",
+  "masked": "Zimbardo’s book, [[EMAIL0]]! — fin.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Zimbardo’s book, a.b+c@sub.example.co! — fin."
+ },
+ {
+  "text": "Zimbardo’s book, a.b+c@sub.example.co, y más.",
+  "masked": "Zimbardo’s book, [[EMAIL0]], y más.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "Zimbardo’s book, a.b+c@sub.example.co, y más."
+ },
+ {
+  "text": "Zimbardo’s book, bio.libretexts.org/, — fin.",
+  "masked": "Zimbardo’s book, [[URL0]], — fin.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Zimbardo’s book, bio.libretexts.org/, — fin."
+ },
+ {
+  "text": "Zimbardo’s book, bio.libretexts.org/.",
+  "masked": "Zimbardo’s book, [[URL0]].",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "Zimbardo’s book, bio.libretexts.org/."
+ },
+ {
+  "text": "Zimbardo’s book, commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg: for details.",
+  "masked": "Zimbardo’s book, [[URL0]]: for details.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "Zimbardo’s book, commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg: for details."
+ },
+ {
+  "text": "Zimbardo’s book, d67b022f5b1e28272a5d29f61be9d6fb.jpg) ok",
+  "masked": "Zimbardo’s book, [[FILE0]]) ok",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "Zimbardo’s book, d67b022f5b1e28272a5d29f61be9d6fb.jpg) ok"
+ },
+ {
+  "text": "Zimbardo’s book, e.g. for details.",
+  "masked": "Zimbardo’s book, e.g. for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, e.g. for details."
+ },
+ {
+  "text": "Zimbardo’s book, e.g.) — fin.",
+  "masked": "Zimbardo’s book, e.g.) — fin.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, e.g.) — fin."
+ },
+ {
+  "text": "Zimbardo’s book, e.g.. for details.",
+  "masked": "Zimbardo’s book, e.g.. for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, e.g.. for details."
+ },
+ {
+  "text": "Zimbardo’s book, https://LibreTexts.org? ok",
+  "masked": "Zimbardo’s book, [[URL0]]? ok",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "Zimbardo’s book, https://LibreTexts.org? ok"
+ },
+ {
+  "text": "Zimbardo’s book, i.e., for details.",
+  "masked": "Zimbardo’s book, i.e., for details.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, i.e., for details."
+ },
+ {
+  "text": "Zimbardo’s book, i.e.;",
+  "masked": "Zimbardo’s book, i.e.;",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, i.e.;"
+ },
+ {
+  "text": "Zimbardo’s book, i.e.?。",
+  "masked": "Zimbardo’s book, i.e.?。",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, i.e.?。"
+ },
+ {
+  "text": "Zimbardo’s book, io.io/a?。",
+  "masked": "Zimbardo’s book, [[URL0]]",
+  "spans": {
+   "[[URL0]]": "io.io/a?。"
+  },
+  "roundTrip": "Zimbardo’s book, io.io/a?。"
+ },
+ {
+  "text": "Zimbardo’s book, «en.wikipedia.org/wiki/Mercury_(planet)»。",
+  "masked": "Zimbardo’s book, «[[URL0]]",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)»。"
+  },
+  "roundTrip": "Zimbardo’s book, «en.wikipedia.org/wiki/Mercury_(planet)»。"
+ },
+ {
+  "text": "Zimbardo’s book, “[[mathml:PG1hdGg+]]” y más.",
+  "masked": "Zimbardo’s book, “[[MATH0]]” y más.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "Zimbardo’s book, “[[mathml:PG1hdGg+]]” y más."
+ },
+ {
+  "text": "Zimbardo’s book, “https://LibreTexts.org”。",
+  "masked": "Zimbardo’s book, “[[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org”。"
+  },
+  "roundTrip": "Zimbardo’s book, “https://LibreTexts.org”。"
+ },
+ {
+  "text": "Zimbardo’s book, “i.e.” y más.",
+  "masked": "Zimbardo’s book, “i.e.” y más.",
+  "spans": {},
+  "roundTrip": "Zimbardo’s book, “i.e.” y más."
+ },
+ {
+  "text": "Zimbardo’s book, “io.io/a”。",
+  "masked": "Zimbardo’s book, “[[URL0]]",
+  "spans": {
+   "[[URL0]]": "io.io/a”。"
+  },
+  "roundTrip": "Zimbardo’s book, “io.io/a”。"
+ },
+ {
+  "text": "[[latex:eDpeMg==]]! — fin.",
+  "masked": "[[MATH0]]! — fin.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "[[latex:eDpeMg==]]! — fin."
+ },
+ {
+  "text": "[[mathml:PG1hdGg+]]:",
+  "masked": "[[MATH0]]:",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "[[mathml:PG1hdGg+]]:"
+ },
+ {
+  "text": "[io.io/a]。",
+  "masked": "[[[URL0]]]。",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "[io.io/a]。"
+ },
+ {
+  "text": "a.b+c@sub.example.co y más.",
+  "masked": "[[EMAIL0]] y más.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "a.b+c@sub.example.co y más."
+ },
+ {
+  "text": "a.b+c@sub.example.co... for details.",
+  "masked": "[[EMAIL0]]... for details.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "a.b+c@sub.example.co... for details."
+ },
+ {
+  "text": "a.b+c@sub.example.co; ok",
+  "masked": "[[EMAIL0]]; ok",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "a.b+c@sub.example.co; ok"
+ },
+ {
+  "text": "bio.libretexts.org/ then (io.io/a), and e.g. finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and e.g. finally.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/",
+   "[[URL1]]": "io.io/a"
+  },
+  "roundTrip": "bio.libretexts.org/ then (io.io/a), and e.g. finally."
+ },
+ {
+  "text": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg then (libretexts.org), and [[mathml:PG1hdGg+]] finally.",
+  "masked": "[[URL1]] then ([[URL2]]), and [[MATH0]] finally.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]",
+   "[[URL1]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg",
+   "[[URL2]]": "libretexts.org"
+  },
+  "roundTrip": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg then (libretexts.org), and [[mathml:PG1hdGg+]] finally."
+ },
+ {
+  "text": "creativecommons.org/licenses/by-nc-sa/3.0/ then (bio.libretexts.org/), and d67b022f5b1e28272a5d29f61be9d6fb.jpg finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and [[FILE2]] finally.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/",
+   "[[URL1]]": "bio.libretexts.org/",
+   "[[FILE2]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "creativecommons.org/licenses/by-nc-sa/3.0/ then (bio.libretexts.org/), and d67b022f5b1e28272a5d29f61be9d6fb.jpg finally."
+ },
+ {
+  "text": "creativecommons.org/licenses/by-nc-sa/3.0/! — fin.",
+  "masked": "[[URL0]]! — fin.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "creativecommons.org/licenses/by-nc-sa/3.0/! — fin."
+ },
+ {
+  "text": "creativecommons.org/licenses/by-nc-sa/3.0/)) — fin.",
+  "masked": "[[URL0]])) — fin.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "creativecommons.org/licenses/by-nc-sa/3.0/)) — fin."
+ },
+ {
+  "text": "creativecommons.org/licenses/by-nc-sa/3.0/;",
+  "masked": "[[URL0]];",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "creativecommons.org/licenses/by-nc-sa/3.0/;"
+ },
+ {
+  "text": "creativecommons.org/licenses/by-nc-sa/3.0/? ok",
+  "masked": "[[URL0]]? ok",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "creativecommons.org/licenses/by-nc-sa/3.0/? ok"
+ },
+ {
+  "text": "e.g., for details.",
+  "masked": "e.g., for details.",
+  "spans": {},
+  "roundTrip": "e.g., for details."
+ },
+ {
+  "text": "e.g.? — fin.",
+  "masked": "e.g.? — fin.",
+  "spans": {},
+  "roundTrip": "e.g.? — fin."
+ },
+ {
+  "text": "en.wikipedia.org/wiki/Mercury_(planet) then (HTTP://EXAMPLE.COM), and U.S. Government finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and U.S. Government finally.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)",
+   "[[URL1]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "en.wikipedia.org/wiki/Mercury_(planet) then (HTTP://EXAMPLE.COM), and U.S. Government finally."
+ },
+ {
+  "text": "en.wikipedia.org/wiki/Mercury_(planet)!",
+  "masked": "[[URL0]]!",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "en.wikipedia.org/wiki/Mercury_(planet)!"
+ },
+ {
+  "text": "en.wikipedia.org/wiki/Mercury_(planet): — fin.",
+  "masked": "[[URL0]]: — fin.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "en.wikipedia.org/wiki/Mercury_(planet): — fin."
+ },
+ {
+  "text": "en.wikipedia.org/wiki/Mercury_(planet)?",
+  "masked": "[[URL0]]?",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "en.wikipedia.org/wiki/Mercury_(planet)?"
+ },
+ {
+  "text": "http://www.bbc.com/news/world-europe-25778272 then (www.paulekman.com), and a.b+c@sub.example.co finally.",
+  "masked": "[[URL1]] then ([[URL2]]), and [[EMAIL0]] finally.",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co",
+   "[[URL1]]": "http://www.bbc.com/news/world-europe-25778272",
+   "[[URL2]]": "www.paulekman.com"
+  },
+  "roundTrip": "http://www.bbc.com/news/world-europe-25778272 then (www.paulekman.com), and a.b+c@sub.example.co finally."
+ },
+ {
+  "text": "https://LibreTexts.org then (http://www.bbc.com/news/world-europe-25778272), and john@example.org finally.",
+  "masked": "[[URL1]] then ([[URL2]]), and [[EMAIL0]] finally.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org",
+   "[[URL1]]": "https://LibreTexts.org",
+   "[[URL2]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "https://LibreTexts.org then (http://www.bbc.com/news/world-europe-25778272), and john@example.org finally."
+ },
+ {
+  "text": "https://LibreTexts.org!。",
+  "masked": "[[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org!。"
+  },
+  "roundTrip": "https://LibreTexts.org!。"
+ },
+ {
+  "text": "https://LibreTexts.org; — fin.",
+  "masked": "[[URL0]]; — fin.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "https://LibreTexts.org; — fin."
+ },
+ {
+  "text": "i.e. for details.",
+  "masked": "i.e. for details.",
+  "spans": {},
+  "roundTrip": "i.e. for details."
+ },
+ {
+  "text": "i.e.!",
+  "masked": "i.e.!",
+  "spans": {},
+  "roundTrip": "i.e.!"
+ },
+ {
+  "text": "io.io/a then (doi.org/10.1177/0956797611398495), and i.e. finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and i.e. finally.",
+  "spans": {
+   "[[URL0]]": "io.io/a",
+   "[[URL1]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "io.io/a then (doi.org/10.1177/0956797611398495), and i.e. finally."
+ },
+ {
+  "text": "io.io/a! — fin.",
+  "masked": "[[URL0]]! — fin.",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "io.io/a! — fin."
+ },
+ {
+  "text": "io.io/a. y más.",
+  "masked": "[[URL0]]. y más.",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "io.io/a. y más."
+ },
+ {
+  "text": "john@example.org)) ok",
+  "masked": "[[EMAIL0]])) ok",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "john@example.org)) ok"
+ },
+ {
+  "text": "john@example.org,",
+  "masked": "[[EMAIL0]],",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "john@example.org,"
+ },
+ {
+  "text": "john@example.org: ok",
+  "masked": "[[EMAIL0]]: ok",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "john@example.org: ok"
+ },
+ {
+  "text": "libretexts.org then (en.wikipedia.org/wiki/Mercury_(planet)), and 10.1177/0956797611398495 finally.",
+  "masked": "[[URL0]] then ([[URL1]]), and 10.1177/0956797611398495 finally.",
+  "spans": {
+   "[[URL0]]": "libretexts.org",
+   "[[URL1]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "libretexts.org then (en.wikipedia.org/wiki/Mercury_(planet)), and 10.1177/0956797611398495 finally."
+ },
+ {
+  "text": "libretexts.org;",
+  "masked": "[[URL0]];",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "libretexts.org;"
+ },
+ {
+  "text": "libretexts.org?。",
+  "masked": "[[URL0]]?。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "libretexts.org?。"
+ },
+ {
+  "text": "naïve prose (HTTP://EXAMPLE.COM),",
+  "masked": "naïve prose ([[URL0]]),",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "naïve prose (HTTP://EXAMPLE.COM),"
+ },
+ {
+  "text": "naïve prose ([[mathml:PG1hdGg+]])",
+  "masked": "naïve prose ([[MATH0]])",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "naïve prose ([[mathml:PG1hdGg+]])"
+ },
+ {
+  "text": "naïve prose (a.b+c@sub.example.co).",
+  "masked": "naïve prose ([[EMAIL0]]).",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "naïve prose (a.b+c@sub.example.co)."
+ },
+ {
+  "text": "naïve prose (bio.libretexts.org/) for details.",
+  "masked": "naïve prose ([[URL0]]) for details.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "naïve prose (bio.libretexts.org/) for details."
+ },
+ {
+  "text": "naïve prose (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg),",
+  "masked": "naïve prose ([[URL0]]),",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "naïve prose (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg),"
+ },
+ {
+  "text": "naïve prose (creativecommons.org/licenses/by-nc-sa/3.0/), ok",
+  "masked": "naïve prose ([[URL0]]), ok",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "naïve prose (creativecommons.org/licenses/by-nc-sa/3.0/), ok"
+ },
+ {
+  "text": "naïve prose (doi.org/10.1177/0956797611398495), — fin.",
+  "masked": "naïve prose ([[URL0]]), — fin.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "naïve prose (doi.org/10.1177/0956797611398495), — fin."
+ },
+ {
+  "text": "naïve prose (e.g.), y más.",
+  "masked": "naïve prose (e.g.), y más.",
+  "spans": {},
+  "roundTrip": "naïve prose (e.g.), y más."
+ },
+ {
+  "text": "naïve prose (io.io/a)。",
+  "masked": "naïve prose ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "io.io/a)。"
+  },
+  "roundTrip": "naïve prose (io.io/a)。"
+ },
+ {
+  "text": "naïve prose (libretexts.org)。",
+  "masked": "naïve prose ([[URL0]])。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "naïve prose (libretexts.org)。"
+ },
+ {
+  "text": "naïve prose 10.1177/0956797611398495,",
+  "masked": "naïve prose 10.1177/0956797611398495,",
+  "spans": {},
+  "roundTrip": "naïve prose 10.1177/0956797611398495,"
+ },
+ {
+  "text": "naïve prose Figure 13.1... y más.",
+  "masked": "naïve prose Figure 13.1... y más.",
+  "spans": {},
+  "roundTrip": "naïve prose Figure 13.1... y más."
+ },
+ {
+  "text": "naïve prose [[latex:eDpeMg==]])。",
+  "masked": "naïve prose [[MATH0]])。",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "naïve prose [[latex:eDpeMg==]])。"
+ },
+ {
+  "text": "naïve prose [[latex:eDpeMg==]]... for details.",
+  "masked": "naïve prose [[MATH0]]... for details.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "naïve prose [[latex:eDpeMg==]]... for details."
+ },
+ {
+  "text": "naïve prose [bio.libretexts.org/] — fin.",
+  "masked": "naïve prose [[[URL0]]] — fin.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "naïve prose [bio.libretexts.org/] — fin."
+ },
+ {
+  "text": "naïve prose [john@example.org] y más.",
+  "masked": "naïve prose [[[EMAIL0]]] y más.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "naïve prose [john@example.org] y más."
+ },
+ {
+  "text": "naïve prose a.b+c@sub.example.co)",
+  "masked": "naïve prose [[EMAIL0]])",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "naïve prose a.b+c@sub.example.co)"
+ },
+ {
+  "text": "naïve prose a.b+c@sub.example.co. ok",
+  "masked": "naïve prose [[EMAIL0]]. ok",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "naïve prose a.b+c@sub.example.co. ok"
+ },
+ {
+  "text": "naïve prose bio.libretexts.org/ ok",
+  "masked": "naïve prose [[URL0]] ok",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "naïve prose bio.libretexts.org/ ok"
+ },
+ {
+  "text": "naïve prose bio.libretexts.org/))",
+  "masked": "naïve prose [[URL0]]))",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "naïve prose bio.libretexts.org/))"
+ },
+ {
+  "text": "naïve prose creativecommons.org/licenses/by-nc-sa/3.0/, y más.",
+  "masked": "naïve prose [[URL0]], y más.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "naïve prose creativecommons.org/licenses/by-nc-sa/3.0/, y más."
+ },
+ {
+  "text": "naïve prose d67b022f5b1e28272a5d29f61be9d6fb.jpg.。",
+  "masked": "naïve prose [[FILE0]].。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "naïve prose d67b022f5b1e28272a5d29f61be9d6fb.jpg.。"
+ },
+ {
+  "text": "naïve prose doi.org/10.1177/0956797611398495))",
+  "masked": "naïve prose [[URL0]]))",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "naïve prose doi.org/10.1177/0956797611398495))"
+ },
+ {
+  "text": "naïve prose e.g.:",
+  "masked": "naïve prose e.g.:",
+  "spans": {},
+  "roundTrip": "naïve prose e.g.:"
+ },
+ {
+  "text": "naïve prose en.wikipedia.org/wiki/Mercury_(planet))) — fin.",
+  "masked": "naïve prose [[URL0]])) — fin.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "naïve prose en.wikipedia.org/wiki/Mercury_(planet))) — fin."
+ },
+ {
+  "text": "naïve prose en.wikipedia.org/wiki/Mercury_(planet), — fin.",
+  "masked": "naïve prose [[URL0]], — fin.",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)"
+  },
+  "roundTrip": "naïve prose en.wikipedia.org/wiki/Mercury_(planet), — fin."
+ },
+ {
+  "text": "naïve prose http://www.bbc.com/news/world-europe-25778272... y más.",
+  "masked": "naïve prose [[URL0]]... y más.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "naïve prose http://www.bbc.com/news/world-europe-25778272... y más."
+ },
+ {
+  "text": "naïve prose http://www.bbc.com/news/world-europe-25778272: y más.",
+  "masked": "naïve prose [[URL0]]: y más.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "naïve prose http://www.bbc.com/news/world-europe-25778272: y más."
+ },
+ {
+  "text": "naïve prose http://www.bbc.com/news/world-europe-25778272?",
+  "masked": "naïve prose [[URL0]]?",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "naïve prose http://www.bbc.com/news/world-europe-25778272?"
+ },
+ {
+  "text": "naïve prose https://LibreTexts.org)",
+  "masked": "naïve prose [[URL0]])",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "naïve prose https://LibreTexts.org)"
+ },
+ {
+  "text": "naïve prose https://LibreTexts.org...。",
+  "masked": "naïve prose [[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org...。"
+  },
+  "roundTrip": "naïve prose https://LibreTexts.org...。"
+ },
+ {
+  "text": "naïve prose io.io/a) — fin.",
+  "masked": "naïve prose [[URL0]]) — fin.",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "naïve prose io.io/a) — fin."
+ },
+ {
+  "text": "naïve prose john@example.org! y más.",
+  "masked": "naïve prose [[EMAIL0]]! y más.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "naïve prose john@example.org! y más."
+ },
+ {
+  "text": "naïve prose libretexts.org! for details.",
+  "masked": "naïve prose [[URL0]]! for details.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "naïve prose libretexts.org! for details."
+ },
+ {
+  "text": "naïve prose www.paulekman.com! — fin.",
+  "masked": "naïve prose [[URL0]]! — fin.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "naïve prose www.paulekman.com! — fin."
+ },
+ {
+  "text": "naïve prose «10.1177/0956797611398495» — fin.",
+  "masked": "naïve prose «10.1177/0956797611398495» — fin.",
+  "spans": {},
+  "roundTrip": "naïve prose «10.1177/0956797611398495» — fin."
+ },
+ {
+  "text": "naïve prose «bio.libretexts.org/» y más.",
+  "masked": "naïve prose «[[URL0]] y más.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/»"
+  },
+  "roundTrip": "naïve prose «bio.libretexts.org/» y más."
+ },
+ {
+  "text": "naïve prose «creativecommons.org/licenses/by-nc-sa/3.0/»",
+  "masked": "naïve prose «[[URL0]]",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/»"
+  },
+  "roundTrip": "naïve prose «creativecommons.org/licenses/by-nc-sa/3.0/»"
+ },
+ {
+  "text": "naïve prose «e.g.»",
+  "masked": "naïve prose «e.g.»",
+  "spans": {},
+  "roundTrip": "naïve prose «e.g.»"
+ },
+ {
+  "text": "naïve prose «https://LibreTexts.org» for details.",
+  "masked": "naïve prose «[[URL0]] for details.",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org»"
+  },
+  "roundTrip": "naïve prose «https://LibreTexts.org» for details."
+ },
+ {
+  "text": "naïve prose “10.1177/0956797611398495” — fin.",
+  "masked": "naïve prose “10.1177/0956797611398495” — fin.",
+  "spans": {},
+  "roundTrip": "naïve prose “10.1177/0956797611398495” — fin."
+ },
+ {
+  "text": "naïve prose “HTTP://EXAMPLE.COM”。",
+  "masked": "naïve prose “[[URL0]]",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM”。"
+  },
+  "roundTrip": "naïve prose “HTTP://EXAMPLE.COM”。"
+ },
+ {
+  "text": "naïve prose “a.b+c@sub.example.co”。",
+  "masked": "naïve prose “[[EMAIL0]]”。",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "naïve prose “a.b+c@sub.example.co”。"
+ },
+ {
+  "text": "naïve prose “d67b022f5b1e28272a5d29f61be9d6fb.jpg” for details.",
+  "masked": "naïve prose “[[FILE0]]” for details.",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "naïve prose “d67b022f5b1e28272a5d29f61be9d6fb.jpg” for details."
+ },
+ {
+  "text": "naïve prose “doi.org/10.1177/0956797611398495” y más.",
+  "masked": "naïve prose “[[URL0]] y más.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495”"
+  },
+  "roundTrip": "naïve prose “doi.org/10.1177/0956797611398495” y más."
+ },
+ {
+  "text": "naïve prose “en.wikipedia.org/wiki/Mercury_(planet)” ok",
+  "masked": "naïve prose “[[URL0]] ok",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet)”"
+  },
+  "roundTrip": "naïve prose “en.wikipedia.org/wiki/Mercury_(planet)” ok"
+ },
+ {
+  "text": "naïve prose “john@example.org”。",
+  "masked": "naïve prose “[[EMAIL0]]”。",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "naïve prose “john@example.org”。"
+ },
+ {
+  "text": "www.paulekman.com then (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg), and [[latex:eDpeMg==]] finally.",
+  "masked": "[[URL1]] then ([[URL2]]), and [[MATH0]] finally.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]",
+   "[[URL1]]": "www.paulekman.com",
+   "[[URL2]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "www.paulekman.com then (commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg), and [[latex:eDpeMg==]] finally."
+ },
+ {
+  "text": "www.paulekman.com, for details.",
+  "masked": "[[URL0]], for details.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "www.paulekman.com, for details."
+ },
+ {
+  "text": "www.paulekman.com. ok",
+  "masked": "[[URL0]]. ok",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "www.paulekman.com. ok"
+ },
+ {
+  "text": "www.paulekman.com... y más.",
+  "masked": "[[URL0]]... y más.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "www.paulekman.com... y más."
+ },
+ {
+  "text": "«HTTP://EXAMPLE.COM» y más.",
+  "masked": "«[[URL0]] y más.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM»"
+  },
+  "roundTrip": "«HTTP://EXAMPLE.COM» y más."
+ },
+ {
+  "text": "«[[latex:eDpeMg==]]» ok",
+  "masked": "«[[MATH0]]» ok",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "«[[latex:eDpeMg==]]» ok"
+ },
+ {
+  "text": "«doi.org/10.1177/0956797611398495» — fin.",
+  "masked": "«[[URL0]] — fin.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495»"
+  },
+  "roundTrip": "«doi.org/10.1177/0956797611398495» — fin."
+ },
+ {
+  "text": "“bio.libretexts.org/” — fin.",
+  "masked": "“[[URL0]] — fin.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/”"
+  },
+  "roundTrip": "“bio.libretexts.org/” — fin."
+ },
+ {
+  "text": "“creativecommons.org/licenses/by-nc-sa/3.0/”",
+  "masked": "“[[URL0]]",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/”"
+  },
+  "roundTrip": "“creativecommons.org/licenses/by-nc-sa/3.0/”"
+ },
+ {
+  "text": "“http://www.bbc.com/news/world-europe-25778272” — fin.",
+  "masked": "“[[URL0]] — fin.",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272”"
+  },
+  "roundTrip": "“http://www.bbc.com/news/world-europe-25778272” — fin."
+ },
+ {
+  "text": "“libretexts.org”。",
+  "masked": "“[[URL0]]”。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "“libretexts.org”。"
+ },
+ {
+  "text": "参照 ((([[mathml:PG1hdGg+]])))",
+  "masked": "参照 ((([[MATH0]])))",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "参照 ((([[mathml:PG1hdGg+]])))"
+ },
+ {
+  "text": "参照 (10.1177/0956797611398495), for details.",
+  "masked": "参照 (10.1177/0956797611398495), for details.",
+  "spans": {},
+  "roundTrip": "参照 (10.1177/0956797611398495), for details."
+ },
+ {
+  "text": "参照 (Figure 13.1), — fin.",
+  "masked": "参照 (Figure 13.1), — fin.",
+  "spans": {},
+  "roundTrip": "参照 (Figure 13.1), — fin."
+ },
+ {
+  "text": "参照 ([[mathml:PG1hdGg+]]).",
+  "masked": "参照 ([[MATH0]]).",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "参照 ([[mathml:PG1hdGg+]])."
+ },
+ {
+  "text": "参照 (d67b022f5b1e28272a5d29f61be9d6fb.jpg) ok",
+  "masked": "参照 ([[FILE0]]) ok",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "参照 (d67b022f5b1e28272a5d29f61be9d6fb.jpg) ok"
+ },
+ {
+  "text": "参照 (doi.org/10.1177/0956797611398495). for details.",
+  "masked": "参照 ([[URL0]]). for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "参照 (doi.org/10.1177/0956797611398495). for details."
+ },
+ {
+  "text": "参照 (https://LibreTexts.org),。",
+  "masked": "参照 ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org),。"
+  },
+  "roundTrip": "参照 (https://LibreTexts.org),。"
+ },
+ {
+  "text": "参照 (io.io/a), — fin.",
+  "masked": "参照 ([[URL0]]), — fin.",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "参照 (io.io/a), — fin."
+ },
+ {
+  "text": "参照 (io.io/a).。",
+  "masked": "参照 ([[URL0]]",
+  "spans": {
+   "[[URL0]]": "io.io/a).。"
+  },
+  "roundTrip": "参照 (io.io/a).。"
+ },
+ {
+  "text": "参照 (john@example.org), ok",
+  "masked": "参照 ([[EMAIL0]]), ok",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "参照 (john@example.org), ok"
+ },
+ {
+  "text": "参照 (www.paulekman.com).",
+  "masked": "参照 ([[URL0]]).",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "参照 (www.paulekman.com)."
+ },
+ {
+  "text": "参照 10.1177/0956797611398495.。",
+  "masked": "参照 10.1177/0956797611398495.。",
+  "spans": {},
+  "roundTrip": "参照 10.1177/0956797611398495.。"
+ },
+ {
+  "text": "参照 10.1177/0956797611398495:。",
+  "masked": "参照 10.1177/0956797611398495:。",
+  "spans": {},
+  "roundTrip": "参照 10.1177/0956797611398495:。"
+ },
+ {
+  "text": "参照 Figure 13.1 — fin.",
+  "masked": "参照 Figure 13.1 — fin.",
+  "spans": {},
+  "roundTrip": "参照 Figure 13.1 — fin."
+ },
+ {
+  "text": "参照 Figure 13.1,。",
+  "masked": "参照 Figure 13.1,。",
+  "spans": {},
+  "roundTrip": "参照 Figure 13.1,。"
+ },
+ {
+  "text": "参照 HTTP://EXAMPLE.COM y más.",
+  "masked": "参照 [[URL0]] y más.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "参照 HTTP://EXAMPLE.COM y más."
+ },
+ {
+  "text": "参照 HTTP://EXAMPLE.COM? for details.",
+  "masked": "参照 [[URL0]]? for details.",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "参照 HTTP://EXAMPLE.COM? for details."
+ },
+ {
+  "text": "参照 U.S. Government.。",
+  "masked": "参照 U.S. Government.。",
+  "spans": {},
+  "roundTrip": "参照 U.S. Government.。"
+ },
+ {
+  "text": "参照 U.S. Government:",
+  "masked": "参照 U.S. Government:",
+  "spans": {},
+  "roundTrip": "参照 U.S. Government:"
+ },
+ {
+  "text": "参照 [Figure 13.1] — fin.",
+  "masked": "参照 [Figure 13.1] — fin.",
+  "spans": {},
+  "roundTrip": "参照 [Figure 13.1] — fin."
+ },
+ {
+  "text": "参照 [HTTP://EXAMPLE.COM]。",
+  "masked": "参照 [[[URL0]]]。",
+  "spans": {
+   "[[URL0]]": "HTTP://EXAMPLE.COM"
+  },
+  "roundTrip": "参照 [HTTP://EXAMPLE.COM]。"
+ },
+ {
+  "text": "参照 [[[latex:eDpeMg==]]] ok",
+  "masked": "参照 [[[MATH0]]] ok",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "参照 [[[latex:eDpeMg==]]] ok"
+ },
+ {
+  "text": "参照 [[latex:eDpeMg==]])) y más.",
+  "masked": "参照 [[MATH0]])) y más.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "参照 [[latex:eDpeMg==]])) y más."
+ },
+ {
+  "text": "参照 [[latex:eDpeMg==]], for details.",
+  "masked": "参照 [[MATH0]], for details.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "参照 [[latex:eDpeMg==]], for details."
+ },
+ {
+  "text": "参照 [[latex:eDpeMg==]]. ok",
+  "masked": "参照 [[MATH0]]. ok",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "参照 [[latex:eDpeMg==]]. ok"
+ },
+ {
+  "text": "参照 [[latex:eDpeMg==]]; — fin.",
+  "masked": "参照 [[MATH0]]; — fin.",
+  "spans": {
+   "[[MATH0]]": "[[latex:eDpeMg==]]"
+  },
+  "roundTrip": "参照 [[latex:eDpeMg==]]; — fin."
+ },
+ {
+  "text": "参照 [[mathml:PG1hdGg+]]! y más.",
+  "masked": "参照 [[MATH0]]! y más.",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "参照 [[mathml:PG1hdGg+]]! y más."
+ },
+ {
+  "text": "参照 [[mathml:PG1hdGg+]]...",
+  "masked": "参照 [[MATH0]]...",
+  "spans": {
+   "[[MATH0]]": "[[mathml:PG1hdGg+]]"
+  },
+  "roundTrip": "参照 [[mathml:PG1hdGg+]]..."
+ },
+ {
+  "text": "参照 [a.b+c@sub.example.co]",
+  "masked": "参照 [[[EMAIL0]]]",
+  "spans": {
+   "[[EMAIL0]]": "a.b+c@sub.example.co"
+  },
+  "roundTrip": "参照 [a.b+c@sub.example.co]"
+ },
+ {
+  "text": "参照 [commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg] — fin.",
+  "masked": "参照 [[[URL0]]] — fin.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "参照 [commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg] — fin."
+ },
+ {
+  "text": "参照 [libretexts.org] y más.",
+  "masked": "参照 [[[URL0]]] y más.",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "参照 [libretexts.org] y más."
+ },
+ {
+  "text": "参照 bio.libretexts.org/! — fin.",
+  "masked": "参照 [[URL0]]! — fin.",
+  "spans": {
+   "[[URL0]]": "bio.libretexts.org/"
+  },
+  "roundTrip": "参照 bio.libretexts.org/! — fin."
+ },
+ {
+  "text": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg",
+  "masked": "参照 [[URL0]]",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+ },
+ {
+  "text": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg! ok",
+  "masked": "参照 [[URL0]]! ok",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg! ok"
+ },
+ {
+  "text": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg) — fin.",
+  "masked": "参照 [[URL0]]) — fin.",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg) — fin."
+ },
+ {
+  "text": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg,。",
+  "masked": "参照 [[URL0]]",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg,。"
+  },
+  "roundTrip": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg,。"
+ },
+ {
+  "text": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg?",
+  "masked": "参照 [[URL0]]?",
+  "spans": {
+   "[[URL0]]": "commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg"
+  },
+  "roundTrip": "参照 commons.wikimedia.org/wiki/File:A_B_1993-09-13.jpg?"
+ },
+ {
+  "text": "参照 creativecommons.org/licenses/by-nc-sa/3.0/. y más.",
+  "masked": "参照 [[URL0]]. y más.",
+  "spans": {
+   "[[URL0]]": "creativecommons.org/licenses/by-nc-sa/3.0/"
+  },
+  "roundTrip": "参照 creativecommons.org/licenses/by-nc-sa/3.0/. y más."
+ },
+ {
+  "text": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg",
+  "masked": "参照 [[FILE0]]",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+ },
+ {
+  "text": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg,",
+  "masked": "参照 [[FILE0]],",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg,"
+ },
+ {
+  "text": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg:。",
+  "masked": "参照 [[FILE0]]:。",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg:。"
+ },
+ {
+  "text": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg; ok",
+  "masked": "参照 [[FILE0]]; ok",
+  "spans": {
+   "[[FILE0]]": "d67b022f5b1e28272a5d29f61be9d6fb.jpg"
+  },
+  "roundTrip": "参照 d67b022f5b1e28272a5d29f61be9d6fb.jpg; ok"
+ },
+ {
+  "text": "参照 doi.org/10.1177/0956797611398495) y más.",
+  "masked": "参照 [[URL0]]) y más.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "参照 doi.org/10.1177/0956797611398495) y más."
+ },
+ {
+  "text": "参照 doi.org/10.1177/0956797611398495, for details.",
+  "masked": "参照 [[URL0]], for details.",
+  "spans": {
+   "[[URL0]]": "doi.org/10.1177/0956797611398495"
+  },
+  "roundTrip": "参照 doi.org/10.1177/0956797611398495, for details."
+ },
+ {
+  "text": "参照 e.g.... ok",
+  "masked": "参照 e.g.... ok",
+  "spans": {},
+  "roundTrip": "参照 e.g.... ok"
+ },
+ {
+  "text": "参照 en.wikipedia.org/wiki/Mercury_(planet);。",
+  "masked": "参照 [[URL0]]",
+  "spans": {
+   "[[URL0]]": "en.wikipedia.org/wiki/Mercury_(planet);。"
+  },
+  "roundTrip": "参照 en.wikipedia.org/wiki/Mercury_(planet);。"
+ },
+ {
+  "text": "参照 http://www.bbc.com/news/world-europe-25778272!",
+  "masked": "参照 [[URL0]]!",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "参照 http://www.bbc.com/news/world-europe-25778272!"
+ },
+ {
+  "text": "参照 http://www.bbc.com/news/world-europe-25778272) ok",
+  "masked": "参照 [[URL0]]) ok",
+  "spans": {
+   "[[URL0]]": "http://www.bbc.com/news/world-europe-25778272"
+  },
+  "roundTrip": "参照 http://www.bbc.com/news/world-europe-25778272) ok"
+ },
+ {
+  "text": "参照 https://LibreTexts.org)) ok",
+  "masked": "参照 [[URL0]])) ok",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "参照 https://LibreTexts.org)) ok"
+ },
+ {
+  "text": "参照 https://LibreTexts.org. ok",
+  "masked": "参照 [[URL0]]. ok",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org"
+  },
+  "roundTrip": "参照 https://LibreTexts.org. ok"
+ },
+ {
+  "text": "参照 https://LibreTexts.org。",
+  "masked": "参照 [[URL0]]",
+  "spans": {
+   "[[URL0]]": "https://LibreTexts.org。"
+  },
+  "roundTrip": "参照 https://LibreTexts.org。"
+ },
+ {
+  "text": "参照 i.e.:",
+  "masked": "参照 i.e.:",
+  "spans": {},
+  "roundTrip": "参照 i.e.:"
+ },
+ {
+  "text": "参照 io.io/a ok",
+  "masked": "参照 [[URL0]] ok",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "参照 io.io/a ok"
+ },
+ {
+  "text": "参照 io.io/a;",
+  "masked": "参照 [[URL0]];",
+  "spans": {
+   "[[URL0]]": "io.io/a"
+  },
+  "roundTrip": "参照 io.io/a;"
+ },
+ {
+  "text": "参照 john@example.org y más.",
+  "masked": "参照 [[EMAIL0]] y más.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "参照 john@example.org y más."
+ },
+ {
+  "text": "参照 john@example.org. y más.",
+  "masked": "参照 [[EMAIL0]]. y más.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "参照 john@example.org. y más."
+ },
+ {
+  "text": "参照 libretexts.org,",
+  "masked": "参照 [[URL0]],",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "参照 libretexts.org,"
+ },
+ {
+  "text": "参照 libretexts.org...。",
+  "masked": "参照 [[URL0]]...。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "参照 libretexts.org...。"
+ },
+ {
+  "text": "参照 libretexts.org。",
+  "masked": "参照 [[URL0]]。",
+  "spans": {
+   "[[URL0]]": "libretexts.org"
+  },
+  "roundTrip": "参照 libretexts.org。"
+ },
+ {
+  "text": "参照 www.paulekman.com: — fin.",
+  "masked": "参照 [[URL0]]: — fin.",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "参照 www.paulekman.com: — fin."
+ },
+ {
+  "text": "参照 www.paulekman.com?",
+  "masked": "参照 [[URL0]]?",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com"
+  },
+  "roundTrip": "参照 www.paulekman.com?"
+ },
+ {
+  "text": "参照 «john@example.org» for details.",
+  "masked": "参照 «[[EMAIL0]]» for details.",
+  "spans": {
+   "[[EMAIL0]]": "john@example.org"
+  },
+  "roundTrip": "参照 «john@example.org» for details."
+ },
+ {
+  "text": "参照 “U.S. Government” for details.",
+  "masked": "参照 “U.S. Government” for details.",
+  "spans": {},
+  "roundTrip": "参照 “U.S. Government” for details."
+ },
+ {
+  "text": "参照 “www.paulekman.com”",
+  "masked": "参照 “[[URL0]]",
+  "spans": {
+   "[[URL0]]": "www.paulekman.com”"
+  },
+  "roundTrip": "参照 “www.paulekman.com”"
+ }
+]

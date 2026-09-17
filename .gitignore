@@ -1,0 +1,72 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+
+# Built locally by scripts/stage-local.sh: a copy of a real mirror page plus the
+# model weights. Large, and reproducible.
+.stage/
+
+# Model weights and ONNX Runtime, fetched separately. See the README.
+bench/assets/
+
+# The oracle-diff corpus and its run outputs (build plan step 9). ~8 MB of
+# deployed tracks plus whatever a run produces; refetch with
+# scripts/oracle-fetch.sh, which reads the committed scripts/oracle-pages.txt.
+bench/oracle/
+
+# Converted CTranslate2 checkpoints (DEFAULT_MODEL_ROOT in pipeline/opus.py).
+# Multi-GB and reproducible via scripts/convert-models.py -- never commit them.
+models/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local demo profiles and captures
+.demo-profile/
+.demo-av-profile/
+demo-out/
+
+.DS_Store
+
+# Per-language QA working trees: a copy of the book's speech.json files plus that
+# run's logs and reports. One directory per gated language or sweep, so a run's
+# verdict cannot be confused with another's, and none of them touch bench/oracle
+# (tracks.announce rewrites speech.json in place, and the oracle's manifests are
+# what the Spanish oracle-diff is measured against). All reproducible.
+#
+#   vi-gate   Vietnamese, failed the gate 2026-08-25
+#   sweep     all 14 remaining candidates, screened on one shared sample
+#   it-gate   Italian, before the splitter fix (2.1186%, dropped)
+#   it-gate2  Italian, after the splitter fix (1.4831%, ships)
+#   retranslate  es+fr rebuilt against the deployed post-splitter manifests
+#
+# A trailing comment on a pattern line does NOT work -- git reads it as part of
+# the pattern, silently, and check-ignore then matches nothing.
+bench/vi-gate/
+bench/it-gate/
+bench/it-gate2/
+bench/nl-gate/
+bench/hu-gate/
+bench/retranslate/
+
+# bench/sweep and bench/formats hold BOTH a working tree and the harness that
+# produced it. The corpora, logs and results are data and stay ignored; the .py
+# files are code and must be tracked -- `bench/sweep/sweep.py` is what this
+# project's notes tell the next session to run, and it lived only in one
+# checkout until 2026-08-27. Excluding the CONTENTS (`dir/*`) rather than the
+# directory itself is what makes the negation work at all: git will not descend
+# into an excluded directory, so `!bench/sweep/*.py` under `bench/sweep/` would
+# silently match nothing.
+bench/sweep/*
+!bench/sweep/*.py
+bench/formats/*
+!bench/formats/*.py
+
+# Math audit output: rendered WAVs plus the HTML that indexes them. Regenerate
+# with scripts/math-audit.mjs; the review CACHE beside it IS tracked, because a
+# verdict is expensive to recompute and worth reading as a diff.
+demo-out/math-audit/
+.rebuild/

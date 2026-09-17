@@ -1,0 +1,59 @@
+# Both suites, on every push and pull request.
+#
+# The point of this workflow is narrow and worth stating: the phrasing rules in
+# pipeline/math_phrasing.py are regexes over the output of a speech engine, and
+# they can pass a unit test while doing nothing at all on real input -- that has
+# happened twice. The tests here are the floor, not the proof. See
+# docs/SPEAKING_MATHEMATICS.md for what else to check before believing a change.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      # Node is a real dependency of the PYTHON suite, not an extra: equations
+      # are spoken by Speech Rule Engine through scripts/math-speech.mjs, so
+      # ~40 tests in test_math_speech.py and test_manifest.py drive a node
+      # subprocess. Without node_modules they do not skip -- they ERROR, because
+      # the skip marker checks for the node binary and not for the packages.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: pip install -r pipeline/requirements.txt
+      - run: python -m pytest pipeline/tests -q
+
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npx vitest run

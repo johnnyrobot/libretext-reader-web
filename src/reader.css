@@ -1,0 +1,67 @@
+/* Reader Mode is one attribute plus this file. Nothing is removed from the DOM. */
+:root[data-tts-reader="on"] .side-rail,
+:root[data-tts-reader="on"] .top-notice,
+:root[data-tts-reader="on"] .utility,
+:root[data-tts-reader="on"] .crumbbar,
+:root[data-tts-reader="on"] .corner-tools,
+:root[data-tts-reader="on"] .site-foot,
+:root[data-tts-reader="on"] .donate,
+/* The affordance that got you here. Leaving it visible while Reader Mode is
+   already on invites a second click that does nothing. */
+:root[data-tts-reader="on"] #tts-enter {
+  display: none !important;
+}
+
+:root[data-tts-reader="on"] main {
+  max-width: 34em;
+  margin: 0 auto;
+  padding-bottom: 8rem;
+  line-height: 1.7;
+}
+
+/* Landing pages carry CXone's listings at their exact pixel widths (the section
+   grid is two 598px columns). Inside a 34em column that overflows the viewport,
+   so while reading they stack instead. */
+:root[data-tts-reader="on"] main .mt-topic-hierarchy-listings.mt-guide-listings {
+  grid-template-columns: 1fr !important;
+  padding: 0 !important;
+}
+:root[data-tts-reader="on"] main .mt-sortable-listings-container {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+.tts-sentence { cursor: pointer; border-radius: 2px; }
+
+/* Background tint plus a left border: contrast alone must not carry the
+   meaning (WCAG 2.2 AA, and colour-blind readers). */
+.tts-current {
+  background: #fff3c4;
+  box-shadow: -3px 0 0 0 #b45309;
+  color: #1a1a1a;
+}
+
+.tts-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fff;
+  border-top: 1px solid #b8d7e8;
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 12%);
+  font: 14px/1.4 "Atkinson Hyperlegible", Tahoma, Arial, sans-serif;
+}
+
+.tts-bar button { min-width: 40px; min-height: 40px; cursor: pointer; }
+.tts-bar .tts-spacer { margin-inline-start: auto; }
+.tts-badge { font-size: 12px; color: #4c7898; border: 1px solid #b8d7e8; border-radius: 999px; padding: 2px 8px; }
+
+.tts-dialog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgb(0 0 0 / 45%); }
+.tts-dialog-card { background: #fff; max-width: 32em; padding: 24px; border-radius: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tts-sentence, .tts-current { transition: none !important; }
+}

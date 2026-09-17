@@ -1,0 +1,43 @@
+{
+  "name": "libretexts-tts-reader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "stage": "scripts/stage-local.sh",
+    "serve": ".venv/bin/python scripts/serve-local.py --root .stage",
+    "demo:warm": "node scripts/demo.mjs warm",
+    "demo:open": "node scripts/demo.mjs open",
+    "demo:record": "node scripts/demo.mjs record",
+    "demo:sample": "node scripts/render-sample.mjs",
+    "measure:translate": "node scripts/measure-translate.mjs",
+    "oracle:fetch": "scripts/oracle-fetch.sh",
+    "oracle:js": "node scripts/oracle-js.mjs",
+    "oracle:python": ".venv/bin/python scripts/oracle_reference.py",
+    "oracle:browser": "node scripts/oracle-browser.mjs",
+    "oracle:diff": ".venv/bin/python scripts/oracle-diff.py"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "onnxruntime-web": "^1.17.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "happy-dom": "^15.0.0",
+    "mathjax-full": "^3.2.1",
+    "speech-rule-engine": "^4.1.4",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  },
+  "description": "Listen mode for LibreTexts textbook pages: neural text-to-speech synthesised entirely in the reader's browser.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johnnylibretexts/libretext-reader-web.git"
+  },
+  "homepage": "https://library.libretexts.dev/human_relations/"
+}

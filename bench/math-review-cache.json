@@ -1,0 +1,438 @@
+{
+ "0b4a96aa69bdfed0": {
+  "verdict": "awkward",
+  "note": "Teachers usually say 'six divided by three' for this expression."
+ },
+ "8a71322776e45893": {
+  "verdict": "good",
+  "note": "Common way to read a fraction."
+ },
+ "8ef1cf1378de116c": {
+  "verdict": "good",
+  "note": ""
+ },
+ "2a6fe00c144c22a3": {
+  "verdict": "awkward",
+  "note": "Teachers usually say 'ten divided by two' or 'ten over two'."
+ },
+ "e3c432363db15ebf": {
+  "verdict": "awkward",
+  "note": "Teachers usually say 'eight divided by two' or 'eight over two'."
+ },
+ "e5e936b9d204d8e3": {
+  "verdict": "good",
+  "note": "Natural way to read a simple fraction."
+ },
+ "993efd8cbb053e9a": {
+  "verdict": "good",
+  "note": ""
+ },
+ "4d0b045c990bb3cd": {
+  "verdict": "good",
+  "note": ""
+ },
+ "3037c93aae1bdd78": {
+  "verdict": "good",
+  "note": ""
+ },
+ "304bea7d4f3a8746": {
+  "verdict": "good",
+  "note": ""
+ },
+ "fad6704c502f7de2": {
+  "verdict": "good",
+  "note": "Accurate translation of numbers and operators into natural speech."
+ },
+ "ce1c91bcea0ffb8a": {
+  "verdict": "good",
+  "note": ""
+ },
+ "ed2e9af90818615e": {
+  "verdict": "good",
+  "note": "Accurate translation of the mathematical expression into spoken words."
+ },
+ "06c41fa3407212f5": {
+  "verdict": "good",
+  "note": ""
+ },
+ "d61db5a10d3ea94a": {
+  "verdict": "good",
+  "note": ""
+ },
+ "0c57a190fb7063c9": {
+  "verdict": "good",
+  "note": ""
+ },
+ "70bc91fe977c66cc": {
+  "verdict": "good",
+  "note": ""
+ },
+ "295eed568b58a5d4": {
+  "verdict": "good",
+  "note": ""
+ },
+ "ef3151796531fce7": {
+  "verdict": "good",
+  "note": "Accurate and natural phrasing for a teacher."
+ },
+ "bfa5ed012d40078f": {
+  "verdict": "good",
+  "note": "Accurate translation of the mathematical steps into spoken words."
+ },
+ "11fed0942acf7f28": {
+  "verdict": "good",
+  "note": ""
+ },
+ "814a6291b87ddfb8": {
+  "verdict": "good",
+  "note": ""
+ },
+ "100623a1fd6afa29": {
+  "verdict": "good",
+  "note": ""
+ },
+ "d79d1c2dc45e9f07": {
+  "verdict": "good",
+  "note": ""
+ },
+ "38972675650494a9": {
+  "verdict": "good",
+  "note": "Common way to read a fraction."
+ },
+ "243731926dd62b21": {
+  "verdict": "good",
+  "note": ""
+ },
+ "c2be235b9168485b": {
+  "verdict": "good",
+  "note": ""
+ },
+ "5b91a354dd464873": {
+  "verdict": "good",
+  "note": "Accurate reading of the fraction and repeating decimal."
+ },
+ "1e23b3533c317703": {
+  "verdict": "good",
+  "note": ""
+ },
+ "9ff81aeed26e9f10": {
+  "verdict": "good",
+  "note": "Accurate and natural phrasing for a teacher."
+ },
+ "780cac030b6d8875": {
+  "verdict": "good",
+  "note": ""
+ },
+ "dbf6274079c7daf7": {
+  "verdict": "good",
+  "note": "Accurately describes the repeating decimal and the expansion."
+ },
+ "1ddfad8572c90686": {
+  "verdict": "good",
+  "note": "Natural phrasing for a division problem with a remainder."
+ },
+ "f06eff509c70656e": {
+  "verdict": "good",
+  "note": "Accurately translates all mathematical symbols and values into spoken words."
+ },
+ "54c87063e29e1909": {
+  "verdict": "good",
+  "note": ""
+ },
+ "062d45403846d867": {
+  "verdict": "good",
+  "note": ""
+ },
+ "15ac59f4218b4a43": {
+  "verdict": "good",
+  "note": "Accurately reads the fraction, decimal expansion, and repeating notation."
+ },
+ "4be472b5c064f927": {
+  "verdict": "good",
+  "note": ""
+ },
+ "1d090b7377a9fcb4": {
+  "verdict": "good",
+  "note": ""
+ },
+ "217fd4051c4cded5": {
+  "verdict": "good",
+  "note": ""
+ },
+ "4973c462c5a91254": {
+  "verdict": "good",
+  "note": ""
+ },
+ "c854fbb60aadfa28": {
+  "verdict": "wrong",
+  "note": "The LaTeX is a page index, not the number 4.2.1."
+ },
+ "1ee30c2dfac8d27f": {
+  "verdict": "awkward",
+  "note": "A teacher would say 'carbon dioxide'."
+ },
+ "b9d0b8a8b89b46aa": {
+  "verdict": "good",
+  "note": "Standard way to read a chemical formula subscript."
+ },
+ "d47318e24cc44417": {
+  "verdict": "awkward",
+  "note": "Too verbose; teachers don't say 'open paren' or 'times s'."
+ },
+ "0be930a7a0d02f93": {
+  "verdict": "wrong",
+  "note": "'times' implies multiplication, not a chemical formula."
+ },
+ "2febece57e5f03f0": {
+  "verdict": "awkward",
+  "note": "Too verbose; teachers don't say 'raised to the plus power'."
+ },
+ "6ea97959e7010e68": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "a3f7b3d2230e80d9": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "1cddf3f411dc45dc": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted enthalpy change."
+ },
+ "bf7a15fe0166cd47": {
+  "verdict": "unknown",
+  "note": "unparseable reply"
+ },
+ "9feb2a46cbeb2e53": {
+  "verdict": "good",
+  "note": "Common way to describe enthalpy of solution."
+ },
+ "b3de86f6295360ec": {
+  "verdict": "good",
+  "note": "Standard way to read subscripts in a chemistry context."
+ },
+ "2d49559abe4f62f8": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "bcaee2200701366b": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "9c6a6f7b73ec5307": {
+  "verdict": "good",
+  "note": ""
+ },
+ "1b2dfe1342977076": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "bebbef97678279f1": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted enthalpy change."
+ },
+ "1149ba5a626530a1": {
+  "verdict": "wrong",
+  "note": "Reads chemical formula as separate letters instead of Magnesium Oxide."
+ },
+ "c34ec02ae4841255": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted chemical term."
+ },
+ "1ee52fe5343f5cee": {
+  "verdict": "wrong",
+  "note": "The speech says 4.2.3 but the LaTeX is PageIndex 3."
+ },
+ "f2bc0c5a17c89d5f": {
+  "verdict": "awkward",
+  "note": "Teachers say 'ammonium nitrate' or 'N H four N O three'."
+ },
+ "69df9dbc314ca921": {
+  "verdict": "good",
+  "note": ""
+ },
+ "221fb206bff70632": {
+  "verdict": "good",
+  "note": ""
+ },
+ "a145088eff6502ff": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted enthalpy change."
+ },
+ "fd6050e5ada0fb23": {
+  "verdict": "wrong",
+  "note": "The speech says '4.2.4' but the LaTeX is only '4'."
+ },
+ "a41d1b4e88c146bc": {
+  "verdict": "wrong",
+  "note": "Teacher would say 'lithium chloride', not the letters."
+ },
+ "678b3f1260ddeae3": {
+  "verdict": "wrong",
+  "note": "'H of sub five' is incorrect; should be 'H sub five'."
+ },
+ "fc3a838f808ef2a8": {
+  "verdict": "good",
+  "note": "Standard way to refer to a numbered equation."
+ },
+ "c3d37f4151b3ff21": {
+  "verdict": "good",
+  "note": ""
+ },
+ "ce5df1d7501c1fde": {
+  "verdict": "wrong",
+  "note": "The voice adds 'of' and 'H of' not in source."
+ },
+ "827f5937547e6dd3": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted enthalpy change."
+ },
+ "91c8f436bc2b485b": {
+  "verdict": "good",
+  "note": ""
+ },
+ "6c106039a1d88905": {
+  "verdict": "good",
+  "note": "Standard way to read a chemical formula subscript."
+ },
+ "47b440d297dd9a22": {
+  "verdict": "awkward",
+  "note": "Teachers usually say 'nitrogen dioxide'."
+ },
+ "9dd5b34a88c35b43": {
+  "verdict": "good",
+  "note": "Correct reading of the text."
+ },
+ "2c184ff3093c0315": {
+  "verdict": "good",
+  "note": "Natural phrasing for a chemistry teacher."
+ },
+ "c50ae6c13b026864": {
+  "verdict": "good",
+  "note": "Accurate and natural phrasing for a chemistry equation."
+ },
+ "aec57e01b10e0f7b": {
+  "verdict": "good",
+  "note": "Accurate representation of the chemical equation and equilibrium constant."
+ },
+ "2337aa48593a8609": {
+  "verdict": "good",
+  "note": "Accurately describes chemical equilibrium expressions as a teacher would."
+ },
+ "2be5f15716008435": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "a2d3a3b7ae936e75": {
+  "verdict": "good",
+  "note": ""
+ },
+ "ab4e36c64a256888": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "415a96731818405d": {
+  "verdict": "good",
+  "note": "Natural way to read chemical concentration squared."
+ },
+ "425d3766b2ec3e37": {
+  "verdict": "awkward",
+  "note": "Too verbose; 'the concentration of' is repeated excessively."
+ },
+ "a7133cb4aadd5f1b": {
+  "verdict": "awkward",
+  "note": "Too verbose with 'open paren' and 'power' repetitions."
+ },
+ "0b5a53fc7fe5c633": {
+  "verdict": "good",
+  "note": ""
+ },
+ "feb397d0570a44b0": {
+  "verdict": "good",
+  "note": "Accurately describes the chemical equation and constant."
+ },
+ "cbe9bd271e7e4ee0": {
+  "verdict": "unknown",
+  "note": "The operation was aborted due to timeout"
+ },
+ "d9022a1338862486": {
+  "verdict": "good",
+  "note": "Accurately reflects how a teacher would read a chemical equation."
+ },
+ "370c9ff5719fb434": {
+  "verdict": "awkward",
+  "note": "Teachers wouldn't say 'crossed out' for coefficients in a reaction."
+ },
+ "b2fe0c5f48271c4c": {
+  "verdict": "awkward",
+  "note": "'crossed out' is robotic; teachers say 'cancel' or 'strike through'."
+ },
+ "c3e189f0b515044a": {
+  "verdict": "good",
+  "note": "Accurately describes the chemical equation and states of matter."
+ },
+ "b897746806e68bb7": {
+  "verdict": "awkward",
+  "note": "Too verbose with 'open paren' and 'close paren'"
+ },
+ "db5baf6bb74debfc": {
+  "verdict": "good",
+  "note": "Natural phrasing for a chemistry equilibrium equation."
+ },
+ "75eabaf6273e43ee": {
+  "verdict": "good",
+  "note": "Natural phrasing for a chemistry equation and equilibrium constant."
+ },
+ "cfaae2e501670d6c": {
+  "verdict": "good",
+  "note": "Natural phrasing for a chemical equilibrium equation."
+ },
+ "30e39ddfcd8b0023": {
+  "verdict": "good",
+  "note": ""
+ },
+ "68f2d6c534b679f9": {
+  "verdict": "good",
+  "note": "Standard way to read a subscripted variable."
+ },
+ "c084519ae38b006e": {
+  "verdict": "good",
+  "note": ""
+ },
+ "5cbbca136590d45b": {
+  "verdict": "good",
+  "note": "Standard way to read the chemical formula for nitrogen dioxide."
+ },
+ "c42588dfb0f750de": {
+  "verdict": "wrong",
+  "note": "K3 denominator missing 'the concentration of' for O2 squared"
+ },
+ "18c2bfa3aadb1e65": {
+  "verdict": "good",
+  "note": ""
+ },
+ "c0c5cdee7db1a0b1": {
+  "verdict": "good",
+  "note": ""
+ },
+ "a8b9e83cca957133": {
+  "verdict": "good",
+  "note": "Standard way to refer to a complete graph or constant."
+ },
+ "f5a4e6c2a014cda6": {
+  "verdict": "awkward",
+  "note": "Too verbose; 'concentration of' is repeated excessively."
+ },
+ "5c1181a4f9a5a7ff": {
+  "verdict": "good",
+  "note": "Accurate and natural phrasing for a classroom setting."
+ },
+ "9ec838414c1081f0": {
+  "verdict": "good",
+  "note": "Natural phrasing for scientific notation."
+ },
+ "a08738e6a8e3ffcb": {
+  "verdict": "good",
+  "note": ""
+ }
+}

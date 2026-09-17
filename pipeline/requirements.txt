@@ -1,0 +1,15 @@
+beautifulsoup4>=4.12
+lxml>=5.0
+pytest>=8.0
+ctranslate2>=4.5
+transformers>=4.44
+sentencepiece>=0.2
+
+# torch is NOT imported anywhere translation actually runs (pipeline/opus.py talks
+# to ctranslate2's own runtime, never torch) -- it is needed only at CONVERSION
+# time, by ct2-transformers-converter (scripts/convert-models.py), which loads
+# each Opus-MT checkpoint through transformers' AutoModel machinery before
+# converting it. Without this, `pip install -r pipeline/requirements.txt` alone
+# leaves `ct2-transformers-converter` failing with
+# "NameError: name 'torch' is not defined" (found running Task 14 for real).
+torch
