@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/johnnylibretexts-ai/libretext-reader-web.git"
+    "url": "https://github.com/johnnyrobot/libretext-reader-web.git"
   },
   "homepage": "https://library.libretexts.dev/human_relations/"
 }
