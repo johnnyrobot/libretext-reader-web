@@ -70,3 +70,14 @@ bench/formats/*
 # verdict is expensive to recompute and worth reading as a diff.
 demo-out/math-audit/
 .rebuild/
+
+# LT-213 Phonon spike. Renders (WAV, one folder per engine), the cloned stage
+# and the blind listening set are data and stay out of git -- audio must never be
+# committed. The top-level JSON summaries in out/ (the bench items, scores,
+# timings, storage) are small and are the evidence FINDINGS.md cites, so they
+# are tracked. The listening key sits outside listening/ so the folder can be
+# handed over without it; both are ignored. The scoring venv is caught by .venv/.
+bench/phonon/out/*
+!bench/phonon/out/*.json
+bench/phonon/listening/
+bench/phonon/listening-key.csv

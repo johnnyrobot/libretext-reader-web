@@ -1,0 +1,42 @@
+{
+ "engine": "phonon-en",
+ "bench_audio_s": 189.9,
+ "chars_per_audio_s": 16.17,
+ "book": "social_psychology",
+ "pages": 75,
+ "sentences": 14418,
+ "book_chars": 1670626,
+ "book_audio_h": 28.7,
+ "page_audio_min_median": 17.64,
+ "page_audio_min_max": 92.86,
+ "codecs": {
+  "opus-24k": {
+   "kbps_measured": 24.0,
+   "page_mb_median": 3.17,
+   "page_mb_max": 16.71,
+   "book_mb": 310.0
+  },
+  "opus-32k": {
+   "kbps_measured": 31.8,
+   "page_mb_median": 4.21,
+   "page_mb_max": 22.17,
+   "book_mb": 411.1
+  },
+  "aac-48k": {
+   "kbps_measured": 50.8,
+   "page_mb_median": 6.72,
+   "page_mb_max": 35.4,
+   "book_mb": 656.5
+  },
+  "mp3-64k": {
+   "kbps_measured": 64.6,
+   "page_mb_median": 8.55,
+   "page_mb_max": 44.99,
+   "book_mb": 834.3
+  }
+ },
+ "rebuild": {
+  "warm_rtf": 0.0139,
+  "book_minutes_this_mac": 23.9
+ }
+}
