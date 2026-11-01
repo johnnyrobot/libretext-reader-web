@@ -116,15 +116,17 @@ way; CER is the better guide there.
    Supertonic's worker returns whole sentences, so its TTFA is the whole
    sentence's synth time. Back to back, Supertonic r4 ran at RTF 1.05, path A
    wasm fp32 r4 at 0.27 and Supertonic r5 at 0.68: path A was 2.5–4x faster in
-   the same conditions, and 4.4x on the medians over all runs.
-2. **Supertonic ran slower here than its README says: RTF 0.68–1.21 measured,
-   0.41 claimed.** It varied with whatever else the shared Mac was doing, so
-   this is not shown to be a regression. The bundled ORT 1.17.3 worker has no
+   the same conditions, and 4.4x on the medians over all runs. On a quiet CPU
+   (LT-215, below) the gap is smaller: Supertonic r6 at 0.41 and path A r5 at
+   0.18, back to back, so about 2.3x, with first audio in 0.02 s against 4.7 s.
+2. **Supertonic ran slower here than its README says, because the Mac was
+   busy: RTF 0.68–1.21 under load, 0.41 claimed, and 0.41 on a quiet CPU**
+   (r6, LT-215, see [Quiet re-timing](#quiet-re-timing-lt-215)). It is not a
+   regression. The bundled ORT 1.17.3 worker has no
    WebGPU backend ("[webgpu] backend not found"), and threads gave only ~10%
    over one thread. Ruled out: a stale stage build (a fresh build is
    byte-identical) and missing cross-origin isolation (isolated, 12 cores,
-   SharedArrayBuffer present). Worth one timing on a quiet machine before
-   anyone opens a ticket; it is outside LT-213.
+   SharedArrayBuffer present). No ticket is needed.
 3. **Phonon can derail on long formulas.** s18 is a 57-word run of repeated
    equilibrium-constant expressions. A clean reading of it scores about 8–17
    word errors with few character errors (Whisper writes the formulas its own
@@ -387,7 +389,9 @@ Inputs, all estimates:
 - **Pages:** 1,304,882 in about 3,630 books, from the Download Center census
   (`libretexts-research/2026-07-20-rebuild-spec/research/public-corpus-url-census`,
   marked unverified there).
-- **Speech Text per page:** the four books staged here. chem_4b,
+- **Speech Text per page:** the four books staged here (the ticket's
+  `.rebuild/site-new` figure is the low case's mean; its median is 7,407, so a
+  few long pages pull the mean up). chem_4b,
   human_relations and math_elem_teachers average 11,136 characters over 255
   pages; adding social_psychology gives 13,668 over 330 pages;
   social_psychology alone is 22,275.
@@ -440,6 +444,29 @@ What that means for the options asked about:
   Graviton4 prices. RunPod does not publish a CPU rate. A comparison site
   implies about $0.03 per vCPU-hour (about $5,400), not verified.
 
+### Quiet re-timing (LT-215)
+
+LT-215 asked for one Supertonic timing with no other benchmark or browser
+model running. Question Studio Dev held its LT-207 queue so the GPU would
+go idle at 13:21:44 PT. Load average was 1.6 when Supertonic r6 started
+at 13:22. Path A wasm fp32 r5 ran straight after, at a load average of
+3.3. Both run in wasm on the CPU. At 13:22:52 another LT-207 queue
+started a GPU stage, so the GPU was busy again, but neither engine uses
+the GPU.
+
+| Run | Load avg at start | Warm RTF | First audio, median | Cold first audio | WER | CER | UTMOS |
+|---|---|---|---|---|---|---|---|
+| Supertonic M1 r6 | 1.6 | 0.405 | 4.65 s | 4.86 s | 0.072 | 0.009 | 4.39 |
+| Path A wasm fp32 r5 | 3.3 | 0.178 | 0.024 s | 0.96 s | 0.070 | 0.015 | 4.44 |
+
+So Supertonic matches its README's 0.41 on a quiet CPU, and the earlier
+0.68–1.21 was the shared machine; no diagnosing ticket. Path A is still
+about 2.3x faster in real time and starts speaking about 190 times sooner.
+s18 ran 21.8 s for its 329 characters in r5 (15 a second), a normal length. The Ollama concurrency rows above were meant to
+be re-run in the same window, but the GPU was back at 86–100% within a
+minute, so a fourth one-server run (43–56x) changes nothing and is not
+kept.
+
 ## Listening test
 
 A blind A/B set of all 21 items: Supertonic M1 (r4) against the recommended
@@ -462,8 +489,7 @@ The listening test itself has not been done.
 - Download time over a real network, and a real Listen-mode integration.
 - Any browser other than Chrome 156, and any device other than this M2 Max
   (no phones, no low-end laptops, no Windows).
-- Whether the Supertonic RTF gap is a regression or this machine: no run was
-  on a quiet machine.
+- A quiet-GPU Ollama run: the one window (LT-215) closed after a minute.
 - The human listening test.
 - Commercial terms for the 40m models, and whether CC BY-NC reaches audio.
 - Opus playback in Safari for path B.
