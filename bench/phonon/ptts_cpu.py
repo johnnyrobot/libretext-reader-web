@@ -3,7 +3,7 @@
 Run inside an arm64 Linux container, one process per thread count, because
 ptts.set_num_threads sizes a global pool and must come before the model loads:
 
-    python3 bench/phonon/ptts_cpu.py --model /models/31m-en-hf --threads 4 --label 31m-f32 [--quant q8]
+    python3 bench/phonon/ptts_cpu.py --model /models/31m-en-hf --threads 4 --label 31m-f32 [--quant q8_0]
 
 Speaks the same 20 warm items as the Ollama bench (out/sentences.json minus
 item one) one after another, after one untimed warm-up. Records, over the 20:
@@ -35,7 +35,7 @@ def main():
     ap.add_argument("--threads", type=int, required=True)
     ap.add_argument("--label", required=True)
     ap.add_argument("--voice", help="defaults to the checkpoint's first voice")
-    ap.add_argument("--quant", default="f32", help="f32 (model.safetensors) or q8 (model.q8.gguf)")
+    ap.add_argument("--quant", default="f32", help="f32 (model.safetensors) or q8_0 (model.q8.gguf)")
     a = ap.parse_args()
 
     ptts.set_num_threads(a.threads)

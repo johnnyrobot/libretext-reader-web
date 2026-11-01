@@ -717,7 +717,9 @@
     "combined_x": 14.41,
     "per_process_x": 3.6,
     "cpu_x": 2.64,
-    "cores_busy": 5.46
+    "cores_busy": 5.46,
+    "vcpus": 10,
+    "per_vcpu_x": 1.44
    },
    {
     "label": "31m-q8",
@@ -725,7 +727,9 @@
     "combined_x": 17.11,
     "per_process_x": 2.14,
     "cpu_x": 1.81,
-    "cores_busy": 9.43
+    "cores_busy": 9.43,
+    "vcpus": 10,
+    "per_vcpu_x": 1.71
    },
    {
     "label": "40m-q8",
@@ -733,7 +737,9 @@
     "combined_x": 13.33,
     "per_process_x": 3.33,
     "cpu_x": 2.27,
-    "cores_busy": 5.87
+    "cores_busy": 5.87,
+    "vcpus": 10,
+    "per_vcpu_x": 1.33
    },
    {
     "label": "40m-q8",
@@ -741,7 +747,9 @@
     "combined_x": 14.97,
     "per_process_x": 1.87,
     "cpu_x": 1.58,
-    "cores_busy": 9.46
+    "cores_busy": 9.46,
+    "vcpus": 10,
+    "per_vcpu_x": 1.5
    }
   ]
  },
@@ -756,7 +764,9 @@
    "combined_x": 17.11,
    "per_process_x": 2.14,
    "cpu_x": 1.81,
-   "cores_busy": 9.43
+   "cores_busy": 9.43,
+   "vcpus": 10,
+   "per_vcpu_x": 1.71
   },
   "vcpu_hour_usd": {
    "aws_graviton4_on_demand": 0.039875,
@@ -776,10 +786,10 @@
     },
     "this_mac_gpu_days": 128.4,
     "this_mac_cpu_days": 607.9,
-    "cpu_vcpu_hours": 137914,
+    "cpu_vcpu_hours": 145979,
     "cpu_usd": {
-     "aws_graviton4_on_demand": 5499,
-     "aws_graviton4_spot": 2586
+     "aws_graviton4_on_demand": 5821,
+     "aws_graviton4_spot": 2737
     }
    },
    "central": {
@@ -795,10 +805,10 @@
     },
     "this_mac_gpu_days": 157.6,
     "this_mac_cpu_days": 746.1,
-    "cpu_vcpu_hours": 169272,
+    "cpu_vcpu_hours": 179171,
     "cpu_usd": {
-     "aws_graviton4_on_demand": 6750,
-     "aws_graviton4_spot": 3174
+     "aws_graviton4_on_demand": 7144,
+     "aws_graviton4_spot": 3359
     }
    },
    "high": {
@@ -814,10 +824,10 @@
     },
     "this_mac_gpu_days": 256.9,
     "this_mac_cpu_days": 1215.9,
-    "cpu_vcpu_hours": 275866,
+    "cpu_vcpu_hours": 291998,
     "cpu_usd": {
-     "aws_graviton4_on_demand": 11000,
-     "aws_graviton4_spot": 5172
+     "aws_graviton4_on_demand": 11643,
+     "aws_graviton4_spot": 5475
     }
    }
   }

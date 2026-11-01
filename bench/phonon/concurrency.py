@@ -137,7 +137,8 @@ def main():
     dest.mkdir(exist_ok=True)
     out = {"model": a.model, "ports": ports, "label": a.label, "gpu_idle_median": statistics.median(
         g for g in idle if g is not None), "results": results}
-    (dest / f"{a.label}-{a.model.split(':')[1]}.json").write_text(json.dumps(out, indent=1))
+    tag = a.model.partition(":")[2] or "latest"
+    (dest / f"{a.label}-{tag}.json").write_text(json.dumps(out, indent=1))
 
 
 if __name__ == "__main__":

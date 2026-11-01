@@ -25,7 +25,7 @@ make, but costs about 310 MB of Opus per book per language and a rebuild on
 every text change. Path C (the reader's own Ollama) is feasible only as an
 opt-in for people who already run Ollama. Pre-rendering every LibreTexts page
 in English would be about 306,000 hours of audio and 2.3–3.3 TB of Opus:
-about five months on this Mac's GPU, or about 169,000 vCPU-hours on rented
+about five months on this Mac's GPU, or about 179,000 vCPU-hours on rented
 servers (see
 [Throughput and the whole corpus](#throughput-and-the-whole-corpus)).
 
@@ -147,8 +147,8 @@ way; CER is the better guide there.
 5. **The 40m English model is not better than 31m.** In one run each through
    Ollama, `40m-en` scored worse on WER (0.107 vs 0.086) and CER (0.031 vs
    0.013), the same on UTMOS (4.42 both), and once repeated a phrase ("those
-   are men"). It is also slower (RTF 0.017 vs 0.014 through Ollama, and about 13% more CPU
-   per second of audio under Gradium's runtime, see
+   are men"). It is also slower (RTF 0.017 vs 0.014 through Ollama, and about 15% more CPU
+   per second of audio under Gradium's runtime (13–16% across the runs), see
    [below](#gradiums-runtime-on-plain-cpu-linux)). Nothing argues for it, so
    English stays on the Apache 31M.
 6. **Quantisation.** On WebGPU, q4 cuts memory by about 30% (1038 vs 1456 MB
@@ -215,8 +215,9 @@ conditions:
 2. English defaults to the Apache 31M unless a 40m is clearly better, and the
    notes say by how much. Here it is not: Finding 5.
 3. Credit "Phonon by Gradium, CC BY-NC 4.0" wherever an NC voice is offered.
-   The README says those weights are not under the repo's MIT licence; they
-   are fetched at stage time and never committed.
+   The README must then say those weights are not under the repo's MIT
+   licence (it does not yet, as no NC voice ships); they are fetched at stage
+   time and never committed.
 4. Path B audio made by an NC model is labelled CC BY-NC 4.0.
 5. Before an NC voice first goes live, Johnny asks Gradium to confirm the use
    is noncommercial.
@@ -285,7 +286,7 @@ other servers up (the other two had idle extra servers running):
 
 | `phonon:en` | In flight | Combined | Latency, median / p95 | First audio, median | Ollama RSS | Loaded (`/api/ps`) |
 |---|---|---|---|---|---|---|
-| 1 server | 1 | 41–55x | 0.16–0.21 / 0.27–0.44 s | 0.02 s | 255 MB | 114 MB |
+| 1 server | 1 | 42–55x | 0.16–0.21 / 0.27–0.44 s | 0.02 s | 255 MB | 114 MB |
 | 1 server | 2 | 31–49x | 0.38–0.44 / 0.53–1.9 s | 0.21–0.24 s | | |
 | 1 server | 4 | 28–31x | 0.83–0.86 / 2.9–5.1 s | 0.64–0.66 s | | |
 | 1 server | 8 | 27–51x | 1.4–1.7 / 1.7–6.2 s | 1.2–1.6 s | | |
@@ -303,18 +304,23 @@ latency 0.23 s rising to 3.7 s, about 410 MB RSS, 216 MB loaded.
 - **One server does not get faster with more requests in flight.** It queues
   them: first audio goes from 0.02 s alone to 2.8 s with 16 waiting.
 - **More servers do help.** Three servers made 63–68x and five made 81x,
-  against 41–55x for one server under the same load. Sending more requests
+  against 42–55x for one server under the same load. Sending more requests
   than there are servers only adds waiting. Each server loads its own copy of
   the model (114 MB on `/api/ps`, about 170 MB more RSS).
 - Where this levels off on a quiet GPU was not measured. RSS is the sum over
   every `ollama` process and leaves out Metal buffers.
+- The 81x is the best single row, one burst of 40 requests (4.6 s); the
+  corpus estimate rests on it.
+- The extra servers ran on ports 11435–11438 and were stopped afterwards.
+  The usual server on 11434 was one of the three and five, used as it was
+  and never restarted.
 
 ### Gradium's runtime on plain CPU (Linux)
 
 `ptts_cpu.py` runs Gradium's own runtime (the `ptts` 0.6.0 PyPI wheel,
 manylinux aarch64, no Ollama) in a `python:3.12-slim` arm64 container under
-podman on this Mac. The VM had 10 vCPUs and 12 GB; the host's load average
-was 3–9 during the runs, from other bots and the runs themselves, and the VM
+podman on this Mac. The VM had 10 vCPUs and 12 GB; its load average
+was 1.3–11.4 during the runs, from the runs themselves and a busy host, and the VM
 cannot choose performance over efficiency cores, so treat these as a floor for
 this machine. Same 20 warm items, one warm-up first. The 31M is
 `gradium/phonon-31m-en`. The 40M English repo is gated, so its checkpoint was
@@ -334,7 +340,8 @@ per CPU-second in brackets:
 | 40M q8 | 6.2x (4.1) | 10.3x (2.5) | 9.8x (1.4) |
 
 A one-thread process keeps 1.4–1.9 cores busy (the decoder runs on its own
-worker), and more threads stop helping at about 4. For bulk rendering the
+worker), and more threads mostly stop helping at about 4 (only the 40M f32
+gained a little more at 8). For bulk rendering the
 better shape is many one-thread processes side by side:
 
 | q8, one thread each | 4 processes | 8 processes |
@@ -342,10 +349,13 @@ better shape is many one-thread processes side by side:
 | 31M | 14.4x combined, 5.5 cores busy | 17.1x, 9.4 cores busy (VM full) |
 | 40M | 13.3x, 5.9 cores busy | 15.0x, 9.5 cores busy |
 
-So a fully loaded vCPU makes about 1.8 seconds of audio per second for the
-31M (1.6 for the 40M, which needs about 13% more CPU per second of audio).
+So with all 10 vCPUs in use, each makes about 1.7 seconds of audio per
+second for the 31M (1.5 for the 40M, which needs about 15% more CPU per
+second of audio). Per CPU-second actually used it is 1.8, but a rented vCPU
+is billed busy or idle, so the cost lines use 1.7.
 Gradium's README claims 26x on one MacBook Air M5 core and 41x on four,
-"CPU + KleidiAI": 7–14 times what one core made here. The wheel's
+"CPU + KleidiAI": about four times the 6.2–6.6x a one-thread process made
+here. The wheel's
 `ptts.build_info()` lists NEON only. Whether the gap is the M5's SME2
 (KleidiAI), the VM or the busy host was not tested.
 
@@ -392,8 +402,8 @@ Inputs, all estimates:
 | Opus 24 kbit/s | 2.7 TB | 3.3 TB | 5.4 TB |
 | This Mac, Ollama GPU, 5 servers (81x, GPU shared) | 128 days | 158 days | 257 days |
 | This Mac, CPU in the Linux VM (17x) | 608 days | 746 days | 1,216 days |
-| CPU server: vCPU-hours at 1.8x per vCPU | 138,000 | 169,000 | 276,000 |
-| … at AWS Graviton4 spot / on-demand prices | $2,600 / $5,500 | $3,200 / $6,800 | $5,200 / $11,000 |
+| CPU server: vCPU-hours at 1.7x per vCPU | 146,000 | 179,000 | 292,000 |
+| … at AWS Graviton4 spot / on-demand prices | $2,700 / $5,800 | $3,400 / $7,100 | $5,500 / $11,600 |
 
 Storage sizes use the bitrates measured on the bench audio (`storage.json`;
 Opus 16 kbit/s came out at 16.6, and is 214 MB for social_psychology against
@@ -411,20 +421,24 @@ What that means for the options asked about:
   Ollama servers sharing a busy GPU made 81x, so the central case is about
   five months. The M1 Ultra's GPU has 64 cores to this one's 38, but it is
   an older generation and Phonon runs one small stream per server, so how far
-  more servers would scale there is unknown. Its 20 CPU cores, at the 1.8x
-  per core measured here, would add about 36x. The native macOS `ptts` build with Metal is another
-  route that was not tried.
+  more servers would scale there is unknown. Its 20 CPU cores, at the 1.7x
+  per core measured here, would add about 34x. A guess, not a measurement:
+  if its GPU matched this one's 81x and the CPUs added 34x at the same time,
+  about 115x is roughly 110 days (3.6 months) for the central case. The
+  native macOS `ptts` build with Metal is another route that was not tried.
 - **Google Colab.** A session gets a few vCPUs and one GPU, with time limits.
-  Phonon runs there on the CPU unless built for CUDA. At 1.8x per vCPU the
-  central case is about 85,000 two-vCPU session-hours, so it is not a fit.
-- **RunPod or Brev GPUs.** This needs the untested CUDA build and runs one
-  stream per generation. No speed was measured, so no cost is given. It is
+  Phonon runs there on the CPU unless built for CUDA. At 1.7x per vCPU the
+  central case is about 90,000 two-vCPU session-hours, so it is not a fit
+  at any price; no cost is given.
+- **RunPod or Brev GPUs.** Both rent NVIDIA GPUs, so both need the untested
+  CUDA build, which runs one stream per generation. No speed was measured,
+  so no time or cost is given for either. It is
   worth one short paid test only if a CPU fleet is too slow.
 - **A CPU fleet** (RunPod CPU pods, AWS or similar). This is the
-  best-understood option: about 169,000 vCPU-hours in the central case. That
-  is about 4.4 days on 100 machines of 16 vCPUs, and about $3,200–6,800 at
+  best-understood option: about 179,000 vCPU-hours in the central case. That
+  is about 4.7 days on 100 machines of 16 vCPUs, and about $3,400–7,100 at
   Graviton4 prices. RunPod does not publish a CPU rate. A comparison site
-  implies about $0.03 per vCPU-hour (about $5,100), not verified.
+  implies about $0.03 per vCPU-hour (about $5,400), not verified.
 
 ## Listening test
 

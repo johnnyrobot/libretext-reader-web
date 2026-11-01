@@ -31,10 +31,10 @@ CHARS_PER_PAGE = {  # Speech Text characters per page
     "central": 13_668,  # those three plus social_psychology: 330 pages
     "high": 22_275,     # social_psychology alone: 75 pages
 }
+QUIET_GPU_PCT = 20  # GPU utilisation before an Ollama run above which it is "contended"
 # Indicative public prices, USD per vCPU-hour, checked 2026-11-01 on third-party
 # trackers (not the providers' own pages): AWS c8g.4xlarge (Graviton4, 16 vCPU)
 # $0.638/h on demand and ~$0.28-0.32/h spot, us-east-1.
-QUIET_GPU_PCT = 20  # GPU utilisation before an Ollama run above which it is "contended"
 VCPU_HOUR_USD = {"aws_graviton4_on_demand": 0.638 / 16, "aws_graviton4_spot": 0.30 / 16}
 
 
@@ -56,7 +56,9 @@ def ptts_tables():
         audio, wall, cpu = sum(r["audio_s"] for r in rs), max(r["wall_s"] for r in rs), sum(r["cpu_s"] for r in rs)
         parallel.append({"label": label, "processes": k, "combined_x": round(audio / wall, 2),
                          "per_process_x": round(min(r["x_realtime"] for r in rs), 2),
-                         "cpu_x": round(audio / cpu, 2), "cores_busy": round(cpu / wall, 2)})
+                         "cpu_x": round(audio / cpu, 2), "cores_busy": round(cpu / wall, 2),
+                         # a rented vCPU is billed idle or busy, so cost uses wall time over every vCPU
+                         "vcpus": rs[0]["nproc"], "per_vcpu_x": round(audio / wall / rs[0]["nproc"], 2)})
     return sorted(single, key=lambda r: (r["label"], r["threads"])), parallel
 
 
@@ -71,12 +73,15 @@ def main():
     candidates += [(r["combined_x"], f'{o["label"]}, {len(o["ports"])} servers, {r["concurrency"]} at once')
                    for o in ollama if o["model"] == "phonon:en" for r in o["results"]]
     ollama_best, ollama_best_from = max(candidates)
-    cpu_best = max((p for p in parallel if p["label"].startswith("31m")), key=lambda p: p["combined_x"])
+    runs_31m = [p for p in parallel if p["label"].startswith("31m")]
+    if not runs_31m:
+        raise SystemExit("no par-31m* runs in out/ptts-cpu: start K one-thread ptts_cpu.py processes first (README)")
+    cpu_best = max(runs_31m, key=lambda p: p["combined_x"])
 
     corpus = {}
     for case, cpp in CHARS_PER_PAGE.items():
         audio_s = PAGES * cpp / chars_per_s
-        vcpu_h = audio_s / cpu_best["cpu_x"] / 3600
+        vcpu_h = audio_s / cpu_best["per_vcpu_x"] / 3600
         corpus[case] = {
             "chars_per_page": cpp, "audio_hours": round(audio_s / 3600),
             "storage_tb": {n: round(audio_s * c["kbps_measured"] * 125 / 1e12, 2) for n, c in storage["codecs"].items()},

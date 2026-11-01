@@ -70,13 +70,14 @@ another app using it shows up in the numbers.
 # Ollama, 1-16 requests at once; one server, then several (extra servers on
 # other ports share the models folder: OLLAMA_HOST=127.0.0.1:11435 ollama serve)
 python3 bench/phonon/concurrency.py --model phonon:en --ports 11434 --label quiet
-python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436 --label 3srv
+python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436 --conc 3,6,12 --label 3srv
+python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436,11437,11438 --conc 5,10,20 --label 5srv
 
 # Gradium's runtime on Linux CPU, in an arm64 container. Weights folders go
 # under models/ (git-ignored); the 40m is gated on Hugging Face.
 podman run --rm -v "$PWD":/repo -v "$PWD/models":/models:ro python:3.12-slim sh -c \
   "pip install -q ptts==0.6.0 && python /repo/bench/phonon/ptts_cpu.py \
-   --model /models/phonon-31m-en --threads 4 --quant q8_0 --label 31m-q8"
+   --model /models/31m-en-hf --threads 4 --quant q8_0 --label 31m-q8"
 # many one-thread processes at once: same command with --threads 1, started
 # K times in parallel, labels par-31m-q8-k<K>-p<i>
 
