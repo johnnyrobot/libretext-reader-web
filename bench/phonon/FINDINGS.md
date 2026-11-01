@@ -10,8 +10,9 @@ is made. Sources for every licence and model fact are in
 **Partly.** Replace Supertonic for **English only**, with the Apache-licensed
 `phonon-31m-en` run **in the reader's browser (path A)** on the Transformers.js
 and ONNX Runtime Web 1.26 the reader already ships for translation. Here it was
-2.5–4x faster than Supertonic in back-to-back runs (4.4x on the medians),
-produced its first audio frame in about 30 ms instead of 7–14 s (playing
+about 2.3x faster than Supertonic back to back on a quiet CPU (2.5–4x when
+the Mac was busy), produced its first audio frame in about 25 ms instead of
+4.7 s quiet or 7–14 s busy (playing
 frames as they arrive is not built yet), downloads 41–161 MB of model instead
 of about 409 MB (plus a ~15–26 MB runtime for a listener who has not used
 translation), and has a similar word error rate; naturalness (UTMOS) is a
@@ -67,7 +68,9 @@ r4, r4, r5).
 ## Comparison
 
 Median (range over runs). Memory is the increase over an idle browser
-(~860 MB) or idle Ollama (~127 MB).
+(~860 MB) or idle Ollama (~127 MB). These runs shared a busy Mac; the two
+quiet LT-215 runs (Supertonic r6, path A r5) are kept apart in
+[Quiet re-timing](#quiet-re-timing-lt-215).
 
 | Engine | Runs | WER | CER | UTMOS | Warm RTF | Warm TTFA | Cold TTFA | Download | Memory over idle | Languages | Licence |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -116,7 +119,7 @@ way; CER is the better guide there.
    Supertonic's worker returns whole sentences, so its TTFA is the whole
    sentence's synth time. Back to back, Supertonic r4 ran at RTF 1.05, path A
    wasm fp32 r4 at 0.27 and Supertonic r5 at 0.68: path A was 2.5–4x faster in
-   the same conditions, and 4.4x on the medians over all runs. On a quiet CPU
+   the same conditions, and 4.4x on the medians of those loaded runs. On a quiet CPU
    (LT-215, below) the gap is smaller: Supertonic r6 at 0.41 and path A r5 at
    0.18, back to back, so about 2.3x, with first audio in 0.02 s against 4.7 s.
 2. **Supertonic ran slower here than its README says, because the Mac was
@@ -131,7 +134,8 @@ way; CER is the better guide there.
    equilibrium-constant expressions. A clean reading of it scores about 8–17
    word errors with few character errors (Whisper writes the formulas its own
    way), which is what Supertonic and Ollama's 31m runs get. Path A wasm fp32
-   drifted into nonsense on it in 2 of 4 runs (56 and 83 character errors;
+   drifted into nonsense on it in 2 of its 4 loaded runs (quiet r5 read it
+   cleanly) (56 and 83 character errors;
    the second is that run's 0.111 WER), and so did wasm q4, WebGPU q4f16 in 2
    of 3 runs (one looped: 120 word errors, the 0.290 WER outlier) and 40m-en.
    WebGPU q4 read it cleanly in all 3 runs, and WebGPU fp32 in its one run. Shipping path A needs a
@@ -461,7 +465,7 @@ the GPU.
 
 So Supertonic matches its README's 0.41 on a quiet CPU, and the earlier
 0.68–1.21 was the shared machine; no diagnosing ticket. Path A is still
-about 2.3x faster in real time and starts speaking about 190 times sooner.
+about 2.3x faster in real time and starts speaking about 195 times sooner.
 s18 ran 21.8 s for its 329 characters in r5 (15 a second), a normal length. The Ollama concurrency rows above were meant to
 be re-run in the same window, but the GPU was back at 86–100% within a
 minute, so a fourth one-server run (43–56x) changes nothing and is not
