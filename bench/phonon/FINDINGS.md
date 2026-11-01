@@ -38,11 +38,16 @@ Speech Text. Scores:
   normaliser mangles chemistry ("N O two" becomes "n 02").
 - **UTMOS**: UTMOS22 strong, 1–5 predicted naturalness.
 - **RTF**: synth seconds / audio seconds, warm items only (item one is cold).
-- **TTFA**: seconds from request to first audio.
+- **TTFA**: seconds from request to first audio: the first 80 ms frame for
+  path A, the first 4,096 bytes (~85 ms) for Ollama, and the whole sentence
+  for Supertonic, whose worker does not stream. Warm TTFA is the upper median
+  of the 20 warm items.
 - **Peak memory**: peak RSS of the browser's (or Ollama's) whole process tree.
   For Ollama this leaves out Metal buffers; `/api/ps` reports the loaded model
   at 114 MB (`en`), 216 MB (`40m-en`) and 133 MB (`multilingual`), all on the
-  GPU, which may come on top.
+  GPU, which may come on top. Summing RSS over Chrome's processes counts
+  shared pages more than once, so compare browser rows with each other, not
+  with Ollama.
 
 Machine: M2 Max, Chrome 156 headless, Ollama 0.40.13. The Mac was shared
 (another Chrome and a VM were busy throughout). Each run records `load_avg_1m`
@@ -78,12 +83,12 @@ runtime is the `/_assets/tts/ort-mt/` ORT 1.26 build already deployed, so it
 adds no runtime download. Path A `load_s` was 0.65–2.6 s from a local server;
 real network time comes on top for all browser rows.
 
-WER/CER by category, from each engine's median-WER run (Supertonic r3, wasm
+WER/CER by category, from each engine's median-WER run (Supertonic r4, wasm
 fp32 r3, q4f16 r3; Ollama ran once):
 
 | Engine | prose | numbers | dates | citations | chemistry | math |
 |---|---|---|---|---|---|---|
-| Supertonic M1 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.027 | 0.288 / 0.023 | 0 / 0 |
+| Supertonic M1 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.027 | 0.288 / 0.031 | 0.080 / 0.042 |
 | A wasm fp32 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.024 | 0.250 / 0.013 | 0.040 / 0.032 |
 | A WebGPU q4f16 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.097 / 0.039 | 0.279 / 0.098 | 0.040 / 0.032 |
 | Ollama `phonon:en` | 0.022 / 0.002 | 0.036 / 0.023 | 0 / 0 | 0.056 / 0.024 | 0.269 / 0.013 | 0.200 / 0.032 |
@@ -108,16 +113,20 @@ way; CER is the better guide there.
    byte-identical) and missing cross-origin isolation (isolated, 12 cores,
    SharedArrayBuffer present). Worth one timing on a quiet machine before
    anyone opens a ticket; it is outside LT-213.
-3. **Every Phonon variant garbles s18**, the long repeated equilibrium-constant
-   expression (Supertonic gets about 15 of its 57 words wrong too, but stays
-   on the text). Path A wasm fp32 r4 drifted into nonsense after two thirds of
-   it (32 errors), which is that run's 0.111 WER. WebGPU q4f16 once looped on
-   it (120 errors on 57 words), which is the 0.290 WER outlier above. q4f16 is not safe to ship without a guard
-   (stop when audio runs far past the expected length).
+3. **Phonon can derail on long formulas.** s18 is a 57-word run of repeated
+   equilibrium-constant expressions. A clean reading of it scores 12–15 word
+   errors with almost no character errors (Whisper writes the formulas its own
+   way), which is what Supertonic and Ollama's 31m runs get. Path A wasm fp32
+   drifted into nonsense on it in 2 of 4 runs (56 and 83 character errors;
+   the second is that run's 0.111 WER), and so did wasm q4, WebGPU q4f16 in 2
+   of 3 runs (one looped: 120 word errors, the 0.290 WER outlier) and 40m-en.
+   WebGPU fp32 and q4 read it cleanly every time. Shipping path A needs a
+   guard (stop and retry, or fall back, when audio runs far past the length
+   the text predicts) and probably a lower sampling temperature.
 4. **Double normalisation.** Ollama's Phonon runtime normalises text itself.
    It reads "1024" as "ten twenty-four" (year style), which breaks spoken math
-   where Speech Text keeps digits (s21: math WER 0.20 against 0.0 for
-   Supertonic). It read "U.S. Senate" so that Whisper heard "United
+   where Speech Text keeps digits (s21, so Ollama's math WER is 0.20, against
+   0–0.12 across Supertonic's runs and 0.04 for path A). It read "U.S. Senate" so that Whisper heard "United
    Sessonet". Path A has no runtime normaliser and read 1024 correctly.
    Feeding Display Text instead of Speech Text did not help (WER 0.093 vs
    0.086, each scored against the text it was given, so not strictly like for
@@ -126,9 +135,9 @@ way; CER is the better guide there.
 5. **The 40m English model is not better than 31m.** `40m-en` scored worse on
    WER (0.107) and once repeated a phrase ("those are men"), and it is
    CC BY-NC. Nothing argues for it.
-6. **Quantisation.** q4 roughly halves memory and cuts the download to 67 MB
-   at a small UTMOS cost (4.31 vs 4.44) and no WER cost on WebGPU; wasm q4 was
-   worse (0.139). fp32 on wasm is the safe default; q4 on WebGPU is the small
+6. **Quantisation.** On WebGPU, q4 cuts memory by about 30% (1038 vs 1456 MB
+   over idle) and the download to 67 MB, at a small UTMOS cost (4.31 vs 4.43)
+   and no WER cost; wasm q4 was worse (0.139). fp32 on wasm is the safe default; q4 on WebGPU is the small
    option.
 
 ## Languages and voices
@@ -191,7 +200,8 @@ symbols. `path-a/worker.mjs` is the spike's version of that worker.
 
 **B, pre-rendered through Ollama.** Measured on social_psychology (75 pages,
 14,418 sentences, 1.67 M characters; Phonon speaks 16.2 characters a second,
-so 28.7 h of audio; Supertonic is slower at 13.8, 33.6 h):
+so 28.7 h of audio; Supertonic, at 13.8 characters a second over the same
+items, would be 33.6 h):
 
 | Codec | Page median | Largest page | Book |
 |---|---|---|---|
@@ -217,13 +227,15 @@ not a default.
 
 ## Listening test
 
-A blind A/B set of all 21 items: Supertonic M1 (r3) against the recommended
-path A, 31m-en wasm fp32 (r3), each engine's median-WER run. Both files are
-loudness-matched (-20 LUFS, 24 kHz) and padded with silence to one common
-length with a random lead-in, because length would give Phonon away (it
-speaks faster, in whole 80 ms frames). A/B is drawn at random per item
-(Phonon is A in 13). Made by `listening_set.py`; both are git-ignored and not
-committed:
+A blind A/B set of all 21 items: Supertonic M1 (r4) against the recommended
+path A, 31m-en wasm fp32 (r3), each engine's median-WER run (Supertonic's r1
+ties r4 but ran headed). Both clips are loudness-matched (-20 LUFS, 24 kHz),
+cut to their speech, faded, and centred with random jitter in one common
+length over the same low noise floor, so file length, Phonon's whole 80 ms
+frames and its noise-floor edges give nothing away. Speaking rate still does:
+Phonon is about 15% faster, so its speech is shorter inside the file. A/B is
+drawn at random per item (Phonon is A in 9). Made by `listening_set.py`; both
+are git-ignored and not committed:
 
 - folder: `bench/phonon/listening/` (`items.txt` lists the texts)
 - key: `bench/phonon/listening-key.csv`
