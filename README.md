@@ -71,6 +71,7 @@ What each edge carries:
 | `speech.json` → reader | fetched relative to the page URL, so it is always `<page>/speech.json` | `src/reader.mjs` `loadSpeechManifest()` |
 | reader → engine worker | one sentence of Speech Text at a time, four to eight ahead of playback | `src/player.mjs` |
 | `manifest.json` → model download | name, path, size and sha256 of each model file; the download is verified against it | `scripts/write_model_manifest.py` |
+| `phonon/manifest.json` → English voice download | the same, for Phonon 31M, plus the pinned Hub revision | `scripts/fetch-phonon.py` |
 
 The pipeline never runs in the browser and the browser never runs the pipeline. If a
 sentence sounds wrong, the fix is in `pipeline/` and the page is rebuilt; nothing in
@@ -82,9 +83,9 @@ This is the handoff checklist. Everything below is what the staging mirror does 
 generalised. Budget about a day for a first deployment, most of it waiting on model
 conversion and the first book build.
 
-The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in seven files
-under `src/`, in `pipeline/tts_manifest.py`, in `vite.config.js` and in two scripts
-(`grep -rl _assets/tts src pipeline scripts vite.config.js` lists them). Serve it at
+The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in eight files
+under `src/`, in two under `pipeline/`, in `vite.config.js` and in the staging
+scripts (`grep -rl _assets/tts src pipeline scripts vite.config.js` lists them). Serve it at
 that path, or change every one of them in a single commit.
 
 ### 1. Build the reader and stage the models
@@ -200,8 +201,10 @@ header @ttsscope Content-Security-Policy "default-src 'self'; script-src 'self' 
 # 4. Models are content-addressed → immutable. The CODE is not: reader.js is
 #    imported on click, which a hard refresh does not bypass, so an immutable
 #    reader.js keeps a returning visitor on the old bundle for a year.
-@ttsmodels path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/*
-@ttscode { path /_assets/tts/*  not path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* }
+#    Phonon's weights and voices are too; its manifest, config and tokenizer
+#    are small and revalidate with the code.
+@ttsmodels path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/*
+@ttscode { path /_assets/tts/*  not path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* }
 header @ttsmodels Cache-Control "public, max-age=31536000, immutable"
 header @ttscode   Cache-Control "public, max-age=0, must-revalidate"
 ```

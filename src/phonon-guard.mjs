@@ -10,7 +10,7 @@
  *   - the audio runs well past the length its text predicts (`overrunSeconds`);
  *   - the model ran into its frame ceiling without predicting end of speech.
  *
- * What happens then is the Chief's LT-214 ruling, in order: retry once; render
+ * What happens then is LT-214's rule, in order: retry once; render
  * the sentence split at punctuation; skip it with a visible mark. Never play
  * nonsense, and never fall back to Supertonic for English.
  *

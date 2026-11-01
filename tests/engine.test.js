@@ -242,6 +242,43 @@ describe('engine.mjs', () => {
       expect(onChunk).not.toHaveBeenCalled();
     });
 
+    // seekTo cancels a sentence and asks for it again at once. The worker may
+    // still send a chunk or the audio of the cancelled render after that; it
+    // belongs to the old request and must not reach the new one.
+    it('late messages from a cancelled request do not reach a re-request of the same sentence', async () => {
+      const replies = [];
+      const { engine } = streamingWorker((msg, reply) => { replies.push(reply); });
+      await engine.init({ voice: 'M1', lang: 'en' });
+      const first = engine.synthesize('b1s0', 'Text.', { onChunk: () => {} });
+      first.catch(() => {});
+      await Promise.resolve();
+      engine.cancel('b1s0');
+      const onChunk = vi.fn();
+      const second = engine.synthesize('b1s0', 'Text.', { onChunk });
+      await Promise.resolve();
+      expect(replies).toHaveLength(2);
+
+      const [late, current] = replies;
+      late({ type: 'chunk', samples: new Float32Array([0.9]), sampleRate: 24000 });
+      late({ type: 'audio', samples: new Float32Array([0.9]), sampleRate: 24000, outcome: 'ok' });
+      expect(onChunk).not.toHaveBeenCalled();
+
+      current({ type: 'audio', samples: new Float32Array([0.2]), sampleRate: 24000, outcome: 'ok' });
+      const result = await second;
+      expect(result.id).toBe('b1s0');
+      expect(result.samples[0]).toBeCloseTo(0.2);
+    });
+
+    it('cancel reaches the worker for the request it cancels', async () => {
+      const { worker, engine } = streamingWorker(() => {});
+      await engine.init({ voice: 'M1', lang: 'en' });
+      engine.synthesize('b1s0', 'Text.').catch(() => {});
+      engine.cancel('b1s0');
+      const [synth] = worker.sent.filter((m) => m.type === 'synth');
+      const [cancel] = worker.sent.filter((m) => m.type === 'cancel');
+      expect(cancel.id).toBe(synth.id);
+    });
+
     it('a sentence from the Supertonic worker resolves with outcome ok', async () => {
       const { engine } = engineWithFakeWorker();
       await engine.init({ voice: 'M1', lang: 'en' });

@@ -31,7 +31,7 @@ function audio() {
 // An engine whose sentences the test drives by hand: chunk, reset, finish.
 function streamingEngine() {
   const jobs = new Map();
-  return {
+  const engine = {
     jobs,
     synthesize: vi.fn((id, text, { onChunk = () => {}, onReset = () => {} } = {}) => new Promise((resolve, reject) => {
       jobs.set(id, {
@@ -39,10 +39,13 @@ function streamingEngine() {
         reset: onReset,
         finish: (outcome = 'ok', n = 1920) => resolve({ id, samples: new Float32Array(outcome === 'skipped' ? 0 : n), sampleRate: 24000, outcome }),
         fail: () => reject(new Error('boom')),
+        cancel: () => reject(new Error('cancelled')),
       });
     })),
-    cancel: vi.fn(),
+    // Like engine.mjs: a cancel rejects the pending request at once.
+    cancel: vi.fn((id) => engine.jobs.get(id)?.cancel()),
   };
+  return engine;
 }
 
 const SENTENCES = () => [
@@ -202,5 +205,46 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     engine.jobs.get('a').chunk();
     expect(performance.getEntriesByName('tts:first-sound')).toHaveLength(1);
+  });
+
+  // Next onto a sentence still rendering. seekTo cancels every request, and the
+  // cancelled one used to stay tracked until its promise settled: the re-request
+  // was swallowed, so the sentence played only what it had streamed, or nothing.
+  it('Next onto a sentence that has streamed a chunk renders it again and plays it in full', async () => {
+    player.play();
+    await tick();
+    engine.jobs.get('a').chunk(); await tick();
+    engine.jobs.get('b').chunk();
+
+    player.next();
+    await tick();
+
+    expect(engine.synthesize.mock.calls.filter(([id]) => id === 'b')).toHaveLength(2);
+    expect(live(context)).toHaveLength(0);   // the cancelled fragment is not played
+    const b = engine.jobs.get('b');
+    b.chunk(); await tick();
+    b.chunk();
+    expect(live(context)).toHaveLength(2);
+    b.finish('ok', 2 * 1920);
+    await tick();
+    expect(seen.at(-1)).toBe('b');            // still on b, not skipped to c
+    expect(seen).not.toContain('c');
+    expect(skipped).toEqual([]);
+  });
+
+  it('Next onto a sentence queued with nothing streamed waits for it instead of skipping it', async () => {
+    player.play();
+    await tick();
+    engine.jobs.get('a').chunk(); await tick();
+
+    player.next();
+    await tick();
+
+    expect(engine.synthesize.mock.calls.filter(([id]) => id === 'b')).toHaveLength(2);
+    expect(seen).not.toContain('c');
+    engine.jobs.get('b').chunk(); await tick();
+    expect(live(context)).toHaveLength(1);
+    expect(seen.at(-1)).toBe('b');
+    expect(seen).not.toContain('c');
   });
 });

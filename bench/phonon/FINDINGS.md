@@ -530,7 +530,14 @@ runs has zero character errors: it is Whisper writing a formula differently
 because Phonon says "1024" as four words and "N O two" as names with pauses.
 Fitted on the 168 renders above (21 items × 4 temperatures × 2 runs), the
 longest clean render was 1.148× its expected length, so a cap at 1.5× clears
-every clean render by about 30%. Past the cap the attempt is stopped and, in
+every clean render by about 30%. The shipped voices, which the fit did not
+include, stay inside it: Preston's longest render was 1.145× expected (s21) and
+Hadley's 1.147× (s18), over 21 items each.
+
+The ticket suggested about 16 characters a second. Phonon does speak plain
+prose at 14.3 a second, but counting digits and lone capitals as longer is what
+lets one rate fit both prose and formulas, and against that weighted length the
+fitted rate is 11.5. Past the cap the attempt is stopped and, in
 order, retried once, rendered split at punctuation, then skipped with a visible
 mark. It never plays nonsense, and it never falls back to Supertonic for English.
 

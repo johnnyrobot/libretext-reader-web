@@ -95,7 +95,7 @@ async function loadPhonon({ manifestUrl, onProgress }) {
   const config = await AutoConfig.from_pretrained(repo);
   const cfg = config.phonon;
   const tokenizer = await AutoTokenizer.from_pretrained(repo);
-  // wasm fp32 is the one build (the Chief's LT-214 scope): q4 and q4f16 were
+  // wasm fp32 is the one build (LT-214): q4 and q4f16 were
   // measured worse in LT-213, and WebGPU is a later ticket.
   const flow = await PreTrainedModel.from_pretrained(repo, { config, model_file_name: 'flow_lm', dtype: 'fp32', device: 'wasm' });
   const mimi = await PreTrainedModel.from_pretrained(repo, { config, model_file_name: 'mimi_decoder', dtype: 'fp32', device: 'wasm' });

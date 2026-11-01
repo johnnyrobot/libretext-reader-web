@@ -11,6 +11,18 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
   const spawn = createWorker ?? (() => new Worker(workerUrl, { type: 'module' }));
   const worker = spawn();
   const pending = new Map();
+  // Each synthesis goes to the worker under its own key, not the sentence id.
+  // The player cancels a sentence and asks for it again at once on a seek, and
+  // the worker can still send the cancelled render's chunks or audio after
+  // that; keyed by sentence id, they would reach the new request.
+  const requests = new Map(); // sentence id → key of its live request
+  let serial = 0;
+  const settle = (key) => {
+    const entry = pending.get(key);
+    pending.delete(key);
+    if (entry && requests.get(entry.id) === key) requests.delete(entry.id);
+    return entry;
+  };
   let readyResolve;
   let readyReject;
   let onProgress = () => {};
@@ -33,7 +45,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         break;
       case 'chunk':
         // Streamed audio for a sentence still rendering (Phonon only). Dropped
-        // once the sentence is cancelled, like a late 'audio'.
+        // once its request is cancelled, like a late 'audio'.
         pending.get(data.id)?.onChunk?.(data.samples, data.sampleRate);
         break;
       case 'reset':
@@ -42,9 +54,9 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
       case 'audio': {
         const entry = pending.get(data.id);
         if (!entry) return; // cancelled; drop the late result
-        pending.delete(data.id);
         // Supertonic has no length guard and reports no outcome: its audio is ok.
-        entry.resolve({ id: data.id, samples: data.samples, sampleRate: data.sampleRate, outcome: data.outcome ?? 'ok' });
+        settle(data.id);
+        entry.resolve({ id: entry.id, samples: data.samples, sampleRate: data.sampleRate, outcome: data.outcome ?? 'ok' });
         break;
       }
       case 'error': {
@@ -52,7 +64,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         error.code = data.code;
         if (data.id && pending.has(data.id)) {
           pending.get(data.id).reject(error);
-          pending.delete(data.id);
+          settle(data.id);
         } else {
           readyReject?.(error);
         }
@@ -66,6 +78,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     readyReject?.(error);
     for (const entry of pending.values()) entry.reject(error);
     pending.clear();
+    requests.clear();
   };
 
   return {
@@ -83,17 +96,19 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     // cannot stream (Supertonic) ignores the flag and only resolves.
     synthesize(id, text, { onChunk, onReset } = {}) {
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject, onChunk, onReset });
-        worker.postMessage({ type: 'synth', id, text, stream: Boolean(onChunk) });
+        serial += 1;
+        const key = `${id}#${serial}`;
+        requests.set(id, key);
+        pending.set(key, { id, resolve, reject, onChunk, onReset });
+        worker.postMessage({ type: 'synth', id: key, text, stream: Boolean(onChunk) });
       });
     },
 
     cancel(id) {
-      const entry = pending.get(id);
-      if (!entry) return;
-      pending.delete(id);
-      entry.reject(new SpeechCancelledError(id));
-      worker.postMessage({ type: 'cancel', id });
+      const key = requests.get(id);
+      if (key === undefined) return;
+      settle(key).reject(new SpeechCancelledError(id));
+      worker.postMessage({ type: 'cancel', id: key });
     },
 
     setVoice(voice) {
@@ -127,6 +142,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     terminate() {
       for (const entry of pending.values()) entry.reject(new SpeechCancelledError('terminated'));
       pending.clear();
+      requests.clear();
       worker.terminate();
     },
   };

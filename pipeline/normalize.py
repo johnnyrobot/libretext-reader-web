@@ -27,7 +27,10 @@ import re
 # recognising spans that must not be touched.
 from pipeline.protect import URL_RE
 EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
-CURRENCY_RE = re.compile(r"([$€£¥₹])\s?([\d,]+(?:\.\d+)?)")
+# An amount starts and ends on a digit: a bare "€," is no amount (int("") used
+# to raise on it), and "$5, which" keeps its comma.
+AMOUNT = r"\d(?:[\d,]*\d)?(?:\.\d+)?"
+CURRENCY_RE = re.compile(rf"([$€£¥₹])\s?({AMOUNT})")
 # symbol -> (one, many, one of the minor unit, many of it); None where the
 # currency's minor unit is not spoken in English prose, and the decimal is read.
 CURRENCIES = {
@@ -37,7 +40,7 @@ CURRENCIES = {
     "¥": ("yen", "yen", None, None),
     "₹": ("rupee", "rupees", None, None),
 }
-PERCENT_RE = re.compile(r"\b([\d,]+(?:\.\d+)?)\s?%")
+PERCENT_RE = re.compile(rf"\b({AMOUNT})\s?%")
 DECIMAL_RE = re.compile(r"\b(\d+)\.(\d+)\b")
 # A four-digit year, read in halves. There is no comma group in this pattern on
 # purpose: the thousands separator is the signal that a number is a quantity
@@ -83,17 +86,24 @@ MARKS = [
     (re.compile(r"[®™]"), ""),
     (re.compile(r"§§\s*"), "sections "),
     (re.compile(r"§\s*"), "section "),
-    (re.compile(r"#(?=\s?\d)"), "number "),
+    # Not after a letter: "C# 7" is a language and its version.
+    (re.compile(r"(?<!\w)#(?=\s?\d)"), "number "),
     (re.compile(r"~(?=\s?\d)"), "about "),
     (re.compile(r"\s*°\s*C\b"), " degrees Celsius"),
     (re.compile(r"\s*°\s*F\b"), " degrees Fahrenheit"),
     (re.compile(r"\s*°"), " degrees"),
+    # After a whole number a fraction is added to it: "2½" is two and one half.
+    (re.compile(r"(\d)\s*½"), r"\1 and one half"),
+    (re.compile(r"(\d)\s*¼"), r"\1 and one quarter"),
+    (re.compile(r"(\d)\s*¾"), r"\1 and three quarters"),
     (re.compile(r"\s*½"), " one half"),
     (re.compile(r"\s*¼"), " one quarter"),
     (re.compile(r"\s*¾"), " three quarters"),
-    # An en dash between two numbers is a range. Before the number passes, which
-    # need the digits; the hyphen is left alone, since it is also a minus.
-    (re.compile(r"(\d)\s*–\s*(?=\d)"), r"\1 to "),
+    # An unspaced en dash between two numbers is a range, "$5–$10" included. A
+    # spaced one is a dash in the sentence, or a minus, and is left alone. Before
+    # the number passes, which need the digits; the hyphen is left alone too,
+    # since it is also a minus.
+    (re.compile(r"(\d)–(?=[$€£¥₹]?\d)"), r"\1 to "),
 ]
 # Dotted capitals, `U.K.`: Phonon heard "U.K. and the E.U." as "the UK neighbor
 # and the union". Spaced letters are read as letters. When the initialism ends

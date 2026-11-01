@@ -69,6 +69,13 @@ async function loadSpeechManifest() {
  * Exported because the ordering is the contract, and a contract nothing can test
  * is a comment. See tests/reader-voice.test.js.
  */
+/** One language's entry in the menu. Its size includes the translation voice
+ * until that is stored, and it says "downloaded" only once nothing is left to
+ * fetch: the language's model AND the voice (LT-214). */
+export function languageOption({ code, bytes }, modelStored, voiceBytes) {
+  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + voiceBytes, stored: modelStored && !voiceBytes };
+}
+
 export function changeVoice(player, engine, voice) {
   player.pause();
   player.flushAudio();
@@ -255,6 +262,7 @@ export async function enterReaderMode() {
     return (await checkQuota(MANIFEST_URL)).required;
   }
   let voiceBytes = pairs.length ? await translationVoiceBytes() : 0;
+  const modelStored = new Set(pairs.filter((p, i) => stored[i]).map((p) => p.code));
 
   let translator = null;
   let controls;
@@ -334,7 +342,8 @@ export async function enterReaderMode() {
     // The menu said "115 MB download" a moment ago and it is no longer true.
     // Repainted rather than rebuilt: the reader is looking at this select right
     // now, and rebuilding it would drop their selection.
-    controls.setLanguageStored(hosted.code, true);
+    modelStored.add(hosted.code);
+    controls.setLanguageStored(hosted.code, !voiceBytes);
     // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
@@ -351,7 +360,10 @@ export async function enterReaderMode() {
       }
       if (voiceBytes) {
         voiceBytes = 0;
-        for (const p of pairs) controls.setLanguageBytes(p.code, p.bytes);
+        for (const p of pairs) {
+          controls.setLanguageBytes(p.code, p.bytes);
+          if (modelStored.has(p.code)) controls.setLanguageStored(p.code, true);
+        }
       }
       if (voiceLoad.cancelled()) return null;
     }
@@ -512,9 +524,8 @@ export async function enterReaderMode() {
     // script today, which is exactly the kind of assumption that stops being
     // true quietly.
     languages: pairs
-      .map((p, i) => ({ ...p, stored: stored[i] }))
       .filter((p) => p.code in LANGUAGE_LABELS)
-      .map((p) => ({ code: p.code, label: LANGUAGE_LABELS[p.code], bytes: p.bytes + voiceBytes, stored: p.stored })),
+      .map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
     onLang: async (lang) => {
       try {
         // Whatever was being translated is for a language the reader has just

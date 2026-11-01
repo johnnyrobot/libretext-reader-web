@@ -469,3 +469,38 @@ def test_a_temperature_degree_sign_is_spoken():
     assert normalize_for_speech("It was 98.6 °F.") == (
         "It was ninety eight point six degrees Fahrenheit.")
     assert normalize_for_speech("A 90° angle.") == "A ninety degrees angle."
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # A currency sign or percent with no number after it is left as it is;
+        # the comma used to be taken for an amount, and int("") raised.
+        ("Prices are listed in €, £ and ¥.", "Prices are listed in €, £ and ¥."),
+        ("Up a,% b.", "Up a,% b."),
+        # The comma after an amount is the sentence's, not the number's.
+        ("It costs $5, which is cheap.", "It costs five dollars, which is cheap."),
+        ("It rose 5%, then fell.", "It rose five percent, then fell."),
+        ("It costs $1,250.", "It costs one thousand two hundred fifty dollars."),
+    ],
+)
+def test_a_sign_without_an_amount_is_not_read_as_one(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # Part of a name, not "number": C# is a language.
+        ("Written in C# 7 for speed.", "Written in C# seven for speed."),
+        # A fraction after a whole number is added to it.
+        ("It took 2½ hours.", "It took two and one half hours."),
+        ("It took 2 ¼ hours.", "It took two and one quarter hours."),
+        # Only an unspaced en dash between numbers is a range; a spaced one is
+        # a dash in the sentence, or a minus.
+        ("We get 5 – 3 here.", "We get five – three here."),
+        ("It costs $5–$10.", "It costs five dollars to ten dollars."),
+    ],
+)
+def test_marks_read_in_context(source, expected):
+    assert normalize_for_speech(source) == expected

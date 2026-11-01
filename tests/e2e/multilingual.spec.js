@@ -258,9 +258,15 @@ test.describe('client-side translation', () => {
         };
       });
 
+      // LT-214: English is Phonon; a translation is Supertonic, whose weights
+      // are fetched only once one is picked.
+      const supertonic = [];
+      page.on('request', (r) => { if (r.url().includes('/_assets/tts/onnx/')) supertonic.push(r.url()); });
+
       await page.goto(PAGE);
       await enterAndWait(page);
       await expect(page.locator('[data-act="lang"]')).toBeVisible({ timeout: 120_000 });
+      expect(supertonic, 'English loaded the translation voice').toEqual([]);
 
       const firstSentence = page.locator('.tts-sentence').first();
       const englishBefore = await firstSentence.textContent();
@@ -292,6 +298,7 @@ test.describe('client-side translation', () => {
       // Nothing failed on the way.
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
       await expect(page.locator('[data-act="lang"]')).toHaveValue('es');
+      expect(supertonic.length, 'Spanish did not load the translation voice').toBeGreaterThan(0);
 
       // The page is never rewritten. Only the audio changes -- highlighting runs
       // off the English manifest and must keep matching the visible text.

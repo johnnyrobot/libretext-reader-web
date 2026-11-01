@@ -107,8 +107,10 @@ export function createPlayer({
         // would put old-voice audio straight back into the cache the flush just
         // emptied -- and the sentence the reader hears next is in the very voice
         // they changed away from. Drop it; waitFor() re-requests under the new
-        // epoch.
-        if (epoch !== audioEpoch) return;
+        // epoch. A request seekTo or setText cancelled is dropped the same way:
+        // it is no longer the tracked stream, and its sentence may be rendering
+        // again already.
+        if (!current()) return;
         const wall = (performance.now() - started) / 1000;
         const audio = result.samples.length / result.sampleRate;
         const rtf = audio > 0 ? wall / audio : 0;
@@ -123,7 +125,9 @@ export function createPlayer({
       })
       .catch(() => { /* cancelled or failed; playAt reports it if still needed */ })
       .finally(() => {
-        inFlight.delete(sentence.id);
+        // Only this request's own entry: a cancelled one settles after its
+        // sentence has been requested again, and must not untrack that.
+        if (inFlight.get(sentence.id) === promise) inFlight.delete(sentence.id);
         const live = current();
         if (streams.get(sentence.id) === stream) streams.delete(sentence.id);
         stream.arrived();
@@ -375,7 +379,12 @@ export function createPlayer({
     async seekTo(id) {
       const position = index.get(id);
       if (position === undefined) return;
+      // Cancel AND untrack. A cancelled request left tracked until it settled
+      // made request() skip the sentence sought to, so it played only what it
+      // had streamed before the seek, or was skipped.
       for (const pending of inFlight.keys()) engine.cancel(pending);
+      inFlight.clear();
+      streams.clear();
       generation += 1;
       stopSource();
       cursor = position;

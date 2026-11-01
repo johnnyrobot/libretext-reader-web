@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { changeVoice, changeLanguage, recoverToEnglish } from '../src/reader.mjs';
+import { changeVoice, changeLanguage, recoverToEnglish, languageOption } from '../src/reader.mjs';
 
 /* Changing voice must invalidate cached audio IMMEDIATELY, not after the engine
  * round-trip.
@@ -131,5 +131,23 @@ describe('recoverToEnglish', () => {
     expect(controls.setLang).toHaveBeenCalledWith('en');
     expect(reportError).toHaveBeenCalledTimes(1);
     expect(reportError).toHaveBeenCalledWith('original failure');
+  });
+});
+
+// LT-214: a translation needs its model AND the Supertonic voice. The menu said
+// "downloaded" for a stored model while the voice was still to fetch.
+describe('languageOption', () => {
+  const es = { code: 'es', bytes: 115_000_000 };
+
+  it('is downloaded only when the model and the voice are both stored', () => {
+    expect(languageOption(es, true, 0)).toMatchObject({ code: 'es', label: 'español', bytes: 115_000_000, stored: true });
+  });
+
+  it('a stored model still costs the voice while the voice is not stored', () => {
+    expect(languageOption(es, true, 380_000_000)).toMatchObject({ bytes: 495_000_000, stored: false });
+  });
+
+  it('a model not stored is never downloaded', () => {
+    expect(languageOption(es, false, 0)).toMatchObject({ bytes: 115_000_000, stored: false });
   });
 });
