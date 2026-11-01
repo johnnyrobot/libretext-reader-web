@@ -46,7 +46,7 @@ def main():
     tts.synth(items[0]["speech"], voice=voice)
 
     rows = []
-    t0, c0 = time.perf_counter(), time.process_time()
+    t0, c0, started = time.perf_counter(), time.process_time(), time.time()
     for it in items[1:]:
         s = time.perf_counter()
         pcm = tts.synth(it["speech"], voice=voice)
@@ -59,7 +59,9 @@ def main():
         "ptts_version": getattr(ptts, "__version__", None), "machine": platform.machine(), "nproc": os.cpu_count(),
         "items": len(rows), "wall_s": round(wall, 3), "audio_s": round(audio, 2), "cpu_s": round(cpu, 3),
         "x_realtime": round(audio / wall, 2), "cpu_x": round(audio / cpu, 2),
-        "load_avg_1m": round(os.getloadavg()[0], 2), "rows": rows,
+        "load_avg_1m": round(os.getloadavg()[0], 2),
+        # epoch seconds of the timed window, so parallel runs can be timed as one span
+        "t_start": round(started, 3), "t_end": round(time.time(), 3), "rows": rows,
     }
     print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
     dest = OUT / "ptts-cpu"

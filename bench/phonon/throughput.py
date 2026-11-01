@@ -32,6 +32,11 @@ CHARS_PER_PAGE = {  # Speech Text characters per page
     "high": 22_275,     # social_psychology alone: 75 pages
 }
 QUIET_GPU_PCT = 20  # GPU utilisation before an Ollama run above which it is "contended"
+# Whole-batch wall time of the 2026-11-01 parallel runs, from the container's
+# launch to its last process exiting, so it includes each process's model load
+# and warm-up: a ceiling on the true span, which those runs did not record.
+BATCH_WALL_S = {"par-31m-q8-k4": 53.69, "par-31m-q8-k8": 89.82,
+                "par-40m-q8-k4": 57.08, "par-40m-q8-k8": 100.72}
 # Indicative public prices, USD per vCPU-hour, checked 2026-11-01 on third-party
 # trackers (not the providers' own pages): AWS c8g.4xlarge (Graviton4, 16 vCPU)
 # $0.638/h on demand and ~$0.28-0.32/h spot, us-east-1.
@@ -53,12 +58,22 @@ def ptts_tables():
                           | {"cores_busy": round(r["cpu_s"] / r["wall_s"], 2)})
     parallel = []
     for (label, k), rs in sorted(par.items()):
-        audio, wall, cpu = sum(r["audio_s"] for r in rs), max(r["wall_s"] for r in rs), sum(r["cpu_s"] for r in rs)
+        audio, cpu = sum(r["audio_s"] for r in rs), sum(r["cpu_s"] for r in rs)
+        if all("t_start" in r for r in rs):
+            wall, basis = max(r["t_end"] for r in rs) - min(r["t_start"] for r in rs), "span of the timed windows"
+        else:
+            # Runs before t_start/t_end were recorded: the longest timed window,
+            # which is short of the true span by however staggered the starts were.
+            wall, basis = max(r["wall_s"] for r in rs), "longest timed window"
+        batch = BATCH_WALL_S.get(f"par-{label}-k{k}")
         parallel.append({"label": label, "processes": k, "combined_x": round(audio / wall, 2),
                          "per_process_x": round(min(r["x_realtime"] for r in rs), 2),
                          "cpu_x": round(audio / cpu, 2), "cores_busy": round(cpu / wall, 2),
                          # a rented vCPU is billed idle or busy, so cost uses wall time over every vCPU
-                         "vcpus": rs[0]["nproc"], "per_vcpu_x": round(audio / wall / rs[0]["nproc"], 2)})
+                         "vcpus": rs[0]["nproc"], "per_vcpu_x": round(audio / wall / rs[0]["nproc"], 2),
+                         "wall_basis": basis, "wall_s": round(wall, 2)}
+                        | ({"batch_wall_s": batch, "per_vcpu_x_low": round(audio / batch / rs[0]["nproc"], 2)}
+                           if batch else {}))
     return sorted(single, key=lambda r: (r["label"], r["threads"])), parallel
 
 

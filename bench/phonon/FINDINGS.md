@@ -134,9 +134,9 @@ way; CER is the better guide there.
    equilibrium-constant expressions. A clean reading of it scores about 8–17
    word errors with few character errors (Whisper writes the formulas its own
    way), which is what Supertonic and Ollama's 31m runs get. Path A wasm fp32
-   drifted into nonsense on it in 2 of its 4 loaded runs (quiet r5 read it
-   cleanly) (56 and 83 character errors;
-   the second is that run's 0.111 WER), and so did wasm q4, WebGPU q4f16 in 2
+   drifted into nonsense on it in 2 of its 4 loaded runs (56 and 83
+   character errors; the second is that run's 0.111 WER; quiet r5 read it
+   cleanly), and so did wasm q4, WebGPU q4f16 in 2
    of 3 runs (one looped: 120 word errors, the 0.290 WER outlier) and 40m-en.
    WebGPU q4 read it cleanly in all 3 runs, and WebGPU fp32 in its one run. Shipping path A needs a
    guard (stop and retry, or fall back, when audio runs far past the length
@@ -421,7 +421,11 @@ and re-rendering when Speech Text changes. Prices are for c8g.4xlarge
 (16 vCPU) in us-east-1, $0.638 an hour on demand and about $0.30 spot. They
 come from third-party price trackers checked 2026-11-01, not from AWS. The
 speed per vCPU assumes a Graviton4 vCPU matches one here; that was not
-measured.
+measured. The parallel runs' speed uses the longest process's timed window;
+they did not record when each window started. The whole batch, model loads
+included, took at most 4% longer, so 1.7x per vCPU is at most 4% high
+(1.65–1.71x, about 186,000 vCPU-hours in the central case at the low end).
+`ptts_cpu.py` now records each window's start and end for any rerun.
 
 What that means for the options asked about:
 
