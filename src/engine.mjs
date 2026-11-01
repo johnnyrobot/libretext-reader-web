@@ -31,11 +31,20 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         pending.get('lang')?.resolve(undefined);
         pending.delete('lang');
         break;
+      case 'chunk':
+        // Streamed audio for a sentence still rendering (Phonon only). Dropped
+        // once the sentence is cancelled, like a late 'audio'.
+        pending.get(data.id)?.onChunk?.(data.samples, data.sampleRate);
+        break;
+      case 'reset':
+        pending.get(data.id)?.onReset?.();
+        break;
       case 'audio': {
         const entry = pending.get(data.id);
         if (!entry) return; // cancelled; drop the late result
         pending.delete(data.id);
-        entry.resolve({ id: data.id, samples: data.samples, sampleRate: data.sampleRate });
+        // Supertonic has no length guard and reports no outcome: its audio is ok.
+        entry.resolve({ id: data.id, samples: data.samples, sampleRate: data.sampleRate, outcome: data.outcome ?? 'ok' });
         break;
       }
       case 'error': {
@@ -67,10 +76,15 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
       return ready;
     },
 
-    synthesize(id, text) {
+    // `onChunk(samples, sampleRate)` asks for the sentence to be streamed: called
+    // with each piece of audio that may be played now. `onReset()` means every
+    // chunk so far must be dropped (the length guard withdrew them). The final
+    // whole sentence still resolves, with the guard's `outcome`. A worker that
+    // cannot stream (Supertonic) ignores the flag and only resolves.
+    synthesize(id, text, { onChunk, onReset } = {}) {
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        worker.postMessage({ type: 'synth', id, text });
+        pending.set(id, { resolve, reject, onChunk, onReset });
+        worker.postMessage({ type: 'synth', id, text, stream: Boolean(onChunk) });
       });
     },
 

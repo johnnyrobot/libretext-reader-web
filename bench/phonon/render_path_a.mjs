@@ -30,9 +30,18 @@ const CHANNEL = args.channel === true ? undefined : (args.channel ?? 'chrome');
 const PORT = args.port ?? 8789;
 const HERE = dirname(fileURLToPath(import.meta.url));
 // --run N writes a repeat to its own folder (<engine>-rN): Phonon samples, so runs differ.
-const ENGINE = `patha-${DEVICE}-${DTYPE}` + (args.run ? `-r${args.run}` : '');
+// --temperature T and --duration-delta D (LT-214 calibration) tag the folder: -tT, -dD.
+// --voice: a file under voices/, e.g. qIxlZ7Ei8KvWlyQH (M1, Preston), as the reader ships (LT-214).
+const VOICE = args.voice ?? 'default';
+const TEMPERATURE = args.temperature === undefined ? undefined : Number(args.temperature);
+const DURATION_DELTA = Number(args['duration-delta'] ?? 0);
+const ENGINE = `patha-${DEVICE}-${DTYPE}` + (TEMPERATURE === undefined ? '' : `-t${TEMPERATURE}`)
+  + (DURATION_DELTA ? `-d${DURATION_DELTA}` : '') + (VOICE === 'default' ? '' : `-${VOICE}`) + (args.run ? `-r${args.run}` : '') + (args.tag ? `-${args.tag}` : '');
 const OUT = join(HERE, 'out', ENGINE);
-const items = JSON.parse(readFileSync(join(HERE, 'out', 'sentences.json'), 'utf8'));
+// --items s16,s17,s18 renders only those.
+const ONLY = args.items ? new Set(String(args.items).split(',')) : null;
+// --sentences FILE (LT-214 symbol probe) renders another set, same shape.
+const items = JSON.parse(readFileSync(args.sentences ?? join(HERE, 'out', 'sentences.json'), 'utf8')).filter((it) => !ONLY || ONLY.has(it.id));
 
 const server = await chromium.launchServer({
   channel: CHANNEL,
@@ -53,7 +62,7 @@ if (!(await page.evaluate(() => self.crossOriginIsolated))) throw new Error('pag
 mkdirSync(OUT, { recursive: true });
 await page.exposeFunction('saveItem', (id, samples, rate) => writeFileSync(join(OUT, `${id}.wav`), wav(samples, rate)));
 
-const result = await page.evaluate(async ({ items, device, dtype }) => {
+const result = await page.evaluate(async ({ items, device, dtype, voice, temperature, durationDelta }) => {
   const gpu = navigator.gpu ? await navigator.gpu.requestAdapter() : null;
   const adapter = gpu ? { shaderF16: gpu.features.has('shader-f16'), vendor: gpu.info?.vendor, arch: gpu.info?.architecture } : null;
   const worker = new Worker('/bench/phonon/path-a/worker.mjs', { type: 'module' });
@@ -65,7 +74,7 @@ const result = await page.evaluate(async ({ items, device, dtype }) => {
   });
   const t0 = performance.now();
   const readyP = once((d) => d.type === 'ready');
-  worker.postMessage({ type: 'init', device, dtype });
+  worker.postMessage({ type: 'init', device, dtype, voice, temperature, durationDelta });
   const ready = await readyP;
   const loadS = (performance.now() - t0) / 1000;
   const rows = [];
@@ -84,12 +93,12 @@ const result = await page.evaluate(async ({ items, device, dtype }) => {
                 audio_s: +audioS.toFixed(3), rtf: +(((end - s) / 1000) / audioS).toFixed(4) });
   }
   return { ready, adapter, loadS, rows };
-}, { items, device: DEVICE, dtype: DTYPE });
+}, { items, device: DEVICE, dtype: DTYPE, voice: VOICE, temperature: TEMPERATURE, durationDelta: DURATION_DELTA });
 
 clearInterval(poll);
 peak = Math.max(peak, treeRssMb(browserPid));
 const summary = {
-  engine: ENGINE, device: DEVICE, dtype: DTYPE, threads: result.ready.threads, adapter: result.adapter,
+  engine: ENGINE, device: DEVICE, dtype: DTYPE, voice: VOICE, temperature: TEMPERATURE ?? null, duration_delta: DURATION_DELTA, threads: result.ready.threads, adapter: result.adapter,
   browser: (CHANNEL ?? 'playwright chromium') + (args.headed ? ' headed' : ' headless'),
   load_avg_1m: loadAvg1m(),
   load_s: +result.loadS.toFixed(3),

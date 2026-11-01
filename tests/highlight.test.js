@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mountSentences, unmountSentences, setCurrent, resolveBlockElement, blockTextOf } from '../src/highlight.mjs';
+import { mountSentences, unmountSentences, setCurrent, markSkipped, resolveBlockElement, blockTextOf } from '../src/highlight.mjs';
 
 function mainWith(inner) {
   document.body.innerHTML = `<main id="main-content">${inner}</main>`;
@@ -68,6 +68,24 @@ describe('highlight.mjs', () => {
 
     setCurrent(map, null, { scroll: false });
     expect(root.querySelectorAll('.tts-current').length).toBe(0);
+  });
+
+  it('marks a sentence the voice skipped, visibly and in words (LT-214)', () => {
+    // Phonon's length guard skips a sentence it cannot say cleanly rather than
+    // play nonsense. Silence alone would read as a glitch; the mark says why.
+    const root = mainWith('<p>One.</p>');
+    const map = mountSentences(root, [{
+      id: 'b0', kind: 'paragraph', text: 'One.', anchor: { path: [0] },
+      sentences: [{ id: 'b0s0', display: 'One.', offset: 0, length: 4 }],
+    }]);
+    markSkipped(map, 'b0s0');
+    const span = map.get('b0s0');
+    expect(span.classList.contains('tts-skipped')).toBe(true);
+    expect(span.title).toMatch(/not read aloud/i);
+    expect(() => markSkipped(map, 'missing')).not.toThrow();
+
+    unmountSentences(map);
+    expect(root.querySelector('.tts-skipped')).toBeNull();
   });
 
   it('never adds aria-live to a highlight', () => {

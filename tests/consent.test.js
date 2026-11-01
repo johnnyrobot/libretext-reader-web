@@ -114,13 +114,50 @@ describe('progress and deletion name what they are about', () => {
   });
 });
 
-describe('the voice gate still behaves as it did', () => {
+describe('the voice gate (English on Phonon, LT-214)', () => {
   it('names the size and resolves on accept', async () => {
-    const answer = requestConsent({ requiredBytes: 401_604_608, quotaSufficient: true });
-    expect(dialog().textContent).toContain('383 MB');
-    expect(dialog().textContent).toContain('OpenRAIL-M');
+    const answer = requestConsent({ requiredBytes: 162_381_572, quotaSufficient: true });
+    expect(dialog().textContent).toContain('155 MB');
     click('accept');
     await expect(answer).resolves.toBe(true);
+  });
+
+  it('credits Phonon by Gradium under Apache 2.0, and no longer Supertonic', async () => {
+    const answer = requestConsent({ requiredBytes: 1, quotaSufficient: true });
+    const text = dialog().textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('Phonon by Gradium, Apache 2.0');
+    expect(text).not.toContain('Supertonic');
+    expect(text).not.toContain('OpenRAIL-M');
+    click('decline');
+    await answer;
+  });
+});
+
+describe('the translation gate when the translation voice is not downloaded yet (LT-214)', () => {
+  it('adds the voice to the size and names its licence', async () => {
+    // Translations are spoken by Supertonic, which an English-only reader has
+    // never downloaded. Its 383 MB and its use-restricted licence are part of
+    // what they are agreeing to here.
+    const answer = requestTranslationConsent({
+      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
+      voiceBytes: 401_604_608,
+    });
+    const text = dialog().textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('498 MB');     // 115 MB + 383 MB, rounded once
+    expect(text).toContain('383 MB');
+    expect(text).toContain('Supertonic 3 by Supertone');
+    expect(text).toContain('OpenRAIL-M');
+    click('decline');
+    await answer;
+  });
+
+  it('says nothing about the voice once it is downloaded', async () => {
+    const answer = requestTranslationConsent({
+      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
+    });
+    expect(dialog().textContent).not.toContain('Supertonic');
+    click('decline');
+    await answer;
   });
 });
 

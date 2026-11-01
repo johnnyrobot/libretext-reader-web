@@ -5,6 +5,10 @@ export const CACHE_NAME = 'libretexts-tts-v1';
 // voice to get it, and vice versa -- deleteModels() deletes a whole cache.
 export const MT_CACHE_NAME = 'libretexts-mt-v1';
 
+// English speech (Phonon, LT-214) in its own cache too, for the same reason: a
+// reader can drop the translation voice without losing the English one.
+export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
+
 async function sha256Hex(buffer) {
   const digest = await crypto.subtle.digest('SHA-256', buffer);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');

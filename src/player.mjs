@@ -5,7 +5,14 @@
  * app drives a fast native engine, and a long pre-roll in a browser reads as
  * broken rather than careful. Lookahead grows only when measurement says the
  * engine is falling behind.
+ *
+ * Phonon (English, LT-214) streams: a sentence starts speaking on its first 80 ms
+ * frame rather than when it has finished rendering. Every request asks for the
+ * stream; an engine that cannot stream (Supertonic) simply never sends any, and
+ * the sentence plays as one buffer as it always did.
  */
+
+import { createStreamPlayback } from './stream-playback.mjs';
 
 const INITIAL_BUFFER = 2;
 const BASE_LOOKAHEAD = 4;
@@ -20,10 +27,16 @@ export function createPlayer({
   audioContext,
   onSentenceChange = () => {},
   onStateChange = () => {},
+  // A sentence the length guard gave up on (src/phonon-guard.mjs): silence,
+  // never nonsense, and the reader marks it so the silence is explained.
+  onSentenceSkipped = () => {},
 }) {
   const context = audioContext ?? new (globalThis.AudioContext ?? globalThis.webkitAudioContext)();
   const buffers = new Map();   // id → AudioBuffer
   const inFlight = new Map();  // id → Promise
+  // id → { chunks, sampleRate, first, arrived, listener }: what a sentence still
+  // rendering has streamed so far. `listener` is set while it is the one playing.
+  const streams = new Map();
   const index = new Map(sentences.map((s, i) => [s.id, i]));
   // The source text, kept so a language can be switched away from and back to
   // without refetching -- and, since translation moved into the browser, without
@@ -35,6 +48,8 @@ export function createPlayer({
   let playing = false;
   let rate = 1;
   let source = null;
+  let streamPlayback = null;
+  let awaitingFirstSound = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
   // A SECOND COUNTER, deliberately not the one above. `generation` cancels an
@@ -67,7 +82,25 @@ export function createPlayer({
 
     const started = performance.now();
     const epoch = audioEpoch;
-    const promise = engine.synthesize(sentence.id, sentence.speech)
+    const stream = { chunks: [], sampleRate: 0, listener: null };
+    stream.first = new Promise((resolve) => { stream.arrived = resolve; });
+    streams.set(sentence.id, stream);
+    const current = () => epoch === audioEpoch && streams.get(sentence.id) === stream;
+
+    const promise = engine.synthesize(sentence.id, sentence.speech, {
+      onChunk: (samples, sampleRate) => {
+        if (!current()) return;
+        stream.chunks.push(samples);
+        stream.sampleRate = sampleRate;
+        stream.arrived();
+        stream.listener?.chunk(samples, sampleRate);
+      },
+      onReset: () => {
+        if (!current()) return;
+        stream.chunks = [];
+        stream.listener?.reset();
+      },
+    })
       .then((result) => {
         // THE RACE A PLAIN buffers.clear() LOSES. This synthesis was started
         // before the voice changed and resolves after it, so writing it now
@@ -80,11 +113,22 @@ export function createPlayer({
         const audio = result.samples.length / result.sampleRate;
         const rtf = audio > 0 ? wall / audio : 0;
         if (rtf > SLOW_RTF) lookahead = SLOW_LOOKAHEAD;
-        buffers.set(sentence.id, { buffer: toAudioBuffer(result), rtf });
+        // No AudioBuffer for no samples: Web Audio refuses a zero-length one.
+        buffers.set(sentence.id, {
+          buffer: result.samples.length > 0 ? toAudioBuffer(result) : null,
+          skipped: result.outcome === 'skipped',
+          rtf,
+        });
         trim();
       })
       .catch(() => { /* cancelled or failed; playAt reports it if still needed */ })
-      .finally(() => { inFlight.delete(sentence.id); });
+      .finally(() => {
+        inFlight.delete(sentence.id);
+        const live = current();
+        if (streams.get(sentence.id) === stream) streams.delete(sentence.id);
+        stream.arrived();
+        stream.listener?.done(live ? buffers.get(sentence.id) ?? null : null);
+      });
 
     inFlight.set(sentence.id, promise);
   }
@@ -99,13 +143,65 @@ export function createPlayer({
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
 
     request(position);
+    const stream = streams.get(sentence.id);
+    if (stream?.chunks.length) return { stream };
     state(true, 'Preparing audio…');
-    await inFlight.get(sentence.id);
+    // Whichever comes first: the first streamed chunk, or the whole sentence.
+    await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
     state(false);
-    return buffers.get(sentence.id) ?? null;
+    if (buffers.has(sentence.id)) return buffers.get(sentence.id);
+    if (stream?.chunks.length && streams.get(sentence.id) === stream) return { stream };
+    return null;
+  }
+
+  // performance.measure('tts:first-sound') from play() to the first audio being
+  // scheduled: the number LT-214 reports. A streamed chunk is heard
+  // LEAD_SECONDS (src/stream-playback.mjs) after it is scheduled.
+  function markFirstSound() {
+    if (!awaitingFirstSound) return;
+    awaitingFirstSound = false;
+    try { performance.measure('tts:first-sound', 'tts:play'); } catch { /* no mark: not measured */ }
+  }
+
+  function playStream(position, mine, stream) {
+    const { id } = sentences[position];
+    const advance = () => { if (mine === generation && playing) playAt(position + 1); };
+    const begin = () => {
+      streamPlayback = createStreamPlayback({ context, rate, onEnded: advance });
+      for (const samples of stream.chunks) streamPlayback.push(samples, stream.sampleRate);
+    };
+
+    stopSource();
+    begin();
+    stream.listener = {
+      chunk(samples, sampleRate) { if (mine === generation) streamPlayback.push(samples, sampleRate); },
+      // The guard withdrew what it streamed and is starting the sentence again.
+      reset() { if (mine === generation) { streamPlayback.stop(); begin(); } },
+      done(entry) {
+        stream.listener = null;
+        if (mine !== generation) return;
+        if (entry?.skipped) {
+          stopSource();
+          onSentenceSkipped(id);
+          advance();
+          return;
+        }
+        // Rendered, or failed after streaming some of it: play what streamed.
+        streamPlayback.finish();
+      },
+    };
+
+    onSentenceChange(id);
+    state(false);
+    markFirstSound();
+    fill();
   }
 
   function stopSource() {
+    if (streamPlayback) {
+      streamPlayback.stop();
+      streamPlayback = null;
+    }
     if (!source) return;
     source.onended = null;
     try { source.stop(); } catch { /* already stopped */ }
@@ -132,6 +228,12 @@ export function createPlayer({
     const entry = await waitFor(position);
     if (mine !== generation || !playing) return;
     if (!entry) { await playAt(position + 1); return; }
+    if (entry.stream) { playStream(position, mine, entry.stream); return; }
+    if (!entry.buffer) {
+      if (entry.skipped) onSentenceSkipped(sentences[position].id);
+      await playAt(position + 1);
+      return;
+    }
 
     if (entry.rtf > STALL_RTF) state(true, 'Preparing audio…');
 
@@ -145,6 +247,7 @@ export function createPlayer({
     onSentenceChange(sentences[position].id);
     state(false);
     source.start();
+    markFirstSound();
     fill();
   }
 
@@ -152,6 +255,8 @@ export function createPlayer({
     async play() {
       if (playing) return;
       playing = true;
+      awaitingFirstSound = true;
+      try { performance.mark('tts:play'); } catch { /* not measured */ }
       if (context.state === 'suspended') await context.resume();
       for (let offset = 0; offset < INITIAL_BUFFER; offset += 1) request(cursor + offset);
       await playAt(cursor);
@@ -185,6 +290,7 @@ export function createPlayer({
       for (const pending of inFlight.keys()) engine.cancel(pending);
       buffers.clear();
       inFlight.clear();
+      streams.clear();
     },
 
     /** Swap what each sentence SAYS, leaving ids, positions and the cursor alone.
@@ -258,6 +364,7 @@ export function createPlayer({
           // same way.
           engine.cancel(id);
           inFlight.delete(id);
+          streams.delete(id);
         }
       }
     },
@@ -279,6 +386,7 @@ export function createPlayer({
     setRate(value) {
       rate = value;
       if (source) source.playbackRate.value = value;
+      streamPlayback?.setRate(value);
     },
 
     currentId() { return sentences[cursor]?.id ?? null; },
@@ -294,6 +402,7 @@ export function createPlayer({
       stopSource();
       buffers.clear();
       inFlight.clear();
+      streams.clear();
     },
   };
 }

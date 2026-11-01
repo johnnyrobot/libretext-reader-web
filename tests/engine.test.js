@@ -189,4 +189,63 @@ describe('engine.mjs', () => {
     expect(firstStatus).toBe('fulfilled');
     expect(secondStatus).toBe('fulfilled');
   });
+
+  describe('streaming (Phonon, LT-214)', () => {
+    function streamingWorker(script) {
+      const worker = new FakeWorker();
+      worker.postMessage = (msg) => {
+        worker.sent.push(msg);
+        queueMicrotask(() => {
+          if (msg.type === 'init') worker.reply({ type: 'ready', provider: 'wasm' });
+          if (msg.type === 'synth') script(msg, (data) => worker.reply({ id: msg.id, ...data }));
+        });
+      };
+      return { worker, engine: createEngine({ createWorker: () => worker }) };
+    }
+
+    it('asks the worker to stream only when a chunk listener is given', async () => {
+      const { worker, engine } = streamingWorker((msg, reply) => reply({ type: 'audio', samples: new Float32Array(1), sampleRate: 24000, outcome: 'ok' }));
+      await engine.init({ voice: 'M1', lang: 'en' });
+      await engine.synthesize('a', 'Lookahead.');
+      await engine.synthesize('b', 'Now playing.', { onChunk: () => {} });
+      const synths = worker.sent.filter((m) => m.type === 'synth');
+      expect(synths.map((m) => m.stream)).toEqual([false, true]);
+    });
+
+    it('delivers chunks and resets for a sentence before its final audio, with the outcome', async () => {
+      const { engine } = streamingWorker((msg, reply) => {
+        reply({ type: 'chunk', samples: new Float32Array([0.1]), sampleRate: 24000 });
+        reply({ type: 'reset' });
+        reply({ type: 'chunk', samples: new Float32Array([0.2]), sampleRate: 24000 });
+        reply({ type: 'audio', samples: new Float32Array([0.2]), sampleRate: 24000, outcome: 'retried' });
+      });
+      await engine.init({ voice: 'M1', lang: 'en' });
+      const events = [];
+      const result = await engine.synthesize('b1s0', 'Text.', {
+        onChunk: (samples, sampleRate) => events.push(['chunk', samples[0], sampleRate]),
+        onReset: () => events.push(['reset']),
+      });
+      expect(events).toEqual([['chunk', expect.closeTo(0.1), 24000], ['reset'], ['chunk', expect.closeTo(0.2), 24000]]);
+      expect(result).toMatchObject({ id: 'b1s0', sampleRate: 24000, outcome: 'retried' });
+    });
+
+    it('drops chunks for a cancelled sentence', async () => {
+      let replyLater;
+      const { engine } = streamingWorker((msg, reply) => { replyLater = reply; });
+      await engine.init({ voice: 'M1', lang: 'en' });
+      const onChunk = vi.fn();
+      const pending = engine.synthesize('b1s0', 'Text.', { onChunk });
+      await Promise.resolve();
+      engine.cancel('b1s0');
+      replyLater({ type: 'chunk', samples: new Float32Array([0.1]) });
+      await expect(pending).rejects.toThrow(/cancelled/);
+      expect(onChunk).not.toHaveBeenCalled();
+    });
+
+    it('a sentence from the Supertonic worker resolves with outcome ok', async () => {
+      const { engine } = engineWithFakeWorker();
+      await engine.init({ voice: 'M1', lang: 'en' });
+      await expect(engine.synthesize('b1s0', 'Text.')).resolves.toMatchObject({ outcome: 'ok' });
+    });
+  });
 });

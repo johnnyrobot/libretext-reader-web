@@ -117,6 +117,15 @@ export function mountControls(host, {
       entry.stored = stored;
       paintLanguage(entry);
     },
+
+    /** Repaint one language's download size: it drops by the translation
+     * voice's share once that voice is downloaded (LT-214). */
+    setLanguageBytes(code, bytes) {
+      const entry = languages.find((language) => language.code === code);
+      if (!entry) return;
+      entry.bytes = bytes;
+      paintLanguage(entry);
+    },
     destroy() { document.removeEventListener('keydown', onKey); bar.remove(); },
   };
 }

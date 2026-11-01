@@ -1,10 +1,14 @@
 /**
  * The consent gate. Nothing may fetch a model byte before this resolves true.
  *
- * The OpenRAIL-M link is deliberately here rather than in a repository file:
- * it is a use-restricted license and the person accepting the download is the
- * person it binds.
+ * English is spoken by Phonon (Apache 2.0); the translations by Supertonic,
+ * which is downloaded only when a reader first picks one (LT-214). The
+ * OpenRAIL-M link is deliberately here rather than in a repository file: it is
+ * a use-restricted license and the person accepting the download is the person
+ * it binds, so it is shown in the dialog that downloads Supertonic.
  */
+
+const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ONNX';
 
 const MODEL_LICENSE_URL = 'https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE';
 
@@ -55,9 +59,9 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
       <p>To do that, a <strong>${size}</strong> voice model is downloaded once and kept in this
          browser. You can delete it at any time.</p>
       ${warning}
-      <p><small>Voice model: Supertonic 3 by Supertone, licensed under
-        <a href="${MODEL_LICENSE_URL}" target="_blank" rel="noopener">OpenRAIL-M</a>
-        (a licence with use restrictions). Runtime code under MIT.</small></p>
+      <p><small>Voice model:
+        <a href="${PHONON_MODEL_URL}" target="_blank" rel="noopener">Phonon by Gradium, Apache 2.0</a>.
+        Runtime code under MIT.</small></p>
       <p>
         <button type="button" data-act="accept">Download and listen</button>
         <button type="button" data-act="decline">Not now</button>
@@ -77,7 +81,7 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
 /**
  * A SECOND gate, and it is not a formality.
  *
- * A reader who accepted 383 MB for a voice has not thereby accepted another
+ * A reader who accepted 155 MB for a voice has not thereby accepted another
  * 121 MB for Spanish. It is a separate download, of a separate model, under a
  * separate licence, made days later by someone who has forgotten the first
  * dialog -- so it is asked separately.
@@ -88,9 +92,21 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
  * apache-2.0, which is the reason it is here, so the reader gets told which one
  * they are running.
  */
-export function requestTranslationConsent({ language, requiredBytes, quotaSufficient, licence }) {
+export function requestTranslationConsent({ language, requiredBytes, quotaSufficient, licence, voiceBytes = 0 }) {
   return new Promise((resolve) => {
-    const size = formatBytes(requiredBytes);
+    // `voiceBytes` is Supertonic, when it is not downloaded yet: translations are
+    // spoken by it, and an English-only reader has never fetched it (LT-214).
+    // One total, rounded once, so the parts never disagree with the sum.
+    const size = formatBytes(requiredBytes + voiceBytes);
+    const voice = voiceBytes
+      ? `<p>That includes the <strong>${formatBytes(voiceBytes)}</strong> voice that reads
+         translations aloud, downloaded once for every language.</p>`
+      : '';
+    const voiceCredit = voiceBytes
+      ? `<p><small>Translation voice: Supertonic 3 by Supertone, licensed under
+        <a href="${MODEL_LICENSE_URL}" target="_blank" rel="noopener">OpenRAIL-M</a>
+        (a licence with use restrictions).</small></p>`
+      : '';
     const name = escapeHtml(language);
     const terms = escapeHtml(licence);
     const warning = quotaSufficient
@@ -103,12 +119,14 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
          Nothing you read or hear is sent anywhere.</p>
       <p>To do that, a <strong>${size}</strong> translation model is downloaded once and kept in
          this browser, separately from the voice. You can delete either at any time.</p>
+      ${voice}
       <p>Machine translation is not a substitute for a human translation. It will get some
          sentences wrong.</p>
       ${warning}
       <p><small>Translation model:
         <a href="${MT_MODEL_URL}" target="_blank" rel="noopener">Opus-MT (English to ${name})</a>
         by the Helsinki-NLP group, licensed under ${terms}. Runtime code under MIT.</small></p>
+      ${voiceCredit}
       <p>
         <button type="button" data-act="accept">Download and translate</button>
         <button type="button" data-act="decline">Not now</button>

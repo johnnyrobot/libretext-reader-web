@@ -241,6 +241,15 @@ export function unmountSentences(elements) {
   elements.clear();
 }
 
+/** Mark a sentence the voice skipped (Phonon's length guard, LT-214). The span
+ * goes on unmount with everything else. */
+export function markSkipped(elements, id) {
+  const element = elements.get(id);
+  if (!element) return;
+  element.classList.add('tts-skipped');
+  element.title = 'Not read aloud: the voice could not say this sentence clearly.';
+}
+
 export function setCurrent(elements, id, { scroll = true } = {}) {
   for (const element of elements.values()) element.classList.remove('tts-current');
   if (id === null || id === undefined) return;

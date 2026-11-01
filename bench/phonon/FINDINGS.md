@@ -12,8 +12,8 @@ is made. Sources for every licence and model fact are in
 and ONNX Runtime Web 1.26 the reader already ships for translation. Here it was
 about 2.3x faster than Supertonic back to back on a quiet CPU (2.5–4x when
 the Mac was busy), produced its first audio frame in about 25 ms instead of
-4.7 s quiet or 7–14 s busy (playing
-frames as they arrive is not built yet), downloads 41–161 MB of model instead
+4.7 s quiet or 7–14 s busy (LT-214 now plays
+frames as they arrive: see [LT-214 calibration](#lt-214-calibration)), downloads 41–161 MB of model instead
 of about 409 MB (plus a ~15–26 MB runtime for a listener who has not used
 translation), and has a similar word error rate; naturalness (UTMOS) is a
 hair lower, and it can derail on very long formulas. The nine translation
@@ -476,6 +476,110 @@ be re-run in the same window, but the GPU was back at 86–100% within a
 minute, so a fourth one-server run (43–56x) changes nothing and is not
 kept.
 
+## LT-214 calibration
+
+LT-214 ships path A for English: `phonon-31m-en` wasm fp32 in
+`src/phonon.worker.mjs`, streamed, with a length guard. These are the numbers
+behind its constants. Every render here ran in Chrome 156 headless on this M2
+Max, with other teams' work running (load average 6–9), so the timings are
+busy-machine timings.
+
+### Temperature and speaking rate
+
+`duration_delta` slows Phonon's speech. At 1.0 it reads 14.27 characters a
+second, against Supertonic's 14.12 at its default rate, so the reader's speeds
+mean the same thing on both voices; at 0 it was about 15% faster. It also helped
+accuracy: CER fell from 0.036 at d=0 to 0.011–0.021, and s18 (the 329-character
+formula that looped in 2 of 4 LT-213 runs) read cleanly in all 8 runs at d=1.
+
+Then the temperature, two runs each at d=1, default voice:
+
+| Temperature | WER r1 | WER r2 | Mean WER | CER r1 / r2 | UTMOS r1 / r2 |
+|---|---|---|---|---|---|
+| 0.3 | 0.064 | 0.081 | 0.072 | 0.011 / 0.016 | 4.48 / 4.50 |
+| 0.2 | 0.066 | 0.081 | 0.073 | 0.013 / 0.020 | 4.46 / 4.50 |
+| **0.1** | 0.074 | 0.064 | **0.069** | 0.013 / 0.015 | 4.47 / 4.47 |
+| 0.05 | 0.072 | 0.093 | 0.083 | 0.015 / 0.021 | 4.41 / 4.40 |
+
+0.3, 0.2 and 0.1 are the same within run-to-run noise (about ±0.01). 0.1 has the
+lowest mean and the smallest spread, so it ships; 0.05 is worse on every
+measure. Warm RTF was 0.237–0.259.
+
+### The shipped voices
+
+The reader offers Preston (M1) and Hadley (F1), not the default voice above.
+One run each at the shipped settings (temperature 0.1, d=1):
+
+| Voice | WER | CER | UTMOS | Warm RTF | First audio, median |
+|---|---|---|---|---|---|
+| Preston (M1) | 0.076 | 0.013 | 4.40 | 0.233 | 29 ms |
+| Hadley (F1) | 0.085 | 0.017 | 4.48 | 0.242 | 26 ms |
+| Supertonic M1, 6 runs (LT-213, LT-215) | 0.072–0.085 | 0.009–0.017 | 4.39–4.50 | 0.405 quiet | 4.65 s quiet |
+
+Both are inside Supertonic's own range. Every item above 0.12 WER in these
+runs has zero character errors: it is Whisper writing a formula differently
+("NO2" as "no 2"), not Phonon misreading it. s18 read cleanly with both voices.
+
+### The length guard
+
+`src/phonon-guard.mjs`. A sentence's expected length is
+
+    expected = 1.1 s + spokenLength / 11.5
+    spokenLength = characters + 4 per digit + 3 per lone capital letter
+
+because Phonon says "1024" as four words and "N O two" as names with pauses.
+Fitted on the 168 renders above (21 items × 4 temperatures × 2 runs), the
+longest clean render was 1.148× its expected length, so a cap at 1.5× clears
+every clean render by about 30%. Past the cap the attempt is stopped and, in
+order, retried once, rendered split at punctuation, then skipped with a visible
+mark. It never plays nonsense, and it never falls back to Supertonic for English.
+
+Frames are streamed only while an attempt is within its expected length;
+anything past that is held until the model ends the sentence itself. A runaway
+is therefore heard for at most its expected length before it is withdrawn.
+
+What the guard cannot catch: a derail that stays inside the predicted length.
+The worst LT-213 s18 runs came out at 1.02–1.10× expected, nonsense of the
+right duration. At d=1 none happened in 8 + 2 runs, but that is d=1 doing the
+work, not the guard.
+
+### Symbols in Speech Text
+
+Raw symbols were rendered through path A at the shipped settings and
+transcribed by Whisper. Phonon got these wrong, so `pipeline/normalize.py` now
+spells them out:
+
+| Text | What Phonon said |
+|---|---|
+| `!=` | "equals", the opposite |
+| `<=` | lost "or equal" |
+| `₹` | "€9,158" |
+| `±`, `÷` | "and" |
+| `≈`, `≤`, `≥` | garbled |
+| `©` | nothing |
+| `®`, `™` | "Brandy", "Nae McGree Tee" |
+| `§` | "cheek" |
+| `½` | "and half" |
+| `U.K.`, `E.U.` | "UK neighbor", "union" |
+| `×` | "by", wrong in scientific notation |
+
+It read these correctly as they were: `&`, `<`, `>`, `+`, `°C`/`°F`, `#1`,
+`@`, `€`, `£`, `¥`, `U.S.` (`€`, `£`, `¥` and `°` are spelt out anyway, so a
+price or temperature reads the same on both voices). After the change every
+probe item was heard correctly.
+
+### In the reader
+
+`tests/e2e/playback.spec.js`, Chrome 156 against the local stage (not
+library.libretexts.dev):
+
+| What | Measured |
+|---|---|
+| English download | 162,177,677 bytes (154.7 MB), 7 files, equal to `phonon/manifest.json` |
+| Supertonic requests for an English-only reader | 0 |
+| Time to first sound (`tts:first-sound`, play → first frame scheduled) | 35 ms, heard about 50 ms later (the player's lead-in), so about 85 ms |
+| Translations | all nine still play, on Supertonic, loaded only when one is picked |
+
 ## Listening test
 
 A blind A/B set of all 21 items: Supertonic M1 (r4) against the recommended
@@ -495,7 +599,8 @@ The listening test itself has not been done.
 
 ## Not verified
 
-- Download time over a real network, and a real Listen-mode integration.
+- Download time over a real network. The Listen-mode integration (LT-214) is
+  verified only on the local stage, in Chrome on this Mac.
 - Any browser other than Chrome 156, and any device other than this M2 Max
   (no phones, no low-end laptops, no Windows).
 - A quiet-GPU Ollama run: the one window (LT-215) closed after a minute.
