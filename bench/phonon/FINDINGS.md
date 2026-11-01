@@ -422,9 +422,10 @@ and re-rendering when Speech Text changes. Prices are for c8g.4xlarge
 come from third-party price trackers checked 2026-11-01, not from AWS. The
 speed per vCPU assumes a Graviton4 vCPU matches one here; that was not
 measured. The parallel runs' speed uses the longest process's timed window;
-they did not record when each window started. The whole batch, model loads
-included, took at most 4% longer, so 1.7x per vCPU is at most 4% high
-(1.65–1.71x, about 186,000 vCPU-hours in the central case at the low end).
+they did not record when each window started. The eight-process 31M batch,
+model loads included, took 3.7% longer than its longest window, so 1.7x per
+vCPU is at most about 4% high (1.65–1.71x, about 186,000 vCPU-hours in the
+central case at the low end).
 `ptts_cpu.py` now records each window's start and end for any rerun.
 
 What that means for the options asked about:

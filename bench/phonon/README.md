@@ -78,8 +78,9 @@ python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436,
 podman run --rm -v "$PWD":/repo -v "$PWD/models":/models:ro python:3.12-slim sh -c \
   "pip install -q ptts==0.6.0 && python /repo/bench/phonon/ptts_cpu.py \
    --model /models/31m-en-hf --threads 4 --quant q8_0 --label 31m-q8"
-# many one-thread processes at once: same command with --threads 1, started
-# K times in parallel, labels par-31m-q8-k<K>-p<i>
+# many one-thread processes at once: one container that starts the same
+# command K times in the background with --threads 1 and waits for all of
+# them, labels par-31m-q8-k<K>-p<i>
 
 python3 bench/phonon/throughput.py     # out/throughput.json + corpus estimate
 ```
