@@ -114,13 +114,13 @@ way; CER is the better guide there.
    SharedArrayBuffer present). Worth one timing on a quiet machine before
    anyone opens a ticket; it is outside LT-213.
 3. **Phonon can derail on long formulas.** s18 is a 57-word run of repeated
-   equilibrium-constant expressions. A clean reading of it scores 12–15 word
-   errors with almost no character errors (Whisper writes the formulas its own
+   equilibrium-constant expressions. A clean reading of it scores about 8–17
+   word errors with few character errors (Whisper writes the formulas its own
    way), which is what Supertonic and Ollama's 31m runs get. Path A wasm fp32
    drifted into nonsense on it in 2 of 4 runs (56 and 83 character errors;
    the second is that run's 0.111 WER), and so did wasm q4, WebGPU q4f16 in 2
    of 3 runs (one looped: 120 word errors, the 0.290 WER outlier) and 40m-en.
-   WebGPU fp32 and q4 read it cleanly every time. Shipping path A needs a
+   WebGPU q4 read it cleanly in all 3 runs, and WebGPU fp32 in its one run. Shipping path A needs a
    guard (stop and retry, or fall back, when audio runs far past the length
    the text predicts) and probably a lower sampling temperature.
 4. **Double normalisation.** Ollama's Phonon runtime normalises text itself.
