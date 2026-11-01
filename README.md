@@ -83,9 +83,9 @@ This is the handoff checklist. Everything below is what the staging mirror does 
 generalised. Budget about a day for a first deployment, most of it waiting on model
 conversion and the first book build.
 
-The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in eight files
-under `src/`, in two under `pipeline/`, in `vite.config.js` and in the staging
-scripts (`grep -rl _assets/tts src pipeline scripts vite.config.js` lists them). Serve it at
+The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in files
+under `src/` and `pipeline/`, in `vite.config.js` and in several scripts
+(`grep -rl _assets/tts src pipeline scripts vite.config.js` lists them). Serve it at
 that path, or change every one of them in a single commit.
 
 ### 1. Build the reader and stage the models

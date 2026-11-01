@@ -247,4 +247,29 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen.at(-1)).toBe('b');
     expect(seen).not.toContain('c');
   });
+
+  // The guard withdrew what the next sentence had streamed and is rendering it
+  // again. `first` had already resolved on the withdrawn chunk, so its turn
+  // found nothing to play and passed it over, unmarked.
+  it('a sentence reset before its turn waits for its retry instead of being passed over', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    const b = engine.jobs.get('b');
+    b.chunk();
+    b.reset();
+    await tick();
+
+    live(context).forEach((n) => n.end());
+    await tick();
+    expect(seen).not.toContain('c');
+
+    b.chunk(); await tick();
+    expect(seen.at(-1)).toBe('b');
+    expect(live(context)).toHaveLength(1);
+    expect(skipped).toEqual([]);
+  });
 });
+

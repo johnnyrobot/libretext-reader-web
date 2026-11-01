@@ -3,7 +3,7 @@
  * Supertonic (LT-214).
  *
  * Phonon speaks English only, and the nine translation tracks stay on
- * Supertonic. Supertonic is a 383 MB download, so it is not created until a
+ * Supertonic. Supertonic is a ~380 MB download, so it is not created until a
  * reader picks a translation -- `prepare()` -- and a reader who only ever
  * listens in English never fetches a byte of it.
  *

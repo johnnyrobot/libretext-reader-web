@@ -43,7 +43,7 @@ export const SAMPLE_RATE = 24000;
 export const VOICES = Object.freeze({ M1: 'qIxlZ7Ei8KvWlyQH', F1: 'bXwrkHhURL1VFJdG' });
 
 // Sampling settings calibrated on the LT-213 bench set (bench/phonon/FINDINGS.md,
-// "LT-214 calibration"). DURATION_DELTA slows Phonon from ~18 to ~14.3
+// "LT-214 calibration"). DURATION_DELTA slows Phonon from ~16.2 to ~14.3
 // characters a second, Supertonic's default rate (14.1); it is also what made
 // s18 read cleanly. TEMPERATURE 0.1 tied 0.3 and 0.2 within run-to-run noise
 // and had the lowest mean WER; 0.05 was worst and once cut s16 short.

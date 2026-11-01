@@ -43,6 +43,13 @@ async function loadSpeechManifest() {
   return res.json();
 }
 
+/** One language's entry in the menu. Its size includes the translation voice
+ * until that is stored, and it says "downloaded" only once nothing is left to
+ * fetch: the language's model AND the voice (LT-214). */
+export function languageOption({ code, bytes }, modelStored, voiceBytes) {
+  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + voiceBytes, stored: modelStored && !voiceBytes };
+}
+
 /**
  * Switch the speaking voice mid-page.
  *
@@ -69,13 +76,6 @@ async function loadSpeechManifest() {
  * Exported because the ordering is the contract, and a contract nothing can test
  * is a comment. See tests/reader-voice.test.js.
  */
-/** One language's entry in the menu. Its size includes the translation voice
- * until that is stored, and it says "downloaded" only once nothing is left to
- * fetch: the language's model AND the voice (LT-214). */
-export function languageOption({ code, bytes }, modelStored, voiceBytes) {
-  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + voiceBytes, stored: modelStored && !voiceBytes };
-}
-
 export function changeVoice(player, engine, voice) {
   player.pause();
   player.flushAudio();
@@ -215,6 +215,9 @@ export async function enterReaderMode() {
   const progress = showProgress();
   let provider = 'wasm';
   try {
+    // No lang: the page is always read in English first. pipeline/tts_manifest.py
+    // never passes one, so every manifest says 'en'; a non-English source book
+    // would need its own engine route before it could ship.
     ({ provider } = await engine.init({
       voice: 'M1',
       onProgress: (p) => progress.update(p),

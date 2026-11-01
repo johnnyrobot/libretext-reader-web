@@ -575,6 +575,11 @@ It read these correctly as they were: `&`, `<`, `>`, `+`, `°C`/`°F`, `#1`,
 price or temperature reads the same on both voices). After the change every
 probe item was heard correctly.
 
+`#` before a number and `~` are still spoken by the normalizer although
+Phonon read `#1` correctly: the number pass that follows turns the digits into
+words, which would leave "#one" or "~five", a mark Phonon was never heard
+reading. They are spelt out for the same reason as `€`.
+
 ### In the reader
 
 `tests/e2e/playback.spec.js`, Chrome 156 against the local stage (not

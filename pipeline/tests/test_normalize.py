@@ -504,3 +504,20 @@ def test_a_sign_without_an_amount_is_not_read_as_one(source, expected):
 )
 def test_marks_read_in_context(source, expected):
     assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # The unit agrees with the whole amount, not with the pence.
+        ("It costs £1.01 now.", "It costs one pound and one penny now."),
+        ("It costs $2.50 now.", "It costs two dollars and fifty cents now."),
+        # A strict inequality is one relation, not "does not equal" then "equals".
+        ("Check that x !== y here.", "Check that x does not equal y here."),
+        # An initialism that ends the text keeps its full stop, even when the
+        # source ends with a newline.
+        ("They moved to the U.S.\n", "They moved to the U S."),
+    ],
+)
+def test_reads_amounts_relations_and_initialisms_whole(source, expected):
+    assert normalize_for_speech(source) == expected

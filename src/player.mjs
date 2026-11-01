@@ -97,6 +97,12 @@ export function createPlayer({
       },
       onReset: () => {
         if (!current()) return;
+        // `first` resolved on a chunk that is now withdrawn. A sentence not yet
+        // playing must wait for the retry's first chunk, or its turn finds
+        // nothing to play and passes it over.
+        if (stream.chunks.length) {
+          stream.first = new Promise((resolve) => { stream.arrived = resolve; });
+        }
         stream.chunks = [];
         stream.listener?.reset();
       },

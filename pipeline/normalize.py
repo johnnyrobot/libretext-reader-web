@@ -69,7 +69,7 @@ EQUALS_RE = re.compile(r"\s*(?<![<>!=])=(?!=)\s*")
 # garbled ("≤" was heard as "that's E"). Before EQUALS_RE, so none of them
 # leaves an "=" behind for it. `<` and `>` alone Phonon reads correctly.
 RELATIONS = [
-    (re.compile(r"\s*(?:!=|≠)\s*"), " does not equal "),
+    (re.compile(r"\s*(?:!==?|≠)\s*"), " does not equal "),
     (re.compile(r"\s*(?:<=|≤)\s*"), " is less than or equal to "),
     (re.compile(r"\s*(?:>=|≥)\s*"), " is greater than or equal to "),
     (re.compile(r"\s*≈\s*"), " approximately equals "),
@@ -329,7 +329,8 @@ def _currency(match: re.Match) -> str:
     if "." in amount:
         whole, minor = amount.split(".", 1)
         minor = int(minor.ljust(2, "0")[:2])
-        phrase = f"{_int_to_words(int(whole or 0))} {many}"
+        value = int(whole or 0)
+        phrase = f"{_int_to_words(value)} {one if value == 1 else many}"
         if minor:
             phrase += f" and {_int_to_words(minor)} {minor_one if minor == 1 else minor_many}"
         return phrase
@@ -339,7 +340,7 @@ def _currency(match: re.Match) -> str:
 
 def _initialism(match: re.Match) -> str:
     letters = " ".join(match.group(1).replace(".", ""))
-    return letters + ("." if match.end() == len(match.string) else "")
+    return letters + ("." if not match.string[match.end():].strip() else "")
 
 
 def _cleanup_speech_punctuation(text: str) -> str:
