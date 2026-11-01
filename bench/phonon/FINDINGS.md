@@ -10,19 +10,25 @@ is made. Sources for every licence and model fact are in
 **Partly.** Replace Supertonic for **English only**, with the Apache-licensed
 `phonon-31m-en` run **in the reader's browser (path A)** on the Transformers.js
 and ONNX Runtime Web 1.26 the reader already ships for translation. Here it was
-2.5–4x faster than Supertonic in back-to-back runs (4.4x on the medians),
-produced its first audio frame in about 30 ms instead of 7–14 s (playing
+about 2.3x faster than Supertonic back to back on a quiet CPU (2.5–4x when
+the Mac was busy), produced its first audio frame in about 25 ms instead of
+4.7 s quiet or 7–14 s busy (playing
 frames as they arrive is not built yet), downloads 41–161 MB of model instead
 of about 409 MB (plus a ~15–26 MB runtime for a listener who has not used
 translation), and has a similar word error rate; naturalness (UTMOS) is a
 hair lower, and it can derail on very long formulas. The nine translation
 tracks stay on Supertonic: Phonon has no voice for six of them, and the models
-that cover fr/de/es are CC BY-NC, which is the Chief's call.
+that cover fr/de/es are CC BY-NC (allowed while Listen mode stays free, under
+the conditions in [Licences](#licences); a later ticket).
 
 Path B (pre-render through Ollama at build time) works and is the fastest to
 make, but costs about 310 MB of Opus per book per language and a rebuild on
 every text change. Path C (the reader's own Ollama) is feasible only as an
-opt-in for people who already run Ollama.
+opt-in for people who already run Ollama. Pre-rendering every LibreTexts page
+in English would be about 306,000 hours of audio and 2.3–3.3 TB of Opus:
+about five months on this Mac's GPU, or about 179,000 vCPU-hours on rented
+servers (see
+[Throughput and the whole corpus](#throughput-and-the-whole-corpus)).
 
 ## What was measured
 
@@ -62,7 +68,9 @@ r4, r4, r5).
 ## Comparison
 
 Median (range over runs). Memory is the increase over an idle browser
-(~860 MB) or idle Ollama (~127 MB).
+(~860 MB) or idle Ollama (~127 MB). These runs shared a busy Mac; the two
+quiet LT-215 runs (Supertonic r6, path A r5) are kept apart in
+[Quiet re-timing](#quiet-re-timing-lt-215).
 
 | Engine | Runs | WER | CER | UTMOS | Warm RTF | Warm TTFA | Cold TTFA | Download | Memory over idle | Languages | Licence |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -111,21 +119,24 @@ way; CER is the better guide there.
    Supertonic's worker returns whole sentences, so its TTFA is the whole
    sentence's synth time. Back to back, Supertonic r4 ran at RTF 1.05, path A
    wasm fp32 r4 at 0.27 and Supertonic r5 at 0.68: path A was 2.5–4x faster in
-   the same conditions, and 4.4x on the medians over all runs.
-2. **Supertonic ran slower here than its README says: RTF 0.68–1.21 measured,
-   0.41 claimed.** It varied with whatever else the shared Mac was doing, so
-   this is not shown to be a regression. The bundled ORT 1.17.3 worker has no
+   the same conditions, and 4.4x on the medians of those loaded runs. On a quiet CPU
+   (LT-215, below) the gap is smaller: Supertonic r6 at 0.41 and path A r5 at
+   0.18, back to back, so about 2.3x, with first audio in 0.02 s against 4.7 s.
+2. **Supertonic ran slower here than its README says, because the Mac was
+   busy: RTF 0.68–1.21 under load, 0.41 claimed, and 0.41 on a quiet CPU**
+   (r6, LT-215, see [Quiet re-timing](#quiet-re-timing-lt-215)). It is not a
+   regression. The bundled ORT 1.17.3 worker has no
    WebGPU backend ("[webgpu] backend not found"), and threads gave only ~10%
    over one thread. Ruled out: a stale stage build (a fresh build is
    byte-identical) and missing cross-origin isolation (isolated, 12 cores,
-   SharedArrayBuffer present). Worth one timing on a quiet machine before
-   anyone opens a ticket; it is outside LT-213.
+   SharedArrayBuffer present). No ticket is needed.
 3. **Phonon can derail on long formulas.** s18 is a 57-word run of repeated
    equilibrium-constant expressions. A clean reading of it scores about 8–17
    word errors with few character errors (Whisper writes the formulas its own
    way), which is what Supertonic and Ollama's 31m runs get. Path A wasm fp32
-   drifted into nonsense on it in 2 of 4 runs (56 and 83 character errors;
-   the second is that run's 0.111 WER), and so did wasm q4, WebGPU q4f16 in 2
+   drifted into nonsense on it in 2 of its 4 loaded runs (56 and 83
+   character errors; the second is that run's 0.111 WER; quiet r5 read it
+   cleanly), and so did wasm q4, WebGPU q4f16 in 2
    of 3 runs (one looped: 120 word errors, the 0.290 WER outlier) and 40m-en.
    WebGPU q4 read it cleanly in all 3 runs, and WebGPU fp32 in its one run. Shipping path A needs a
    guard (stop and retry, or fall back, when audio runs far past the length
@@ -139,9 +150,13 @@ way; CER is the better guide there.
    0.086, each scored against the text it was given, so not strictly like for
    like), so keep feeding Speech Text; for Ollama, Speech Text would need to
    spell out every number.
-5. **The 40m English model is not better than 31m.** `40m-en` scored worse on
-   WER (0.107) and once repeated a phrase ("those are men"), and it is
-   CC BY-NC. Nothing argues for it.
+5. **The 40m English model is not better than 31m.** In one run each through
+   Ollama, `40m-en` scored worse on WER (0.107 vs 0.086) and CER (0.031 vs
+   0.013), the same on UTMOS (4.42 both), and once repeated a phrase ("those
+   are men"). It is also slower (RTF 0.017 vs 0.014 through Ollama, and about 15% more CPU
+   per second of audio under Gradium's runtime (13–16% across the runs), see
+   [below](#gradiums-runtime-on-plain-cpu-linux)). Nothing argues for it, so
+   English stays on the Apache 31M.
 6. **Quantisation.** On WebGPU, q4 cuts memory by about 30% (1038 vs 1456 MB
    over idle) and the download to 67 MB, at a small UTMOS cost (4.31 vs 4.43)
    and no WER cost; wasm q4 was worse (0.139). fp32 on wasm is the safe default; q4 on WebGPU is the small
@@ -196,6 +211,27 @@ Supertonic voices the reader ships (M1, F1).
 - No ONNX export of any 40m model exists, so path A is English-only today
   regardless of licence.
 
+**The rule that applies** (the Chief, 2026-11-01 10:35 PT, after Johnny said
+books, Listen mode and voices are public with no sign-in or paywall): the
+CC BY-NC 40m checkpoints may ship while Listen mode stays free, on these
+conditions:
+
+1. Listen mode and the voice download stay free: no paywall, ads or
+   member-only access, and never sold.
+2. English defaults to the Apache 31M unless a 40m is clearly better, and the
+   notes say by how much. Here it is not: Finding 5.
+3. Credit "Phonon by Gradium, CC BY-NC 4.0" wherever an NC voice is offered.
+   The README must then say those weights are not under the repo's MIT
+   licence (it does not yet, as no NC voice ships); they are fetched at stage
+   time and never committed.
+4. Path B audio made by an NC model is labelled CC BY-NC 4.0.
+5. Before an NC voice first goes live, Johnny asks Gradium to confirm the use
+   is noncommercial.
+
+So the recommendation (English on the Apache 31M) needs none of 3–5. They
+apply to the later fr/de/es ticket, and to any pre-rendered audio made with a
+40m model.
+
 ## The three paths
 
 **A, in the browser.** Recommended for English. A module worker imports
@@ -233,6 +269,213 @@ It needs the reader to install Ollama and pull a model, and the page to reach
 `localhost:11434` (CORS / Private Network Access). An opt-in for enthusiasts,
 not a default.
 
+## Throughput and the whole corpus
+
+Added 2026-11-01 for two follow-up questions: how long would voicing every
+LibreTexts page in English take (on a Mac Studio, in parallel), and what would
+Colab or a GPU cloud such as RunPod or Brev cost. Nothing was rented. The
+summary is `out/throughput.json` (`throughput.py`).
+
+### Ollama, many requests at once
+
+`concurrency.py` sends the 20 warm items N at a time to Ollama's
+`/v1/audio/speech`. Ollama here runs `OLLAMA_NUM_PARALLEL=1` (its server
+log), so one server makes one stream and queues the rest.
+
+Every run had another app holding the GPU at 87–100% before it started
+(another bot's browser kept it at 92–94% for over an hour), so these are
+lower bounds. One-server runs swing a lot from run to run. In the bench
+itself, one request at a time ran at 72x (RTF 0.0139). GPU utilisation
+was 98–100% in every row. One-server rows at 1–8 in flight are the range
+over three runs; the rest ran once. One-server RSS is from the run with no
+other servers up (the other two had idle extra servers running):
+
+| `phonon:en` | In flight | Combined | Latency, median / p95 | First audio, median | Ollama RSS | Loaded (`/api/ps`) |
+|---|---|---|---|---|---|---|
+| 1 server | 1 | 42–55x | 0.16–0.21 / 0.27–0.44 s | 0.02 s | 255 MB | 114 MB |
+| 1 server | 2 | 31–49x | 0.38–0.44 / 0.53–1.9 s | 0.21–0.24 s | | |
+| 1 server | 4 | 28–31x | 0.83–0.86 / 2.9–5.1 s | 0.64–0.66 s | | |
+| 1 server | 8 | 27–51x | 1.4–1.7 / 1.7–6.2 s | 1.2–1.6 s | | |
+| 1 server | 16 | 50x | 2.9 / 3.4 s | 2.8 s | 257 MB | 114 MB |
+| 3 servers | 3 | 63x | 0.42 / 0.65 s | 0.05 s | 595 MB | 342 MB |
+| 3 servers | 6 | 66x | 0.82 / 1.14 s | 0.49 s | | |
+| 3 servers | 12 | 68x | 1.5 / 2.0 s | 1.2 s | | |
+| **5 servers** | **5** | **81x** | 0.52 / 0.85 s | 0.07 s | 935 MB | 570 MB |
+| 5 servers | 10 | 77x | 1.2 / 1.6 s | 0.67 s | | |
+| 5 servers | 20 | 60x | 2.7 / 5.3 s | 2.1 s | | |
+
+`phonon:40m-en`, one server, one run: 31x alone and 21–39x at 2–16 in flight,
+latency 0.23 s rising to 3.7 s, about 410 MB RSS, 216 MB loaded.
+
+- **One server does not get faster with more requests in flight.** It queues
+  them: first audio goes from 0.02 s alone to 2.8 s with 16 waiting.
+- **More servers do help.** Three servers made 63–68x and five made 81x,
+  against 42–55x for one server under the same load. Sending more requests
+  than there are servers only adds waiting. Each server loads its own copy of
+  the model (114 MB on `/api/ps`, about 170 MB more RSS).
+- Where this levels off on a quiet GPU was not measured. RSS is the sum over
+  every `ollama` process and leaves out Metal buffers.
+- The 81x is the best single row, one burst of 40 requests (4.6 s); the
+  corpus estimate rests on it.
+- The extra servers ran on ports 11435–11438 and were stopped afterwards.
+  The usual server on 11434 was one of the three and five, used as it was
+  and never restarted.
+
+### Gradium's runtime on plain CPU (Linux)
+
+`ptts_cpu.py` runs Gradium's own runtime (the `ptts` 0.6.0 PyPI wheel,
+manylinux aarch64, no Ollama) in a `python:3.12-slim` arm64 container under
+podman on this Mac. The VM had 10 vCPUs and 12 GB; its load average
+was 1.3–11.4 during the runs, from the runs themselves and a busy host, and the VM
+cannot choose performance over efficiency cores, so treat these as a floor for
+this machine. Same 20 warm items, one warm-up first. The 31M is
+`gradium/phonon-31m-en`. The 40M English repo is gated, so its checkpoint was
+rebuilt from Ollama's `phonon:40m-en` blobs; the same rebuild of `phonon:en`
+is byte-identical to `gradium/phonon-31m-en` (all 185 tensors), so the method
+holds. The 40M ran with its first catalogue voice (Alfie). Weights stayed out
+of the repo.
+
+One process, set to 1, 4 or 8 threads. Times real time, with seconds of audio
+per CPU-second in brackets:
+
+| Model | 1 thread | 4 threads | 8 threads |
+|---|---|---|---|
+| 31M f32 | 6.6x (3.9) | 10.5x (2.5) | 9.2x (1.4) |
+| 31M q8 | 6.5x (4.7) | 11.5x (2.9) | 11.0x (1.7) |
+| 40M f32 | 6.4x (3.4) | 8.2x (2.0) | 9.2x (1.3) |
+| 40M q8 | 6.2x (4.1) | 10.3x (2.5) | 9.8x (1.4) |
+
+A one-thread process keeps 1.4–1.9 cores busy (the decoder runs on its own
+worker), and more threads mostly stop helping at about 4 (only the 40M f32
+gained a little more at 8). For bulk rendering the
+better shape is many one-thread processes side by side:
+
+| q8, one thread each | 4 processes | 8 processes |
+|---|---|---|
+| 31M | 14.4x combined, 5.5 cores busy | 17.1x, 9.4 cores busy (VM full) |
+| 40M | 13.3x, 5.9 cores busy | 15.0x, 9.5 cores busy |
+
+So with all 10 vCPUs in use, each makes about 1.7 seconds of audio per
+second for the 31M (1.5 for the 40M, which needs about 15% more CPU per
+second of audio). Per CPU-second actually used it is 1.8, but a rented vCPU
+is billed busy or idle, so the cost lines use 1.7.
+Gradium's README claims 26x on one MacBook Air M5 core and 41x on four,
+"CPU + KleidiAI": about four times the 6.2–6.6x a one-thread process made
+here. The wheel's
+`ptts.build_info()` lists NEON only. Whether the gap is the M5's SME2
+(KleidiAI), the VM or the busy host was not tested.
+
+### GPU and batching on Linux
+
+From Gradium's README, CLI guide and server guide (xn-ptts `main`, read
+2026-11-01; `notes/sources.md`, Q6):
+
+- **GPU.** The prebuilt Linux downloads, the Docker image
+  (`ghcr.io/gradium-ai/ptts-openai-server`, amd64 and arm64) and the PyPI
+  wheels run on the CPU only; `ptts.available_devices()` returned `['cpu']`
+  here. Only the Apple Silicon download includes Metal (f32 weights with
+  `--device auto`). CUDA or Vulkan needs a source build with that Cargo
+  feature, which was not tried. Quantised weights such as q8 always run on
+  the CPU. Ollama's Phonon needs Apple Silicon.
+- **Batching.** None across requests: each generation runs at batch size 1.
+  The decoder only groups the queued latents of one stream. The
+  OpenAI-compatible server runs one generation at a time by default;
+  `--max-concurrent-requests N` runs N side by side and answers HTTP 429
+  beyond that.
+
+So a rented GPU runs Phonon only after a CUDA build of our own, one stream
+per generation, and how fast that is was not measured.
+
+### The whole corpus
+
+Inputs, all estimates:
+
+- **Pages:** 1,304,882 in about 3,630 books, from the Download Center census
+  (`libretexts-research/2026-07-20-rebuild-spec/research/public-corpus-url-census`,
+  marked unverified there).
+- **Speech Text per page:** the four books staged here (the ticket's
+  `.rebuild/site-new` figure is the low case's mean; its median is 7,407, so a
+  few long pages pull the mean up). chem_4b,
+  human_relations and math_elem_teachers average 11,136 characters over 255
+  pages; adding social_psychology gives 13,668 over 330 pages;
+  social_psychology alone is 22,275.
+- **Speaking rate:** 16.17 characters a second (31M, `storage.json`).
+
+| | Low | Central | High |
+|---|---|---|---|
+| Characters per page | 11,136 | 13,668 | 22,275 |
+| Audio | 250,000 h | 306,000 h | 499,000 h |
+| WAV, 24 kHz 16-bit | 43 TB | 53 TB | 86 TB |
+| Opus 16 kbit/s | 1.9 TB | 2.3 TB | 3.7 TB |
+| Opus 24 kbit/s | 2.7 TB | 3.3 TB | 5.4 TB |
+| This Mac, Ollama GPU, 5 servers (81x, GPU shared) | 128 days | 158 days | 257 days |
+| This Mac, CPU in the Linux VM (17x) | 608 days | 746 days | 1,216 days |
+| CPU server: vCPU-hours at 1.7x per vCPU | 146,000 | 179,000 | 292,000 |
+| … at AWS Graviton4 spot / on-demand prices | $2,700 / $5,800 | $3,400 / $7,100 | $5,500 / $11,600 |
+
+Storage sizes use the bitrates measured on the bench audio (`storage.json`;
+Opus 16 kbit/s came out at 16.6, and is 214 MB for social_psychology against
+310 MB at 24). Nobody has listened to the 16 kbit/s files. The estimate is the
+31M in English, rendering only. Not included: encoding, storage, transfer,
+and re-rendering when Speech Text changes. Prices are for c8g.4xlarge
+(16 vCPU) in us-east-1, $0.638 an hour on demand and about $0.30 spot. They
+come from third-party price trackers checked 2026-11-01, not from AWS. The
+speed per vCPU assumes a Graviton4 vCPU matches one here; that was not
+measured. The parallel runs' speed uses the longest process's timed window;
+they did not record when each window started. The eight-process 31M batch,
+model loads included, took 3.7% longer than its longest window, so 1.7x per
+vCPU is at most about 4% high (1.65–1.71x, about 186,000 vCPU-hours in the
+central case at the low end).
+`ptts_cpu.py` now records each window's start and end for any rerun.
+
+What that means for the options asked about:
+
+- **Mac Studio M1 Ultra, in parallel.** Not measured. On this Mac, five
+  Ollama servers sharing a busy GPU made 81x, so the central case is about
+  five months. The M1 Ultra's GPU has 64 cores to this one's 38, but it is
+  an older generation and Phonon runs one small stream per server, so how far
+  more servers would scale there is unknown. Its 20 CPU cores, at the 1.7x
+  per core measured here, would add about 34x. A guess, not a measurement:
+  if its GPU matched this one's 81x and the CPUs added 34x at the same time,
+  about 115x is roughly 110 days (3.6 months) for the central case. The
+  native macOS `ptts` build with Metal is another route that was not tried.
+- **Google Colab.** A session gets a few vCPUs and one GPU, with time limits.
+  Phonon runs there on the CPU unless built for CUDA. At 1.7x per vCPU the
+  central case is about 90,000 two-vCPU session-hours, so it is not a fit
+  at any price; no cost is given.
+- **RunPod or Brev GPUs.** Both rent NVIDIA GPUs, so both need the untested
+  CUDA build, which runs one stream per generation. No speed was measured,
+  so no time or cost is given for either. It is
+  worth one short paid test only if a CPU fleet is too slow.
+- **A CPU fleet** (RunPod CPU pods, AWS or similar). This is the
+  best-understood option: about 179,000 vCPU-hours in the central case. That
+  is about 4.7 days on 100 machines of 16 vCPUs, and about $3,400–7,100 at
+  Graviton4 prices. RunPod does not publish a CPU rate. A comparison site
+  implies about $0.03 per vCPU-hour (about $5,400), not verified.
+
+### Quiet re-timing (LT-215)
+
+LT-215 asked for one Supertonic timing with no other benchmark or browser
+model running. Question Studio Dev held its LT-207 queue so the GPU would
+go idle at 13:21:44 PT. Load average was 1.6 when Supertonic r6 started
+at 13:22. Path A wasm fp32 r5 ran straight after, at a load average of
+3.3. Both run in wasm on the CPU. At 13:22:52 another LT-207 queue
+started a GPU stage, so the GPU was busy again, but neither engine uses
+the GPU.
+
+| Run | Load avg at start | Warm RTF | First audio, median | Cold first audio | WER | CER | UTMOS |
+|---|---|---|---|---|---|---|---|
+| Supertonic M1 r6 | 1.6 | 0.405 | 4.65 s | 4.86 s | 0.072 | 0.009 | 4.39 |
+| Path A wasm fp32 r5 | 3.3 | 0.178 | 0.024 s | 0.96 s | 0.070 | 0.015 | 4.44 |
+
+So Supertonic matches its README's 0.41 on a quiet CPU, and the earlier
+0.68–1.21 was the shared machine; no diagnosing ticket. Path A is still
+about 2.3x faster in real time and starts speaking about 195 times sooner.
+s18 ran 21.8 s for its 329 characters in r5 (15 a second), a normal length. The Ollama concurrency rows above were meant to
+be re-run in the same window, but the GPU was back at 86–100% within a
+minute, so a fourth one-server run (43–56x) changes nothing and is not
+kept.
+
 ## Listening test
 
 A blind A/B set of all 21 items: Supertonic M1 (r4) against the recommended
@@ -255,12 +498,17 @@ The listening test itself has not been done.
 - Download time over a real network, and a real Listen-mode integration.
 - Any browser other than Chrome 156, and any device other than this M2 Max
   (no phones, no low-end laptops, no Windows).
-- Whether the Supertonic RTF gap is a regression or this machine: no run was
-  on a quiet machine.
+- A quiet-GPU Ollama run: the one window (LT-215) closed after a minute.
 - The human listening test.
 - Commercial terms for the 40m models, and whether CC BY-NC reaches audio.
 - Opus playback in Safari for path B.
 - Path C on Windows or Linux, and from a deployed origin.
+- The corpus page count (an unverified census) and characters per page beyond
+  the four staged books.
+- Any machine other than this M2 Max for the throughput numbers: no M1 Ultra,
+  no Graviton or x86 server, no GPU other than Apple's. Phonon on CUDA.
+- The cloud prices, which come from third-party trackers.
+- How 16 kbit/s Opus sounds.
 
 ## Note on the prototype skill
 

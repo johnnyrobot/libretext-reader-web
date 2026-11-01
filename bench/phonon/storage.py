@@ -31,6 +31,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "bench/phonon/out"
 # name -> (extension, ffmpeg codec arguments)
 CODECS = {
+    "wav-24k": ("wav", ["-c:a", "pcm_s16le", "-ar", "24000"]),
+    "opus-16k": ("ogg", ["-c:a", "libopus", "-b:a", "16k", "-application", "voip"]),
     "opus-24k": ("ogg", ["-c:a", "libopus", "-b:a", "24k", "-application", "voip"]),
     "opus-32k": ("ogg", ["-c:a", "libopus", "-b:a", "32k"]),
     "aac-48k": ("m4a", ["-c:a", "aac", "-b:a", "48k"]),

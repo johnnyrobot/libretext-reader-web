@@ -61,6 +61,30 @@ python3 bench/phonon/storage.py --engine phonon-en     # out/storage.json
 python3 bench/phonon/listening_set.py                  # listening/ + listening-key.csv
 ```
 
+### Throughput and the corpus estimate
+
+Run these on a quiet machine: the Ollama timings read the whole GPU, so
+another app using it shows up in the numbers.
+
+```sh
+# Ollama, 1-16 requests at once; one server, then several (extra servers on
+# other ports share the models folder: OLLAMA_HOST=127.0.0.1:11435 ollama serve)
+python3 bench/phonon/concurrency.py --model phonon:en --ports 11434 --label quiet
+python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436 --conc 3,6,12 --label 3srv
+python3 bench/phonon/concurrency.py --model phonon:en --ports 11434,11435,11436,11437,11438 --conc 5,10,20 --label 5srv
+
+# Gradium's runtime on Linux CPU, in an arm64 container. Weights folders go
+# under models/ (git-ignored); the 40m is gated on Hugging Face.
+podman run --rm -v "$PWD":/repo -v "$PWD/models":/models:ro python:3.12-slim sh -c \
+  "pip install -q ptts==0.6.0 && python /repo/bench/phonon/ptts_cpu.py \
+   --model /models/31m-en-hf --threads 4 --quant q8_0 --label 31m-q8"
+# many one-thread processes at once: one container that starts the same
+# command K times in the background with --threads 1 and waits for all of
+# them, labels par-31m-q8-k<K>-p<i>
+
+python3 bench/phonon/throughput.py     # out/throughput.json + corpus estimate
+```
+
 Each render writes `out/<engine>/<id>.wav` and `out/<engine>/timings.json`;
 `--run N` writes a repeat to `out/<engine>-rN/`. The Mac these ran on was
 shared, so each run records its load average; repeat timing runs and read the

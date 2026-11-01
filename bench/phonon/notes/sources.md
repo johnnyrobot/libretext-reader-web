@@ -200,3 +200,23 @@ Other findings from comparing tensors (registry manifests, by tensor name):
   Supertonic 3's 31 languages are ar, bg, hr, cs, da, nl, en, et, fi, fr, de, el, hi, hu, id, it, ja, ko, lv, lt, pl, pt, ro, ru, sk, sl, es, sv, tr, uk, vi, plus `lang="na"` for language-agnostic input (README "Supported Languages").
 - **Format / runtime:** ONNX only. v1 files: text_encoder.onnx 27.3 MB, duration_predictor.onnx 1.5 MB, vector_estimator.onnx 132.5 MB, vocoder.onnx 101.4 MB, plus 10 voice-style JSONs (F1–F5, M1–M5) (HF tree `Supertone/supertonic`). "Browser Support: onnxruntime-web for client-side inference" (README).
 - **Voice cloning:** none in the open weights. Voice Builder was a hosted service, and "This archive does not include hosted demos or Voice Builder services" (README).
+
+---
+
+## Q6. Gradium's runtime off Apple Silicon, and corpus-scale inputs
+
+Read 2026-11-01 from https://github.com/gradium-ai/xn-ptts (`main`): README.md,
+docs/cli.md, ptts-openai-server/README.md, ptts-pyo3/README.md and the
+sources named below.
+
+- **Speed claims** (README "Performance": "seconds of audio Phonon makes per second of compute"): MacBook Air M5, CPU + KleidiAI, 1 core: 31m 26x, 40m 20x; 4 cores: 41x, 39x; iPhone 16 Pro Neural Engine: 22x, 20x; Raspberry Pi 5, 1 core: 2.3x, 2.2x.
+- **GPU:** "The Apple silicon download also includes Metal: with f32 weights, `--device auto` runs on the GPU … Quantized weights such as `--quant q8` always run on the CPU. The other downloads run on the CPU only. For CUDA or Vulkan, build from source with that backend feature." (docs/cli.md). The server: "`--device auto` uses the GPU backend the binary was built with, if any; quantized weights … run on the CPU only" (ptts-openai-server/README.md). The Docker image is a "CPU image for amd64 and arm64" (README table). The PyPI wheel 0.6.0 reports `available_devices() == ['cpu']` and `build_info()` `{'neon': True, 'avx': False, 'f16c': False}` on linux/arm64 (run here).
+- **Concurrency:** "By default, one speech generation runs at a time. `--max-concurrent-requests N` (or `PTTS_MAX_CONCURRENT_REQUESTS=N`) sets a positive limit. Excess speech requests immediately receive HTTP 429 with OpenAI error code `server_busy`" (ptts-openai-server/README.md).
+- **No cross-request batching:** generation starts from `StepInput::Bos { batch: 1 }`, and the decoder batches only queued latents of one stream (`DECODE_BATCH`) (ptts/src/synth.rs).
+- **Threads:** `ptts.set_num_threads(n)` sizes a global pool and must be called before a model loads (ptts-pyo3/README.md); the CLI takes `--threads`.
+- **40m on Hugging Face is gated;** the 40m-en checkpoint used for the CPU timing was rebuilt from the local Ollama `phonon:40m-en` blobs (each blob is one named safetensors tensor; Q2). Rebuilding `phonon:en` the same way gave 185 tensors byte-identical to `gradium/phonon-31m-en` `model.safetensors`, and the same config.
+- **Ollama parallelism:** `OLLAMA_NUM_PARALLEL:1` in `~/.ollama/logs/server.log` on this Mac.
+- **Corpus size:** "Download Center feeds returned 3,630 unique roots and ≈1,304,882 pages … [UNVERIFIED — single-pass machine estimates …]" (`libretexts-research/2026-07-20-rebuild-spec/research/public-corpus-url-census/RESEARCH.md`, quoting `2026-07-09-unified-platform/Open-Learning-Fabric-System-Design-v2.md:67`).
+- **Prices** (indicative, third-party, checked 2026-11-01; **UNCONFIRMED** against the providers' own pages):
+  - AWS c8g.4xlarge (Graviton4, 16 vCPU) in us-east-1: $0.638/h on demand, $0.322/h spot and $0.435/h 1-year reserved (https://www.devzero.io/instances/aws/c8g.4xlarge); spot $0.2804/h (https://calculator.holori.com/aws/ec2/c8g.4xlarge).
+  - RunPod publishes no per-vCPU CPU rate in its docs (https://docs.runpod.io/pods/pricing.md). A comparison site lists 2 vCPU / 4 GB compute-optimised at $43.20/month (https://getdeploying.com/runpod), about $0.03 per vCPU-hour.

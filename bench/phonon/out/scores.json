@@ -775,5 +775,79 @@
     "utmos": 4.433
    }
   }
+ },
+ "supertonic-M1-r6": {
+  "wer": 0.0724,
+  "cer": 0.0089,
+  "utmos_mean": 4.391,
+  "by_category": {
+   "prose": {
+    "wer": 0.022,
+    "cer": 0.0023,
+    "utmos": 4.508
+   },
+   "numbers": {
+    "wer": 0.0089,
+    "cer": 0.0021,
+    "utmos": 4.473
+   },
+   "dates": {
+    "wer": 0.0,
+    "cer": 0.0,
+    "utmos": 4.488
+   },
+   "citations": {
+    "wer": 0.0556,
+    "cer": 0.0242,
+    "utmos": 4.363
+   },
+   "chemistry": {
+    "wer": 0.2788,
+    "cer": 0.0207,
+    "utmos": 4.08
+   },
+   "math": {
+    "wer": 0.0,
+    "cer": 0.0,
+    "utmos": 4.469
+   }
+  }
+ },
+ "patha-wasm-fp32-r5": {
+  "wer": 0.0704,
+  "cer": 0.0151,
+  "utmos_mean": 4.444,
+  "by_category": {
+   "prose": {
+    "wer": 0.044,
+    "cer": 0.0115,
+    "utmos": 4.46
+   },
+   "numbers": {
+    "wer": 0.0089,
+    "cer": 0.0021,
+    "utmos": 4.458
+   },
+   "dates": {
+    "wer": 0.0,
+    "cer": 0.0,
+    "utmos": 4.504
+   },
+   "citations": {
+    "wer": 0.0694,
+    "cer": 0.0291,
+    "utmos": 4.322
+   },
+   "chemistry": {
+    "wer": 0.2308,
+    "cer": 0.0285,
+    "utmos": 4.455
+   },
+   "math": {
+    "wer": 0.04,
+    "cer": 0.0526,
+    "utmos": 4.451
+   }
+  }
  }
 }

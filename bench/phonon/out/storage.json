@@ -10,6 +10,18 @@
  "page_audio_min_median": 17.64,
  "page_audio_min_max": 92.86,
  "codecs": {
+  "wav-24k": {
+   "kbps_measured": 384.1,
+   "page_mb_median": 50.8,
+   "page_mb_max": 267.47,
+   "book_mb": 4960.1
+  },
+  "opus-16k": {
+   "kbps_measured": 16.6,
+   "page_mb_median": 2.19,
+   "page_mb_max": 11.54,
+   "book_mb": 214.0
+  },
   "opus-24k": {
    "kbps_measured": 24.0,
    "page_mb_median": 3.17,
