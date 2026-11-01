@@ -1,49 +1,49 @@
 {
  "patha-wasm-fp32": {
-  "runs": 3,
+  "runs": 4,
   "stats": {
    "load_s": {
-    "median": 1.153,
+    "median": 1.3945,
     "min": 1.024,
     "max": 1.891
    },
    "cold_ttfa_s": {
-    "median": 1.219,
+    "median": 1.4735,
     "min": 1.081,
     "max": 2.069
    },
    "warm_ttfa_median_s": {
-    "median": 0.0273,
+    "median": 0.0291,
     "min": 0.0266,
-    "max": 0.0309
+    "max": 0.0335
    },
    "warm_rtf_aggregate": {
-    "median": 0.2139,
+    "median": 0.2388,
     "min": 0.2003,
-    "max": 0.2637
+    "max": 0.2716
    },
    "browser_peak_rss_mb": {
-    "median": 2411.8,
+    "median": 2419.45,
     "min": 2409.1,
     "max": 2444.9
    },
    "load_avg_1m": {
-    "median": 9.24,
+    "median": 9.635,
     "min": 8.04,
-    "max": 10.03
+    "max": 11.98
    },
    "wer": {
-    "median": 0.0724,
+    "median": 0.0765,
     "min": 0.0704,
-    "max": 0.0805
+    "max": 0.1107
    },
    "cer": {
-    "median": 0.012,
+    "median": 0.024,
     "min": 0.0089,
-    "max": 0.036
+    "max": 0.0489
    },
    "utmos_mean": {
-    "median": 4.436,
+    "median": 4.423,
     "min": 4.403,
     "max": 4.446
    }
@@ -114,6 +114,28 @@
     "wer": 0.0724,
     "cer": 0.0089,
     "utmos_mean": 4.403
+   },
+   "patha-wasm-fp32-r4": {
+    "engine": "patha-wasm-fp32-r4",
+    "device": "wasm",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 11.98,
+    "load_s": 1.636,
+    "cold_ttfa_s": 1.728,
+    "warm_ttfa_median_s": 0.0335,
+    "warm_rtf_aggregate": 0.2716,
+    "browser_idle_rss_mb": 879.7,
+    "browser_peak_rss_mb": 2427.1,
+    "wer": 0.1107,
+    "cer": 0.0489,
+    "utmos_mean": 4.41
    }
   }
  },
@@ -754,26 +776,26 @@
   }
  },
  "supertonic-M1": {
-  "runs": 3,
+  "runs": 5,
   "stats": {
    "load_s": {
     "median": 2.52,
     "min": 2.205,
-    "max": 2.682
+    "max": 2.747
    },
    "cold_ttfa_s": {
-    "median": 13.824,
-    "min": 13.416,
+    "median": 13.416,
+    "min": 12.542,
     "max": 16.247
    },
    "warm_ttfa_median_s": {
-    "median": 13.8267,
-    "min": 11.2549,
+    "median": 11.2549,
+    "min": 7.2873,
     "max": 13.955
    },
    "warm_rtf_aggregate": {
-    "median": 1.1998,
-    "min": 1.0632,
+    "median": 1.0632,
+    "min": 0.6767,
     "max": 1.2053
    },
    "browser_peak_rss_mb": {
@@ -783,18 +805,18 @@
    },
    "load_avg_1m": {
     "median": 11.3,
-    "min": 10.83,
-    "max": 11.46
+    "min": 10.13,
+    "max": 11.85
    },
    "wer": {
-    "median": 0.0785,
+    "median": 0.0825,
     "min": 0.0765,
-    "max": 0.0825
+    "max": 0.0845
    },
    "cer": {
-    "median": 0.0098,
+    "median": 0.0129,
     "min": 0.0093,
-    "max": 0.016
+    "max": 0.0173
    },
    "utmos_mean": {
     "median": 4.474,
@@ -859,6 +881,44 @@
     "wer": 0.0785,
     "cer": 0.0098,
     "utmos_mean": 4.474
+   },
+   "supertonic-M1-r4": {
+    "engine": "supertonic-M1-r4",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 11.85,
+    "load_s": 2.274,
+    "cold_ttfa_s": 12.542,
+    "warm_ttfa_median_s": 11.2062,
+    "warm_rtf_aggregate": 1.046,
+    "browser_idle_rss_mb": 866.4,
+    "browser_peak_rss_mb": 3051.3,
+    "wer": 0.0825,
+    "cer": 0.0129,
+    "utmos_mean": 4.478
+   },
+   "supertonic-M1-r5": {
+    "engine": "supertonic-M1-r5",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 10.13,
+    "load_s": 2.747,
+    "cold_ttfa_s": 12.837,
+    "warm_ttfa_median_s": 7.2873,
+    "warm_rtf_aggregate": 0.6767,
+    "browser_idle_rss_mb": 880.4,
+    "browser_peak_rss_mb": 3081.4,
+    "wer": 0.0845,
+    "cer": 0.0173,
+    "utmos_mean": 4.467
    }
   }
  }

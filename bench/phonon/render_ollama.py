@@ -37,7 +37,7 @@ API = "http://localhost:11434"
 RATE = 24000
 
 
-def post(path, body, stream=False):
+def post(path, body):
     req = urllib.request.Request(API + path, data=json.dumps(body).encode(),
                                  headers={"Content-Type": "application/json"})
     return urllib.request.urlopen(req, timeout=600)

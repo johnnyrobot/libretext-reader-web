@@ -3,7 +3,7 @@
  * on ONNX Runtime Web via Transformers.js 4.2.0.
  *
  *   python3 bench/phonon/serve.py --port 8789 &
- *   node bench/phonon/render_path_a.mjs --device webgpu --dtype q4f16 [--channel chrome] [--headed]
+ *   node bench/phonon/render_path_a.mjs --device webgpu --dtype q4f16 [--channel chrome] [--headed] [--port 8789]
  *   node bench/phonon/render_path_a.mjs --device wasm --dtype fp32
  *
  * Same measurements as render_supertonic.mjs, except that ttfa_s is the time to
@@ -27,6 +27,7 @@ const args = parseArgs(process.argv.slice(2));
 const DEVICE = args.device ?? 'webgpu';
 const DTYPE = args.dtype ?? (DEVICE === 'webgpu' ? 'q4f16' : 'fp32');
 const CHANNEL = args.channel === true ? undefined : (args.channel ?? 'chrome');
+const PORT = args.port ?? 8789;
 const HERE = dirname(fileURLToPath(import.meta.url));
 // --run N writes a repeat to its own folder (<engine>-rN): Phonon samples, so runs differ.
 const ENGINE = `patha-${DEVICE}-${DTYPE}` + (args.run ? `-r${args.run}` : '');
@@ -47,7 +48,7 @@ const idle = treeRssMb(browserPid);
 let peak = idle;
 const poll = setInterval(() => { peak = Math.max(peak, treeRssMb(browserPid)); }, 100);
 
-await page.goto('http://127.0.0.1:8789/bench/phonon/path-a/index.html', { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:${PORT}/bench/phonon/path-a/index.html`, { waitUntil: 'load' });
 if (!(await page.evaluate(() => self.crossOriginIsolated))) throw new Error('page is not cross-origin isolated');
 mkdirSync(OUT, { recursive: true });
 await page.exposeFunction('saveItem', (id, samples, rate) => writeFileSync(join(OUT, `${id}.wav`), wav(samples, rate)));

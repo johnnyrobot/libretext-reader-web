@@ -10,11 +10,12 @@ is made. Sources for every licence and model fact are in
 **Partly.** Replace Supertonic for **English only**, with the Apache-licensed
 `phonon-31m-en` run **in the reader's browser (path A)** on the Transformers.js
 and ONNX Runtime Web 1.26 the reader already ships for translation. Here it was
-about 5x faster than Supertonic, starts speaking in about 30 ms instead of
-about 14 s, downloads 41–161 MB instead of about 389 MB, and has the same word
-error rate; naturalness (UTMOS) is a hair lower. The nine translation tracks
-stay on Supertonic: Phonon has no voice for six of them, and the models that
-cover fr/de/es are CC BY-NC, which is the Chief's call.
+2.5–4x faster than Supertonic in back-to-back runs (4.4x on the medians),
+started speaking in about 30 ms instead of 7–14 s, downloads 41–161 MB instead
+of about 409 MB, and has a similar word error rate; naturalness (UTMOS) is a
+hair lower, and it can derail on very long formulas. The nine translation
+tracks stay on Supertonic: Phonon has no voice for six of them, and the models
+that cover fr/de/es are CC BY-NC, which is the Chief's call.
 
 Path B (pre-render through Ollama at build time) works and is the fastest to
 make, but costs about 310 MB of Opus per book per language and a rebuild on
@@ -24,9 +25,12 @@ opt-in for people who already run Ollama.
 ## What was measured
 
 21 Speech Text items (`out/sentences.json`, picked by `pick_sentences.py`):
-4 prose, 4 numbers, 3 dates, 3 citations (deployed social_psychology tracks),
-4 chemistry and 3 spoken-math items (the pipeline's own audits). Each engine
-read the same Speech Text. Scores:
+4 prose, 4 numbers, 3 dates, 3 citations from the staged book
+(social_psychology, its deployed speech.json), and 4 chemistry and 3 spoken-math
+items from the pipeline's audit pages for two other books (chem_4b 5.4 and
+math_elem_teachers 6.04, in `demo-out/`), because social_psychology has no
+chemistry or math and only it is staged locally. Each engine read the same
+Speech Text. Scores:
 
 - **WER**: Whisper large-v3-turbo (mlx) transcript against the Speech Text,
   both through Whisper's English normaliser.
@@ -36,10 +40,17 @@ read the same Speech Text. Scores:
 - **RTF**: synth seconds / audio seconds, warm items only (item one is cold).
 - **TTFA**: seconds from request to first audio.
 - **Peak memory**: peak RSS of the browser's (or Ollama's) whole process tree.
+  For Ollama this leaves out Metal buffers; `/api/ps` reports the loaded model
+  at 114 MB (`en`), 216 MB (`40m-en`) and 133 MB (`multilingual`), all on the
+  GPU, which may come on top.
 
-Machine: M2 Max, Chrome 156 headless, Ollama 0.40.13. The Mac was shared (load
-average 3–11 during runs; each run records `load_avg_1m`). Phonon samples at
-temperature 0.3, so the key engines were run three times; ranges are shown.
+Machine: M2 Max, Chrome 156 headless, Ollama 0.40.13. The Mac was shared
+(another Chrome and a VM were busy throughout). Each run records `load_avg_1m`
+at its end, but that includes the run's own eight threads, so it is a weak
+guide. Phonon samples at temperature 0.3, so the key engines were run three to
+five times; ranges are shown. To compare speed under the same conditions,
+Supertonic, path A wasm fp32 and Supertonic again were run back to back (runs
+r4, r4, r5).
 
 ## Comparison
 
@@ -48,28 +59,33 @@ Median (range over runs). Memory is the increase over an idle browser
 
 | Engine | Runs | WER | CER | UTMOS | Warm RTF | Warm TTFA | Cold TTFA | Download | Memory over idle | Languages | Licence |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Supertonic M1 (shipped) | 3 | 0.079 (0.076–0.083) | 0.010 | 4.47 (4.41–4.50) | 1.20 (1.06–1.21) | 13.8 s | 13.8 s | 389 MB + 88 MB ORT | 2214 MB | 10 tracks today (Supertonic 3: 31) | MIT code, OpenRAIL-M weights |
-| **A: 31m-en, wasm fp32** | 3 | 0.072 (0.070–0.081) | 0.012 | 4.44 (4.40–4.45) | 0.21 (0.20–0.26) | 0.027 s | 1.2 s | 161 MB | 1548 MB | en | Apache 2.0 |
+| Supertonic M1 (shipped) | 5 | 0.083 (0.076–0.085) | 0.013 (0.009–0.017) | 4.47 (4.41–4.50) | 1.06 (0.68–1.21) | 11.3 s (7.3–14.0) | 13.4 s | 398 MB + 11 MB ORT wasm | 2201 MB | 10 tracks today (Supertonic 3: 31) | MIT code, OpenRAIL-M weights |
+| **A: 31m-en, wasm fp32** | 4 | 0.076 (0.070–0.111) | 0.024 (0.009–0.049) | 4.42 (4.40–4.45) | 0.24 (0.20–0.27) | 0.029 s | 1.5 s | 161 MB | 1548 MB | en | Apache 2.0 |
 | A: 31m-en, WebGPU fp32 | 1 | 0.072 | 0.009 | 4.43 | 0.22 | 0.028 s | 2.3 s | 161 MB | 1456 MB | en | Apache 2.0 |
-| A: 31m-en, WebGPU q4 | 3 | 0.070 (0.068–0.070) | 0.014 | 4.31 | 0.28 (0.21–0.47) | 0.033 s | 1.4 s | 67 MB | 1038 MB | en | Apache 2.0 |
-| A: 31m-en, WebGPU q4f16 | 3 | 0.081 (0.070–0.290) | 0.026 | 4.26 | 0.20 (0.13–0.49) | 0.025 s | 1.8 s | 41 MB | 903 MB | en | Apache 2.0 |
+| A: 31m-en, WebGPU q4 | 3 | 0.070 (0.068–0.070) | 0.014 (0.014–0.016) | 4.31 | 0.28 (0.21–0.47) | 0.033 s | 1.4 s | 67 MB | 1038 MB | en | Apache 2.0 |
+| A: 31m-en, WebGPU q4f16 | 3 | 0.081 (0.070–0.290) | 0.026 (0.014–0.155) | 4.26 | 0.20 (0.13–0.49) | 0.025 s | 1.8 s | 41 MB | 903 MB | en | Apache 2.0 |
 | A: 31m-en, wasm q4 | 1 | 0.139 | 0.067 | 4.32 | 0.19 | 0.033 s | 0.7 s | 67 MB | 1218 MB | en | Apache 2.0 |
 | B/C: Ollama `phonon:en` | 1 | 0.086 | 0.013 | 4.42 | 0.014 | 0.017 s | 0.13 s | 103 MB | 129 MB | en | Apache 2.0 |
 | B/C: Ollama `phonon:40m-en` | 1 | 0.107 | 0.031 | 4.42 | 0.017 | 0.019 s | 0.34 s | 131 MB | 173 MB | en | CC BY-NC 4.0 |
 | B/C: Ollama `phonon:multilingual` | 1 | 0.095 | 0.015 | 4.39 | 0.018 | 0.019 s | 0.25 s | 122 MB | 161 MB | en fr de es pt | CC BY-NC 4.0 |
 
-Path A download sizes add 0.3 MB tokenizer and 0.26 MB per voice; its
+Download sizes are measured from the files: Supertonic's from the staged
+`_assets/tts/onnx/` (398 MB, which is the README's ~380 MiB) plus the one ORT
+1.17 threaded wasm it loads; path A's from `onnx-community/phonon-31m-en-ONNX`
+(q4 is 26 MB flow LM plus the unquantised 41 MB decoder). Path A also loads a
+0.3 MB tokenizer and 0.26 MB per voice; its
 runtime is the `/_assets/tts/ort-mt/` ORT 1.26 build already deployed, so it
 adds no runtime download. Path A `load_s` was 0.65–2.6 s from a local server;
 real network time comes on top for all browser rows.
 
-WER/CER by category (one representative run):
+WER/CER by category, from each engine's median-WER run (Supertonic r3, wasm
+fp32 r3, q4f16 r3; Ollama ran once):
 
 | Engine | prose | numbers | dates | citations | chemistry | math |
 |---|---|---|---|---|---|---|
-| Supertonic M1 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.097 / 0.032 | 0.298 / 0.054 | 0 / 0 |
-| A wasm fp32 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.034 | 0.289 / 0.158 | 0.040 / 0.042 |
-| A WebGPU q4f16 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.069 / 0.029 | 1.279 / 0.839 | 0.120 / 0.116 |
+| Supertonic M1 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.027 | 0.288 / 0.023 | 0 / 0 |
+| A wasm fp32 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.083 / 0.024 | 0.250 / 0.013 | 0.040 / 0.032 |
+| A WebGPU q4f16 | 0.022 / 0.002 | 0.009 / 0.002 | 0 / 0 | 0.097 / 0.039 | 0.279 / 0.098 | 0.040 / 0.032 |
 | Ollama `phonon:en` | 0.022 / 0.002 | 0.036 / 0.023 | 0 / 0 | 0.056 / 0.024 | 0.269 / 0.013 | 0.200 / 0.032 |
 
 Chemistry WER is high for every engine because Whisper writes formulas its own
@@ -81,25 +97,32 @@ way; CER is the better guide there.
    Path A follows the model card's loop (flow LM, then the Mimi decoder, at
    most 50 tokens a call), so the first audio frame arrives in ~30 ms.
    Supertonic's worker returns whole sentences, so its TTFA is the whole
-   sentence's synth time.
-2. **Supertonic is slower than its README says: RTF 1.06–1.21 measured, 0.41
-   claimed.** It stayed above 1.1 at low load. The bundled ORT 1.17.3 worker
-   has no WebGPU backend ("[webgpu] backend not found"), and threads gave only
-   ~10% over one thread. Ruled out: a stale stage build (a fresh build is
+   sentence's synth time. Back to back, Supertonic r4 ran at RTF 1.05, path A
+   wasm fp32 r4 at 0.27 and Supertonic r5 at 0.68: path A was 2.5–4x faster in
+   the same conditions, and 4.4x on the medians over all runs.
+2. **Supertonic ran slower here than its README says: RTF 0.68–1.21 measured,
+   0.41 claimed.** It varied with whatever else the shared Mac was doing, so
+   this is not shown to be a regression. The bundled ORT 1.17.3 worker has no
+   WebGPU backend ("[webgpu] backend not found"), and threads gave only ~10%
+   over one thread. Ruled out: a stale stage build (a fresh build is
    byte-identical) and missing cross-origin isolation (isolated, 12 cores,
-   SharedArrayBuffer present). This is a possible regression in the shipped
-   engine and is outside LT-213; it deserves its own ticket.
+   SharedArrayBuffer present). Worth one timing on a quiet machine before
+   anyone opens a ticket; it is outside LT-213.
 3. **Every Phonon variant garbles s18**, the long repeated equilibrium-constant
-   expression. WebGPU q4f16 once looped on it (120 errors on 57 words), which
-   is the 0.290 WER outlier above. q4f16 is not safe to ship without a guard
+   expression (Supertonic gets about 15 of its 57 words wrong too, but stays
+   on the text). Path A wasm fp32 r4 drifted into nonsense after two thirds of
+   it (32 errors), which is that run's 0.111 WER. WebGPU q4f16 once looped on
+   it (120 errors on 57 words), which is the 0.290 WER outlier above. q4f16 is not safe to ship without a guard
    (stop when audio runs far past the expected length).
 4. **Double normalisation.** Ollama's Phonon runtime normalises text itself.
    It reads "1024" as "ten twenty-four" (year style), which breaks spoken math
    where Speech Text keeps digits (s21: math WER 0.20 against 0.0 for
-   Supertonic). It turned "U.S. Senate" into "United Sessonet". Path A has no
-   runtime normaliser and read 1024 correctly. Feeding Display Text instead of
-   Speech Text was slightly worse (WER 0.093 vs 0.086), so keep feeding Speech
-   Text; for Ollama, Speech Text would need to spell out every number.
+   Supertonic). It read "U.S. Senate" so that Whisper heard "United
+   Sessonet". Path A has no runtime normaliser and read 1024 correctly.
+   Feeding Display Text instead of Speech Text did not help (WER 0.093 vs
+   0.086, each scored against the text it was given, so not strictly like for
+   like), so keep feeding Speech Text; for Ollama, Speech Text would need to
+   spell out every number.
 5. **The 40m English model is not better than 31m.** `40m-en` scored worse on
    WER (0.107) and once repeated a phrase ("those are men"), and it is
    CC BY-NC. Nothing argues for it.
@@ -120,13 +143,29 @@ it, nl, sv. Phonon covers en, fr, de, es, pt.
 | cs, da, hu, it, nl, sv | none | — | lose a voice; keep Supertonic |
 
 Under an Apache-only rule every non-English track keeps Supertonic, so the
-reader would ship two TTS engines. Voices: `phonon-voices` has 102 voices
+reader would ship two TTS engines.
+
+What the CC BY-NC decision changes:
+
+- **Apache only (31m-en):** English switches; nine tracks keep Supertonic;
+  two engines in the reader. No licence question.
+- **Accept CC BY-NC for fr/de/es:** three more tracks could switch, but only
+  through Ollama (path B) today, since no 40m model has an ONNX export, and
+  path B publishes the generated audio, which is where an NC term would bite
+  if it reaches outputs. Six tracks still keep Supertonic.
+- **Ask Gradium for terms:** the cards say "for commercial use, talk to
+  sales"; a written answer on non-profit OER use and on generated audio would
+  settle both open questions. Voices: `phonon-voices` has 102 voices
 (en 37, fr 15, de 13, es 25, pt 12), Apache 2.0, against the two
 Supertonic voices the reader ships (M1, F1).
 
 ## Licences
 
-- `phonon-31m-en`: Apache 2.0. Fine for LibreTexts.
+- `phonon-31m-en`: Apache 2.0. Fine for LibreTexts. `ollama show phonon:en`
+  says 41.12M parameters because it counts the 31M flow LM plus the 10.3M
+  Mimi decoder and one voice; its config and tokenizer are byte-identical to
+  `gradium/phonon-31m-en`, so `phonon:en` is the 31M model and Apache
+  (`notes/sources.md`, Q2).
 - All 40m models (en, fr, de, es, pt, multilingual): CC BY-NC 4.0, gated on
   Hugging Face, "for commercial use, talk to sales". Whether LibreTexts'
   use counts as non-commercial, and whether NC attaches to the generated
@@ -161,8 +200,11 @@ so 28.7 h of audio; Supertonic is slower at 13.8, 33.6 h):
 | AAC 48 kbit/s | 6.7 MB | 35.4 MB | 657 MB |
 | MP3 64 kbit/s | 8.6 MB | 45.0 MB | 834 MB |
 
-Median page is 17.6 min of audio, the largest 92.9 min. A full book render is
-about 24 minutes on this Mac (RTF 0.014), and each translated track adds about
+Speaking rate comes from all 21 bench items; on the 14 items drawn from the
+book itself Phonon speaks a little faster (17.2 characters a second), so the
+sizes above are about 6% high. Median page is 17.6 min of audio, the largest
+92.9 min. A full book render is
+about 24 minutes on this Mac (RTF 0.014, plus encoding), and each translated track adds about
 as much again (only fr/de/es could have one, under CC BY-NC). Every Speech
 Text change means re-rendering the changed sentences and redeploying audio.
 Opus in Safari was not checked.
@@ -175,9 +217,13 @@ not a default.
 
 ## Listening test
 
-A blind A/B set of all 21 items, Supertonic M1 against Ollama `phonon:en`,
-loudness-matched (-20 LUFS, 24 kHz), with A/B assignment randomised per item.
-Made by `listening_set.py`; both are git-ignored and not committed:
+A blind A/B set of all 21 items: Supertonic M1 (r3) against the recommended
+path A, 31m-en wasm fp32 (r3), each engine's median-WER run. Both files are
+loudness-matched (-20 LUFS, 24 kHz) and padded with silence to one common
+length with a random lead-in, because length would give Phonon away (it
+speaks faster, in whole 80 ms frames). A/B is drawn at random per item
+(Phonon is A in 13). Made by `listening_set.py`; both are git-ignored and not
+committed:
 
 - folder: `bench/phonon/listening/` (`items.txt` lists the texts)
 - key: `bench/phonon/listening-key.csv`
@@ -189,7 +235,8 @@ The listening test itself has not been done.
 - Download time over a real network, and a real Listen-mode integration.
 - Any browser other than Chrome 156, and any device other than this M2 Max
   (no phones, no low-end laptops, no Windows).
-- Whether the Supertonic RTF gap is a regression or this machine.
+- Whether the Supertonic RTF gap is a regression or this machine: no run was
+  on a quiet machine.
 - The human listening test.
 - Commercial terms for the 40m models, and whether CC BY-NC reaches audio.
 - Opus playback in Safari for path B.
