@@ -33,23 +33,29 @@ the listening set are git-ignored; only the JSON results in `out/` are kept.
 
 ## Steps
 
+`pick_sentences.py` also reads the pipeline's chemistry and math audit pages,
+`demo-out/chem-audit/index.html` and `demo-out/math-audit/index.html`. They are
+not tracked; produce them first with `scripts/math-audit.mjs` (`--out` each
+folder) against a local stage, or the
+step stops with `FileNotFoundError`. Optional flags are shown in comments.
+
 ```sh
 python3 bench/phonon/pick_sentences.py                 # out/sentences.json (21 items)
 
 # Supertonic baseline (shipped engine)
 python3 scripts/serve-local.py --root bench/phonon/out/stage --port 8788 &
-node bench/phonon/render_supertonic.mjs --voice M1 [--run 2]
+node bench/phonon/render_supertonic.mjs --voice M1   # repeat: add --run 2
 
 # Path A: Phonon 31m-en in the browser
 python3 bench/phonon/serve.py --port 8789 &
-node bench/phonon/render_path_a.mjs --device wasm --dtype fp32 [--run 2]
+node bench/phonon/render_path_a.mjs --device wasm --dtype fp32   # repeat: add --run 2
 node bench/phonon/render_path_a.mjs --device webgpu --dtype q4f16
 
 # Paths B and C: Phonon through Ollama
-python3 bench/phonon/render_ollama.py --tag en [--field display]
+python3 bench/phonon/render_ollama.py --tag en   # Display Text: add --field display
 
 # Score, summarise, estimate storage, build the listening set
-bench/phonon/.venv/bin/python bench/phonon/score.py [engine ...]
+bench/phonon/.venv/bin/python bench/phonon/score.py   # or name engines to score
 python3 bench/phonon/summary.py                        # out/summary.json + table
 python3 bench/phonon/storage.py --engine phonon-en     # out/storage.json
 python3 bench/phonon/listening_set.py                  # listening/ + listening-key.csv

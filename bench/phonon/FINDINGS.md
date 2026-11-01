@@ -11,8 +11,10 @@ is made. Sources for every licence and model fact are in
 `phonon-31m-en` run **in the reader's browser (path A)** on the Transformers.js
 and ONNX Runtime Web 1.26 the reader already ships for translation. Here it was
 2.5–4x faster than Supertonic in back-to-back runs (4.4x on the medians),
-started speaking in about 30 ms instead of 7–14 s, downloads 41–161 MB instead
-of about 409 MB, and has a similar word error rate; naturalness (UTMOS) is a
+produced its first audio frame in about 30 ms instead of 7–14 s (playing
+frames as they arrive is not built yet), downloads 41–161 MB of model instead
+of about 409 MB (plus a ~15–26 MB runtime for a listener who has not used
+translation), and has a similar word error rate; naturalness (UTMOS) is a
 hair lower, and it can derail on very long formulas. The nine translation
 tracks stay on Supertonic: Phonon has no voice for six of them, and the models
 that cover fr/de/es are CC BY-NC, which is the Chief's call.
@@ -79,8 +81,11 @@ Download sizes are measured from the files: Supertonic's from the staged
 1.17 threaded wasm it loads; path A's from `onnx-community/phonon-31m-en-ONNX`
 (q4 is 26 MB flow LM plus the unquantised 41 MB decoder). Path A also loads a
 0.3 MB tokenizer and 0.26 MB per voice; its
-runtime is the `/_assets/tts/ort-mt/` ORT 1.26 build already deployed, so it
-adds no runtime download. Path A `load_s` was 0.65–2.6 s from a local server;
+runtime is the `/_assets/tts/ort-mt/` ORT 1.26 build already deployed for
+translation. A listener who has used translation has it cached; one who has
+not downloads it too: about 0.4 MB of Transformers.js plus one ORT wasm of
+14.6–26.1 MB (jspi, asyncify or jsep build). The bench loaded these from
+`node_modules`, so they are not in its `load_s`. Path A `load_s` was 0.65–2.6 s from a local server;
 real network time comes on top for all browser rows.
 
 WER/CER by category, from each engine's median-WER run (Supertonic r4, wasm
@@ -98,9 +103,11 @@ way; CER is the better guide there.
 
 ## Findings
 
-1. **Phonon in the browser is much faster than Supertonic here, and streams.**
+1. **Phonon in the browser is much faster than Supertonic here, and can stream.**
    Path A follows the model card's loop (flow LM, then the Mimi decoder, at
-   most 50 tokens a call), so the first audio frame arrives in ~30 ms.
+   most 50 tokens a call), so the first audio frame is ready in ~30 ms. The
+   bench only times that frame; it plays nothing until the sentence is done,
+   so ~30 ms is what streaming playback could reach, not a measured start.
    Supertonic's worker returns whole sentences, so its TTFA is the whole
    sentence's synth time. Back to back, Supertonic r4 ran at RTF 1.05, path A
    wasm fp32 r4 at 0.27 and Supertonic r5 at 0.68: path A was 2.5–4x faster in
@@ -193,7 +200,8 @@ Supertonic voices the reader ships (M1, F1).
 
 **A, in the browser.** Recommended for English. A module worker imports
 `transformers.min.js` (which bundles ORT 1.26), loads
-`onnx-community/phonon-31m-en` and streams frames. Work to ship it: a real
+`onnx-community/phonon-31m-en` and produces 80 ms frames that could be played
+as they arrive (not built here). Work to ship it: a real
 worker in `src/` behind the existing engine interface, a length guard for
 loops, caching of model files, and Phonon-aware Speech Text for currency and
 symbols. `path-a/worker.mjs` is the spike's version of that worker.
