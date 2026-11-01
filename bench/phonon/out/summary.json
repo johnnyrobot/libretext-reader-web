@@ -1,0 +1,925 @@
+{
+ "patha-wasm-fp32": {
+  "runs": 4,
+  "stats": {
+   "load_s": {
+    "median": 1.3945,
+    "min": 1.024,
+    "max": 1.891
+   },
+   "cold_ttfa_s": {
+    "median": 1.4735,
+    "min": 1.081,
+    "max": 2.069
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0291,
+    "min": 0.0266,
+    "max": 0.0335
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.2388,
+    "min": 0.2003,
+    "max": 0.2716
+   },
+   "browser_peak_rss_mb": {
+    "median": 2419.45,
+    "min": 2409.1,
+    "max": 2444.9
+   },
+   "load_avg_1m": {
+    "median": 9.635,
+    "min": 8.04,
+    "max": 11.98
+   },
+   "wer": {
+    "median": 0.0765,
+    "min": 0.0704,
+    "max": 0.1107
+   },
+   "cer": {
+    "median": 0.024,
+    "min": 0.0089,
+    "max": 0.0489
+   },
+   "utmos_mean": {
+    "median": 4.423,
+    "min": 4.403,
+    "max": 4.446
+   }
+  },
+  "per_run": {
+   "patha-wasm-fp32": {
+    "engine": "patha-wasm-fp32",
+    "device": "wasm",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 8.04,
+    "load_s": 1.024,
+    "cold_ttfa_s": 1.081,
+    "warm_ttfa_median_s": 0.0273,
+    "warm_rtf_aggregate": 0.2139,
+    "browser_idle_rss_mb": 864,
+    "browser_peak_rss_mb": 2411.8,
+    "wer": 0.0805,
+    "cer": 0.036,
+    "utmos_mean": 4.436
+   },
+   "patha-wasm-fp32-r2": {
+    "engine": "patha-wasm-fp32-r2",
+    "device": "wasm",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 9.24,
+    "load_s": 1.891,
+    "cold_ttfa_s": 2.069,
+    "warm_ttfa_median_s": 0.0266,
+    "warm_rtf_aggregate": 0.2003,
+    "browser_idle_rss_mb": 862,
+    "browser_peak_rss_mb": 2409.1,
+    "wer": 0.0704,
+    "cer": 0.012,
+    "utmos_mean": 4.446
+   },
+   "patha-wasm-fp32-r3": {
+    "engine": "patha-wasm-fp32-r3",
+    "device": "wasm",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 10.03,
+    "load_s": 1.153,
+    "cold_ttfa_s": 1.219,
+    "warm_ttfa_median_s": 0.0309,
+    "warm_rtf_aggregate": 0.2637,
+    "browser_idle_rss_mb": 845.5,
+    "browser_peak_rss_mb": 2444.9,
+    "wer": 0.0724,
+    "cer": 0.0089,
+    "utmos_mean": 4.403
+   },
+   "patha-wasm-fp32-r4": {
+    "engine": "patha-wasm-fp32-r4",
+    "device": "wasm",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 11.98,
+    "load_s": 1.636,
+    "cold_ttfa_s": 1.728,
+    "warm_ttfa_median_s": 0.0335,
+    "warm_rtf_aggregate": 0.2716,
+    "browser_idle_rss_mb": 879.7,
+    "browser_peak_rss_mb": 2427.1,
+    "wer": 0.1107,
+    "cer": 0.0489,
+    "utmos_mean": 4.41
+   }
+  }
+ },
+ "patha-wasm-q4": {
+  "runs": 1,
+  "stats": {
+   "load_s": {
+    "median": 0.652,
+    "min": 0.652,
+    "max": 0.652
+   },
+   "cold_ttfa_s": {
+    "median": 0.725,
+    "min": 0.725,
+    "max": 0.725
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0326,
+    "min": 0.0326,
+    "max": 0.0326
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.1921,
+    "min": 0.1921,
+    "max": 0.1921
+   },
+   "browser_peak_rss_mb": {
+    "median": 2084,
+    "min": 2084,
+    "max": 2084
+   },
+   "load_avg_1m": {
+    "median": 8.36,
+    "min": 8.36,
+    "max": 8.36
+   },
+   "wer": {
+    "median": 0.1388,
+    "min": 0.1388,
+    "max": 0.1388
+   },
+   "cer": {
+    "median": 0.0666,
+    "min": 0.0666,
+    "max": 0.0666
+   },
+   "utmos_mean": {
+    "median": 4.316,
+    "min": 4.316,
+    "max": 4.316
+   }
+  },
+  "per_run": {
+   "patha-wasm-q4": {
+    "engine": "patha-wasm-q4",
+    "device": "wasm",
+    "dtype": "q4",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 8.36,
+    "load_s": 0.652,
+    "cold_ttfa_s": 0.725,
+    "warm_ttfa_median_s": 0.0326,
+    "warm_rtf_aggregate": 0.1921,
+    "browser_idle_rss_mb": 865.8,
+    "browser_peak_rss_mb": 2084,
+    "wer": 0.1388,
+    "cer": 0.0666,
+    "utmos_mean": 4.316
+   }
+  }
+ },
+ "patha-webgpu-fp32": {
+  "runs": 1,
+  "stats": {
+   "load_s": {
+    "median": 1.544,
+    "min": 1.544,
+    "max": 1.544
+   },
+   "cold_ttfa_s": {
+    "median": 2.272,
+    "min": 2.272,
+    "max": 2.272
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0279,
+    "min": 0.0279,
+    "max": 0.0279
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.2238,
+    "min": 0.2238,
+    "max": 0.2238
+   },
+   "browser_peak_rss_mb": {
+    "median": 2323.9,
+    "min": 2323.9,
+    "max": 2323.9
+   },
+   "load_avg_1m": {
+    "median": 7.13,
+    "min": 7.13,
+    "max": 7.13
+   },
+   "wer": {
+    "median": 0.0724,
+    "min": 0.0724,
+    "max": 0.0724
+   },
+   "cer": {
+    "median": 0.0093,
+    "min": 0.0093,
+    "max": 0.0093
+   },
+   "utmos_mean": {
+    "median": 4.43,
+    "min": 4.43,
+    "max": 4.43
+   }
+  },
+  "per_run": {
+   "patha-webgpu-fp32": {
+    "engine": "patha-webgpu-fp32",
+    "device": "webgpu",
+    "dtype": "fp32",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 7.13,
+    "load_s": 1.544,
+    "cold_ttfa_s": 2.272,
+    "warm_ttfa_median_s": 0.0279,
+    "warm_rtf_aggregate": 0.2238,
+    "browser_idle_rss_mb": 868,
+    "browser_peak_rss_mb": 2323.9,
+    "wer": 0.0724,
+    "cer": 0.0093,
+    "utmos_mean": 4.43
+   }
+  }
+ },
+ "patha-webgpu-q4": {
+  "runs": 3,
+  "stats": {
+   "load_s": {
+    "median": 1.175,
+    "min": 0.646,
+    "max": 1.401
+   },
+   "cold_ttfa_s": {
+    "median": 1.378,
+    "min": 0.707,
+    "max": 1.55
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0331,
+    "min": 0.0247,
+    "max": 0.0581
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.2755,
+    "min": 0.2101,
+    "max": 0.4649
+   },
+   "browser_peak_rss_mb": {
+    "median": 1898.5,
+    "min": 1892.7,
+    "max": 1916
+   },
+   "load_avg_1m": {
+    "median": 4.26,
+    "min": 2.99,
+    "max": 6.4
+   },
+   "wer": {
+    "median": 0.0704,
+    "min": 0.0684,
+    "max": 0.0704
+   },
+   "cer": {
+    "median": 0.0138,
+    "min": 0.0138,
+    "max": 0.016
+   },
+   "utmos_mean": {
+    "median": 4.31,
+    "min": 4.305,
+    "max": 4.323
+   }
+  },
+  "per_run": {
+   "patha-webgpu-q4": {
+    "engine": "patha-webgpu-q4",
+    "device": "webgpu",
+    "dtype": "q4",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 6.4,
+    "load_s": 1.401,
+    "cold_ttfa_s": 1.55,
+    "warm_ttfa_median_s": 0.0247,
+    "warm_rtf_aggregate": 0.2101,
+    "browser_idle_rss_mb": 878,
+    "browser_peak_rss_mb": 1892.7,
+    "wer": 0.0684,
+    "cer": 0.016,
+    "utmos_mean": 4.31
+   },
+   "patha-webgpu-q4-r2": {
+    "engine": "patha-webgpu-q4-r2",
+    "device": "webgpu",
+    "dtype": "q4",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 2.99,
+    "load_s": 1.175,
+    "cold_ttfa_s": 1.378,
+    "warm_ttfa_median_s": 0.0581,
+    "warm_rtf_aggregate": 0.4649,
+    "browser_idle_rss_mb": 860.3,
+    "browser_peak_rss_mb": 1898.5,
+    "wer": 0.0704,
+    "cer": 0.0138,
+    "utmos_mean": 4.305
+   },
+   "patha-webgpu-q4-r3": {
+    "engine": "patha-webgpu-q4-r3",
+    "device": "webgpu",
+    "dtype": "q4",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 4.26,
+    "load_s": 0.646,
+    "cold_ttfa_s": 0.707,
+    "warm_ttfa_median_s": 0.0331,
+    "warm_rtf_aggregate": 0.2755,
+    "browser_idle_rss_mb": 859.3,
+    "browser_peak_rss_mb": 1916,
+    "wer": 0.0704,
+    "cer": 0.0138,
+    "utmos_mean": 4.323
+   }
+  }
+ },
+ "patha-webgpu-q4f16": {
+  "runs": 3,
+  "stats": {
+   "load_s": {
+    "median": 1.541,
+    "min": 1.357,
+    "max": 2.605
+   },
+   "cold_ttfa_s": {
+    "median": 1.83,
+    "min": 1.671,
+    "max": 4.068
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0253,
+    "min": 0.023,
+    "max": 0.0627
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.1955,
+    "min": 0.1333,
+    "max": 0.4925
+   },
+   "browser_peak_rss_mb": {
+    "median": 1774.7,
+    "min": 1694.5,
+    "max": 1815.6
+   },
+   "load_avg_1m": {
+    "median": 4.09,
+    "min": 2.93,
+    "max": 4.5
+   },
+   "wer": {
+    "median": 0.0805,
+    "min": 0.0704,
+    "max": 0.2897
+   },
+   "cer": {
+    "median": 0.0262,
+    "min": 0.0142,
+    "max": 0.155
+   },
+   "utmos_mean": {
+    "median": 4.258,
+    "min": 4.205,
+    "max": 4.366
+   }
+  },
+  "per_run": {
+   "patha-webgpu-q4f16": {
+    "engine": "patha-webgpu-q4f16",
+    "device": "webgpu",
+    "dtype": "q4f16",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 2.93,
+    "load_s": 2.605,
+    "cold_ttfa_s": 4.068,
+    "warm_ttfa_median_s": 0.0253,
+    "warm_rtf_aggregate": 0.1955,
+    "browser_idle_rss_mb": 871.4,
+    "browser_peak_rss_mb": 1774.7,
+    "wer": 0.2897,
+    "cer": 0.155,
+    "utmos_mean": 4.258
+   },
+   "patha-webgpu-q4f16-r2": {
+    "engine": "patha-webgpu-q4f16-r2",
+    "device": "webgpu",
+    "dtype": "q4f16",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 4.5,
+    "load_s": 1.541,
+    "cold_ttfa_s": 1.83,
+    "warm_ttfa_median_s": 0.0627,
+    "warm_rtf_aggregate": 0.4925,
+    "browser_idle_rss_mb": 842,
+    "browser_peak_rss_mb": 1694.5,
+    "wer": 0.0704,
+    "cer": 0.0142,
+    "utmos_mean": 4.366
+   },
+   "patha-webgpu-q4f16-r3": {
+    "engine": "patha-webgpu-q4f16-r3",
+    "device": "webgpu",
+    "dtype": "q4f16",
+    "threads": 8,
+    "adapter": {
+     "shaderF16": true,
+     "vendor": "apple",
+     "arch": "metal-3"
+    },
+    "browser": "chrome headless",
+    "load_avg_1m": 4.09,
+    "load_s": 1.357,
+    "cold_ttfa_s": 1.671,
+    "warm_ttfa_median_s": 0.023,
+    "warm_rtf_aggregate": 0.1333,
+    "browser_idle_rss_mb": 859.7,
+    "browser_peak_rss_mb": 1815.6,
+    "wer": 0.0805,
+    "cer": 0.0262,
+    "utmos_mean": 4.205
+   }
+  }
+ },
+ "phonon-40m-en": {
+  "runs": 1,
+  "stats": {
+   "cold_ttfa_s": {
+    "median": 0.3381,
+    "min": 0.3381,
+    "max": 0.3381
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0188,
+    "min": 0.0188,
+    "max": 0.0188
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.0168,
+    "min": 0.0168,
+    "max": 0.0168
+   },
+   "ollama_peak_rss_mb": {
+    "median": 300.3,
+    "min": 300.3,
+    "max": 300.3
+   },
+   "ollama_ps_size_mb": {
+    "median": 216.0,
+    "min": 216.0,
+    "max": 216.0
+   },
+   "wer": {
+    "median": 0.1066,
+    "min": 0.1066,
+    "max": 0.1066
+   },
+   "cer": {
+    "median": 0.0311,
+    "min": 0.0311,
+    "max": 0.0311
+   },
+   "utmos_mean": {
+    "median": 4.42,
+    "min": 4.42,
+    "max": 4.42
+   }
+  },
+  "per_run": {
+   "phonon-40m-en": {
+    "engine": "phonon-40m-en",
+    "model": "phonon:40m-en",
+    "voice": "default",
+    "field": "speech",
+    "cold_ttfa_s": 0.3381,
+    "warm_ttfa_median_s": 0.0188,
+    "warm_rtf_aggregate": 0.0168,
+    "ollama_idle_rss_mb": 127.1,
+    "ollama_peak_rss_mb": 300.3,
+    "ollama_ps_size_mb": 216.0,
+    "ollama_ps_vram_mb": 216.0,
+    "wer": 0.1066,
+    "cer": 0.0311,
+    "utmos_mean": 4.42
+   }
+  }
+ },
+ "phonon-en": {
+  "runs": 1,
+  "stats": {
+   "cold_ttfa_s": {
+    "median": 0.1347,
+    "min": 0.1347,
+    "max": 0.1347
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0165,
+    "min": 0.0165,
+    "max": 0.0165
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.0139,
+    "min": 0.0139,
+    "max": 0.0139
+   },
+   "ollama_peak_rss_mb": {
+    "median": 256.4,
+    "min": 256.4,
+    "max": 256.4
+   },
+   "ollama_ps_size_mb": {
+    "median": 114.0,
+    "min": 114.0,
+    "max": 114.0
+   },
+   "wer": {
+    "median": 0.0865,
+    "min": 0.0865,
+    "max": 0.0865
+   },
+   "cer": {
+    "median": 0.0133,
+    "min": 0.0133,
+    "max": 0.0133
+   },
+   "utmos_mean": {
+    "median": 4.415,
+    "min": 4.415,
+    "max": 4.415
+   }
+  },
+  "per_run": {
+   "phonon-en": {
+    "engine": "phonon-en",
+    "model": "phonon:en",
+    "voice": "default",
+    "field": "speech",
+    "cold_ttfa_s": 0.1347,
+    "warm_ttfa_median_s": 0.0165,
+    "warm_rtf_aggregate": 0.0139,
+    "ollama_idle_rss_mb": 127.1,
+    "ollama_peak_rss_mb": 256.4,
+    "ollama_ps_size_mb": 114.0,
+    "ollama_ps_vram_mb": 114.0,
+    "wer": 0.0865,
+    "cer": 0.0133,
+    "utmos_mean": 4.415
+   }
+  }
+ },
+ "phonon-en-display": {
+  "runs": 1,
+  "stats": {
+   "cold_ttfa_s": {
+    "median": 0.1333,
+    "min": 0.1333,
+    "max": 0.1333
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0168,
+    "min": 0.0168,
+    "max": 0.0168
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.0141,
+    "min": 0.0141,
+    "max": 0.0141
+   },
+   "ollama_peak_rss_mb": {
+    "median": 257.0,
+    "min": 257.0,
+    "max": 257.0
+   },
+   "ollama_ps_size_mb": {
+    "median": 114.0,
+    "min": 114.0,
+    "max": 114.0
+   },
+   "wer": {
+    "median": 0.0926,
+    "min": 0.0926,
+    "max": 0.0926
+   },
+   "cer": {
+    "median": 0.017,
+    "min": 0.017,
+    "max": 0.017
+   },
+   "utmos_mean": {
+    "median": 4.435,
+    "min": 4.435,
+    "max": 4.435
+   }
+  },
+  "per_run": {
+   "phonon-en-display": {
+    "engine": "phonon-en-display",
+    "model": "phonon:en",
+    "voice": "default",
+    "field": "display",
+    "cold_ttfa_s": 0.1333,
+    "warm_ttfa_median_s": 0.0168,
+    "warm_rtf_aggregate": 0.0141,
+    "ollama_idle_rss_mb": 127.1,
+    "ollama_peak_rss_mb": 257.0,
+    "ollama_ps_size_mb": 114.0,
+    "ollama_ps_vram_mb": 114.0,
+    "wer": 0.0926,
+    "cer": 0.017,
+    "utmos_mean": 4.435
+   }
+  }
+ },
+ "phonon-multilingual": {
+  "runs": 1,
+  "stats": {
+   "cold_ttfa_s": {
+    "median": 0.2503,
+    "min": 0.2503,
+    "max": 0.2503
+   },
+   "warm_ttfa_median_s": {
+    "median": 0.0188,
+    "min": 0.0188,
+    "max": 0.0188
+   },
+   "warm_rtf_aggregate": {
+    "median": 0.0181,
+    "min": 0.0181,
+    "max": 0.0181
+   },
+   "ollama_peak_rss_mb": {
+    "median": 288.5,
+    "min": 288.5,
+    "max": 288.5
+   },
+   "ollama_ps_size_mb": {
+    "median": 132.8,
+    "min": 132.8,
+    "max": 132.8
+   },
+   "wer": {
+    "median": 0.0946,
+    "min": 0.0946,
+    "max": 0.0946
+   },
+   "cer": {
+    "median": 0.0151,
+    "min": 0.0151,
+    "max": 0.0151
+   },
+   "utmos_mean": {
+    "median": 4.386,
+    "min": 4.386,
+    "max": 4.386
+   }
+  },
+  "per_run": {
+   "phonon-multilingual": {
+    "engine": "phonon-multilingual",
+    "model": "phonon:multilingual",
+    "voice": "default",
+    "field": "speech",
+    "cold_ttfa_s": 0.2503,
+    "warm_ttfa_median_s": 0.0188,
+    "warm_rtf_aggregate": 0.0181,
+    "ollama_idle_rss_mb": 127.1,
+    "ollama_peak_rss_mb": 288.5,
+    "ollama_ps_size_mb": 132.8,
+    "ollama_ps_vram_mb": 132.8,
+    "wer": 0.0946,
+    "cer": 0.0151,
+    "utmos_mean": 4.386
+   }
+  }
+ },
+ "supertonic-M1": {
+  "runs": 5,
+  "stats": {
+   "load_s": {
+    "median": 2.52,
+    "min": 2.205,
+    "max": 2.747
+   },
+   "cold_ttfa_s": {
+    "median": 13.416,
+    "min": 12.542,
+    "max": 16.247
+   },
+   "warm_ttfa_median_s": {
+    "median": 11.2549,
+    "min": 7.2873,
+    "max": 13.955
+   },
+   "warm_rtf_aggregate": {
+    "median": 1.0632,
+    "min": 0.6767,
+    "max": 1.2053
+   },
+   "browser_peak_rss_mb": {
+    "median": 3071.3,
+    "min": 2998.9,
+    "max": 3088.1
+   },
+   "load_avg_1m": {
+    "median": 11.3,
+    "min": 10.13,
+    "max": 11.85
+   },
+   "wer": {
+    "median": 0.0825,
+    "min": 0.0765,
+    "max": 0.0845
+   },
+   "cer": {
+    "median": 0.0129,
+    "min": 0.0093,
+    "max": 0.0173
+   },
+   "utmos_mean": {
+    "median": 4.474,
+    "min": 4.413,
+    "max": 4.496
+   }
+  },
+  "per_run": {
+   "supertonic-M1": {
+    "engine": "supertonic-M1",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headed",
+    "load_avg_1m": 11.46,
+    "load_s": 2.205,
+    "cold_ttfa_s": 13.824,
+    "warm_ttfa_median_s": 11.2549,
+    "warm_rtf_aggregate": 1.0632,
+    "browser_idle_rss_mb": 859.4,
+    "browser_peak_rss_mb": 3088.1,
+    "wer": 0.0825,
+    "cer": 0.016,
+    "utmos_mean": 4.496
+   },
+   "supertonic-M1-r2": {
+    "engine": "supertonic-M1-r2",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 10.83,
+    "load_s": 2.682,
+    "cold_ttfa_s": 16.247,
+    "warm_ttfa_median_s": 13.955,
+    "warm_rtf_aggregate": 1.2053,
+    "browser_idle_rss_mb": 869.1,
+    "browser_peak_rss_mb": 2998.9,
+    "wer": 0.0765,
+    "cer": 0.0093,
+    "utmos_mean": 4.413
+   },
+   "supertonic-M1-r3": {
+    "engine": "supertonic-M1-r3",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 11.3,
+    "load_s": 2.52,
+    "cold_ttfa_s": 13.416,
+    "warm_ttfa_median_s": 13.8267,
+    "warm_rtf_aggregate": 1.1998,
+    "browser_idle_rss_mb": 857.3,
+    "browser_peak_rss_mb": 3071.3,
+    "wer": 0.0785,
+    "cer": 0.0098,
+    "utmos_mean": 4.474
+   },
+   "supertonic-M1-r4": {
+    "engine": "supertonic-M1-r4",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 11.85,
+    "load_s": 2.274,
+    "cold_ttfa_s": 12.542,
+    "warm_ttfa_median_s": 11.2062,
+    "warm_rtf_aggregate": 1.046,
+    "browser_idle_rss_mb": 866.4,
+    "browser_peak_rss_mb": 3051.3,
+    "wer": 0.0825,
+    "cer": 0.0129,
+    "utmos_mean": 4.478
+   },
+   "supertonic-M1-r5": {
+    "engine": "supertonic-M1-r5",
+    "voice": "M1",
+    "provider": "wasm",
+    "notes": [
+     "webgpu unavailable, using wasm: no available backend found. ERR: [webgpu] backend not found."
+    ],
+    "browser": "chrome headless",
+    "load_avg_1m": 10.13,
+    "load_s": 2.747,
+    "cold_ttfa_s": 12.837,
+    "warm_ttfa_median_s": 7.2873,
+    "warm_rtf_aggregate": 0.6767,
+    "browser_idle_rss_mb": 880.4,
+    "browser_peak_rss_mb": 3081.4,
+    "wer": 0.0845,
+    "cer": 0.0173,
+    "utmos_mean": 4.467
+   }
+  }
+ }
+}
