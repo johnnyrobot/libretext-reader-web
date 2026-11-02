@@ -220,7 +220,8 @@ addEventListener('DOMContentLoaded', () => {
   $('play').addEventListener('click', async () => {
     const lang = $('lang').value;
     // Save stays off while the voice renders: encoding never competes with speaking. And
-    // it saves only what was just spoken, so a render that stops or fails leaves it off.
+    // it saves only what was just spoken, so a render that stops, fails or is skipped by
+    // the length guard (which sends no samples) leaves it off.
     lt216.last = null;
     $('play').disabled = true; $('stop').disabled = false; $('save').disabled = true;
     status(`Speaking ${LANGS[lang].name}…`);
@@ -233,7 +234,7 @@ addEventListener('DOMContentLoaded', () => {
       status(`Something went wrong: ${error.message}`);
     } finally {
       $('play').disabled = false;
-      $('save').disabled = !lt216.last;
+      $('save').disabled = !lt216.last || lt216.last.outcome === 'skipped';
     }
   });
   // The render finishes well before its audio does: after it, Stop just silences.
