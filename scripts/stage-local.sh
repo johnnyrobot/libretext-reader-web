@@ -22,9 +22,10 @@
 # what it uploads is this layout.
 #
 # French, German, Spanish and Portuguese are spoken by Phonon 40M, CC BY-NC 4.0,
-# staged from Johnny's Ollama copies (LT-216), each with its own Male voice and a
-# Female voice from Gradium's phonon-voices, Apache 2.0 (LT-222). Those weights must stay out of the
-# repo, so they are staged only when STAGE is outside it.
+# staged from Johnny's Ollama copies (LT-216). The model speaks both voices: its
+# own Male voice, and a Female voice file from Gradium's phonon-voices, Apache 2.0
+# (LT-222, LT-234). Those weights must stay out of the repo, so they are staged
+# only when STAGE is outside it.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
