@@ -99,7 +99,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.finish('ok', 3 * 1920);
     await tick();
     live(context).forEach((n) => n.end());
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
 
     expect(seen).toEqual(['a', 'b']);
@@ -129,7 +129,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.reset();
     a.finish('skipped');
     await tick();
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
 
     expect(skipped).toEqual(['a']);
@@ -147,7 +147,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     live(context).forEach((n) => n.end());
     await tick();
-    engine.jobs.get('c')?.chunk();
+    engine.jobs.get('c')?.finish();
     await tick();
 
     expect(skipped).toEqual(['b']);
@@ -192,7 +192,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.fail();
     await tick();
     live(context).forEach((n) => n.end());
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
     expect(seen).toEqual(['a', 'b']);
   });
@@ -205,6 +205,35 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     engine.jobs.get('a').chunk();
     expect(performance.getEntriesByName('tts:first-sound')).toHaveLength(1);
+  });
+
+  // The runaway trade-off (LT-214). Only the sentence the reader is waiting on
+  // streams; one rendered ahead plays only once the length guard has passed it
+  // whole, so a runaway is never heard. That costs no time to first sound, since
+  // a sentence rendered ahead has the whole of the one before it to finish in.
+  it('a sentence rendered ahead that has streamed but not finished waits to be whole', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    const b = engine.jobs.get('b');
+    b.chunk(); b.chunk();
+    await tick();
+
+    live(context).forEach((n) => n.end());
+    const heard = context.nodes.length;
+    await tick();
+    b.chunk();
+    await tick();
+    expect(seen).toEqual(['a']);              // b's turn, but nothing of it plays yet
+    expect(context.nodes).toHaveLength(heard);
+
+    b.finish('ok', 3 * 1920);
+    await tick();
+    expect(seen).toEqual(['a', 'b']);
+    expect(live(context)).toHaveLength(1);    // one buffer: the whole sentence
+    expect(live(context)[0].buffer.length).toBe(3 * 1920);
   });
 
   // Next onto a sentence still rendering. seekTo cancels every request, and the
@@ -266,7 +295,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     expect(seen).not.toContain('c');
 
-    b.chunk(); await tick();
+    b.chunk(); b.finish(); await tick();
     expect(seen.at(-1)).toBe('b');
     expect(live(context)).toHaveLength(1);
     expect(skipped).toEqual([]);

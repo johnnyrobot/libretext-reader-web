@@ -10,6 +10,11 @@
  * frame rather than when it has finished rendering. Every request asks for the
  * stream; an engine that cannot stream (Supertonic) simply never sends any, and
  * the sentence plays as one buffer as it always did.
+ *
+ * Only the sentence the reader is waiting on -- the first one heard after play or
+ * a seek -- plays as a stream. Every sentence after it was rendered ahead, and
+ * plays only once it has finished and the length guard (src/phonon-guard.mjs)
+ * has passed it, so a runaway is never heard. Time to first sound is unchanged.
  */
 
 import { createStreamPlayback } from './stream-playback.mjs';
@@ -50,6 +55,9 @@ export function createPlayer({
   let source = null;
   let streamPlayback = null;
   let awaitingFirstSound = false;
+  // Set by play() and seekTo(), cleared once a sentence is heard: whether the
+  // sentence now awaited may play as a stream rather than whole.
+  let waitingToHear = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
   // A SECOND COUNTER, deliberately not the one above. `generation` cancels an
@@ -147,13 +155,13 @@ export function createPlayer({
     for (let offset = 0; offset < lookahead; offset += 1) request(cursor + offset);
   }
 
-  async function waitFor(position) {
+  async function waitFor(position, mayStream) {
     const sentence = sentences[position];
     if (!sentence) return null;
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
 
     request(position);
-    const stream = streams.get(sentence.id);
+    const stream = mayStream ? streams.get(sentence.id) : undefined;
     if (stream?.chunks.length) return { stream };
     state(true, 'Preparing audio…');
     // Whichever comes first: the first streamed chunk, or the whole sentence.
@@ -235,10 +243,10 @@ export function createPlayer({
 
     cursor = position;
 
-    const entry = await waitFor(position);
+    const entry = await waitFor(position, waitingToHear);
     if (mine !== generation || !playing) return;
     if (!entry) { await playAt(position + 1); return; }
-    if (entry.stream) { playStream(position, mine, entry.stream); return; }
+    if (entry.stream) { waitingToHear = false; playStream(position, mine, entry.stream); return; }
     if (!entry.buffer) {
       if (entry.skipped) onSentenceSkipped(sentences[position].id);
       await playAt(position + 1);
@@ -256,6 +264,7 @@ export function createPlayer({
 
     onSentenceChange(sentences[position].id);
     state(false);
+    waitingToHear = false;
     source.start();
     markFirstSound();
     fill();
@@ -266,6 +275,7 @@ export function createPlayer({
       if (playing) return;
       playing = true;
       awaitingFirstSound = true;
+      waitingToHear = true;
       try { performance.mark('tts:play'); } catch { /* not measured */ }
       if (context.state === 'suspended') await context.resume();
       for (let offset = 0; offset < INITIAL_BUFFER; offset += 1) request(cursor + offset);
@@ -394,6 +404,7 @@ export function createPlayer({
       generation += 1;
       stopSource();
       cursor = position;
+      waitingToHear = true;
       onSentenceChange(id);
       if (playing) await playAt(position);
     },
