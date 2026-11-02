@@ -65,7 +65,8 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
 # Caddy sets these headers on any path, a 404 included, so every asset check also
 # requires a 200: against the retired Supertonic paths they were green on nothing.
 # served PATH [HEADER-PATTERN WHY-NOT]...: prints nothing when PATH answers 200
-# with a header matching each pattern (extended regex), and otherwise why not.
+# with a header line matching each pattern (extended regex, from the header's
+# name: ^), and otherwise why not.
 # The status comes from curl's %{http_code}, not the first header line, which
 # behind a proxy is the proxy's own "200 Connection established".
 served() {
@@ -80,8 +81,8 @@ served() {
   done
 }
 
-why=$(served phonon.worker.js 'cross-origin-embedder-policy: require-corp' "lacks COEP, so the browser will refuse to instantiate it" \
-                              'cross-origin-resource-policy: same-origin' "lacks CORP: same-origin")
+why=$(served phonon.worker.js '^cross-origin-embedder-policy: require-corp' "lacks COEP, so the browser will refuse to instantiate it" \
+                              '^cross-origin-resource-policy: same-origin' "lacks CORP: same-origin")
 if [ -z "$why" ]; then good "the worker carries its own COEP and CORP"; else bad "the worker carries its own COEP and CORP" "$why"; fi
 
 # The cache policy is SPLIT, and both halves are load-bearing. Every model and voice
@@ -100,19 +101,22 @@ for lang_dir in $VOICES; do
   check="$lang_dir: its files are served, models and voices immutable"
   code=$(curl -sS --max-time 30 -o "$tmp/$lang_dir.json" -w '%{http_code}' "$BASE/_assets/tts/$lang_dir/manifest.json" || true)
   if [ "$code" != 200 ]; then bad "$check" "$lang_dir/manifest.json: HTTP ${code:-none}"; continue; fi
-  # The worker loads both models and the Male and Female voice by name
-  # (src/phonon.worker.mjs): English's under VOICES' IDs, a translation's as M1/F1.
+  # The worker loads both models and the Male and Female voice (src/phonon.worker.mjs):
+  # English's under VOICES' IDs, a translation's as M1/F1. It finds each file's
+  # bytes by the entry's name, and Transformers.js by its path, so both must match.
   if ! files=$(python3 - "$tmp/$lang_dir.json" "$lang_dir" <<'PY'
 import json, sys
 try:
     with open(sys.argv[1], encoding="utf-8") as f:
-        paths = [e["path"] for e in json.load(f)["files"]]
+        entries = json.load(f)["files"]
+        paths = [e["path"] for e in entries]
+        named = {e["path"] for e in entries if e.get("name") == e["path"]}
 except Exception as e:
     print(f"manifest.json is not a manifest ({type(e).__name__}: {e})"); raise SystemExit(1)
 voices = ["qIxlZ7Ei8KvWlyQH", "bXwrkHhURL1VFJdG"] if sys.argv[2] == "phonon" else ["M1", "F1"]
-need = ["config.json", "tokenizer.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
+need = ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
         *(f"voices/{v}.bin" for v in voices)]
-missing = [p for p in need if p not in paths]
+missing = [p for p in need if p not in named]
 if missing:
     print("manifest.json lacks " + ", ".join(missing)); raise SystemExit(1)
 print("\n".join(paths))
@@ -123,8 +127,8 @@ PY
   why=""
   while IFS= read -r path; do
     case "$path" in
-      onnx/*|voices/*) why=$(served "$lang_dir/$path" 'cache-control:.*max-age=31536000([^0-9]|$)' "is not cached for a year" \
-                                                       'cache-control:.*immutable' "is not immutable") ;;
+      onnx/*|voices/*) why=$(served "$lang_dir/$path" '^cache-control:.*max-age=31536000([^0-9]|$)' "is not cached for a year" \
+                                                       '^cache-control:.*immutable' "is not immutable") ;;
       *) why=$(served "$lang_dir/$path") ;;
     esac
     [ -z "$why" ] || break
@@ -138,12 +142,12 @@ done
 stale=""
 # shellcheck disable=SC2086 # VOICES is a list, split on spaces
 for path in reader.js phonon.worker.js $(printf '%s/manifest.json ' $VOICES); do
-  why=$(served "$path" 'cache-control:.*max-age=0([^0-9]|$)' "is kept fresh, not revalidated" \
-                       'cache-control:.*must-revalidate' "does not revalidate")
+  why=$(served "$path" '^cache-control:.*max-age=0([^0-9]|$)' "is cached (its max-age is not 0)" \
+                       '^cache-control:.*must-revalidate' "does not revalidate")
   [ -z "$why" ] || stale="${stale:+$stale; }$why"
 done
 if [ -z "$stale" ]; then good "the code and the manifests revalidate"
-else bad "the code and the manifests revalidate" "$stale: returning readers stay on old code for a year"
+else bad "the code and the manifests revalidate" "$stale: returning readers may keep an old copy"
 fi
 
 grep -qi "script-src 'self' 'wasm-unsafe-eval' blob:" <<<"$headers" \

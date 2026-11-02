@@ -49,11 +49,12 @@ def speech_json(break_offsets=False):
                        "stats": {"sentences": 12}}, ensure_ascii=False, indent=2)
 
 
-def manifest(name, drop=()):
+def manifest(name, drop=(), renamed=None):
     voices = ["voices/qIxlZ7Ei8KvWlyQH.bin", "voices/bXwrkHhURL1VFJdG.bin"] if name == "phonon" \
         else ["voices/M1.bin", "voices/F1.bin"]
-    paths = ["config.json", "tokenizer.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx", *voices]
-    return {"version": 1, "files": [{"name": p, "path": p, "bytes": 1, "sha256": "0" * 64}
+    paths = ["config.json", "tokenizer.json", "tokenizer_config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx", *voices]
+    # The worker finds each file's bytes by its name, and Transformers.js by its path.
+    return {"version": 1, "files": [{"name": (renamed or {}).get(p, p), "path": p, "bytes": 1, "sha256": "0" * 64}
                                     for p in paths if p not in drop]}
 
 
@@ -181,6 +182,7 @@ def test_a_manifest_that_is_not_json_says_so(mirror):
 # so a manifest that leaves one out fails on a reader's click, not here.
 @pytest.mark.parametrize("lang_dir, left_out", [("phonon-de", "onnx/mimi_decoder.onnx"),
                                                 ("phonon-pt", "voices/F1.bin"),
+                                                ("phonon-fr", "tokenizer_config.json"),
                                                 ("phonon", "voices/bXwrkHhURL1VFJdG.bin")])
 def test_a_manifest_without_a_file_the_worker_loads_fails(mirror, lang_dir, left_out):
     (mirror.root / "_assets/tts" / lang_dir / "manifest.json").write_text(
@@ -191,11 +193,28 @@ def test_a_manifest_without_a_file_the_worker_loads_fails(mirror, lang_dir, left
     assert f"manifest.json lacks {left_out}" in out
 
 
+def test_a_voice_listed_under_another_name_fails(mirror):
+    (mirror.root / "_assets/tts/phonon-es/manifest.json").write_text(
+        json.dumps(manifest("phonon-es", renamed={"voices/F1.bin": "F1.bin"})), encoding="utf-8")
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert "manifest.json lacks voices/F1.bin" in out
+
+
 def test_a_model_that_is_immutable_but_not_kept_for_a_year_fails(mirror):
     mirror.headers["/_assets/tts/phonon-fr/onnx/flow_lm.onnx"] = {"Cache-Control": "public, max-age=0, immutable"}
     code, out = smoke(mirror)
     assert code == 1, out
     assert failed(out) == ["phonon-fr: its files are served, models and voices immutable"]
+
+
+# Only the Cache-Control header counts, not one whose name merely ends in it.
+def test_code_whose_cache_policy_is_only_in_another_header_fails(mirror):
+    mirror.headers["/_assets/tts/reader.js"] = {"Cache-Control": "public, max-age=31536000",
+                                                "Cross-Origin-Resource-Policy": "same-origin\r\nX-Cache-Control: max-age=0, must-revalidate"}
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert failed(out) == ["the code and the manifests revalidate"]
 
 
 # A manifest cached for a year outlives a restage (LT-222); an immutable reader.js
