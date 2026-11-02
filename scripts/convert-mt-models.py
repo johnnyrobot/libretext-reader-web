@@ -23,7 +23,7 @@ import argparse
 import hashlib
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # Same list, same reasoning, as scripts/convert-models.py: this project picked
@@ -40,6 +40,12 @@ class Pair:
     # FILES keys this export does not publish. Named per pair, never skipped on a
     # failed download, so a file missing from any other export still stops the run.
     absent: frozenset[str] = frozenset()
+    # A commit to stage from, and the sha256 of every file staged from it. Set for
+    # an export nobody on this project vouches for: a third party can rewrite its
+    # repo, and the mirror serves whatever bytes this run copies. Left unset, the
+    # run takes the repo's current commit and records it.
+    revision: str | None = None
+    sha256: dict[str, str] = field(default_factory=dict)
 
 
 PAIRS = {
@@ -82,9 +88,21 @@ PAIRS = {
     #
     # It publishes no vocab.json. Nothing reads one: transformers.js builds the
     # Marian tokenizer from tokenizer.json, and the Node runs above loaded it so.
+    #
+    # Pinned 2026-11-01. The ONNX hashes are the Hub's LFS oids at that commit; the
+    # four JSON files were downloaded from it and hashed.
     "en-pt": Pair(repo="Douglasrambo/opus-mt-tc-big-en-pt-onnx",
                   base="Helsinki-NLP/opus-mt-tc-big-en-pt",
-                  absent=frozenset({"vocab"})),
+                  absent=frozenset({"vocab"}),
+                  revision="738ee4cce801ce7c519954e4b78d02d5057b6740",
+                  sha256={
+                      "encoder": "66329e9fdb0f8a112ebfd4e0eee4304296d5e7891dd34438c312452dcb14a8e9",
+                      "decoder": "8bf7b7a36556e60ef53ed17b11573f63235e04a80cb36a8ca6c7312925185ca9",
+                      "tokenizer": "47fbbc561252cfa491200d63c91bdda8a1ceeb653da63d8845ef827bf24acdfb",
+                      "config": "7a133252d86d032f8ecea9b74a0145cecf0d13374db5e4bc602ba52c92153d37",
+                      "generationConfig": "f743934c15ef22a0971f88abd75d2471fadc1888b89837be5adc5f71d86d0d5b",
+                      "tokenizerConfig": "5a5b40b768575d7c8b13e6f45413b248a22a5d7669d2feec7b9a6d6921ef1871",
+                  }),
 }
 
 # name -> path within the repo, kept as the path inside the staged pair too.
@@ -119,21 +137,43 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
-def licence_and_revision(pair: Pair) -> tuple[str, str, str]:
-    """Return (licence, licence_source, revision) for `pair`, or raise.
+def _licence_tag(info) -> str | None:
+    return next((t.split(":", 1)[1] for t in info.tags if t.startswith("license:")), None)
 
-    The ONNX repos carry no `license:` tag of their own -- they are quantized
+
+def _require_acceptable(repo: str, licence: str, source: str) -> None:
+    if licence not in ACCEPTABLE_LICENCES:
+        raise RuntimeError(
+            f"{repo!r} resolves to licence {licence!r} (via {source}), which is "
+            f"not in ACCEPTABLE_LICENCES ({sorted(ACCEPTABLE_LICENCES)}) -- this "
+            "project's model choice was made on licence grounds; a human needs to "
+            "decide whether this checkpoint's output may ship inside an MIT product"
+        )
+
+
+def licence_and_revision(pair: Pair) -> tuple[str, str, str, str]:
+    """Return (licence, licence_source, base_licence, revision) for `pair`, or raise.
+
+    The Xenova repos carry no `license:` tag of their own -- they are quantized
     re-exports and declare `base_model:` instead. Resolving the licence through
     that declaration is correct, but writing the result as though the ONNX repo
     had claimed it is not, so the source repo is returned alongside and recorded
-    in the manifest. If Xenova ever adds a tag, it wins over the inherited one.
+    in the manifest. An export that does tag itself is checked on that tag, and
+    its base is checked as well: a re-export's own tag cannot relicense weights
+    it was quantized from.
 
     Raises rather than defaulting: see ACCEPTABLE_LICENCES above.
     """
     from huggingface_hub import model_info
 
-    info = model_info(pair.repo)
-    licence = next((t.split(":", 1)[1] for t in info.tags if t.startswith("license:")), None)
+    info = model_info(pair.repo, revision=pair.revision)
+    if pair.revision is not None and info.sha != pair.revision:
+        raise RuntimeError(
+            f"{pair.repo!r} resolved revision {pair.revision} to {info.sha} -- "
+            "refusing to stage from a commit other than the pinned one"
+        )
+    base_licence = _licence_tag(model_info(pair.base))
+    licence = _licence_tag(info)
     source = pair.repo
 
     if licence is None:
@@ -145,30 +185,24 @@ def licence_and_revision(pair: Pair) -> tuple[str, str, str]:
                 "refusing to inherit a licence from a checkpoint the repo does not "
                 "claim to derive from"
             )
-        base = model_info(pair.base)
-        licence = next((t.split(":", 1)[1] for t in base.tags if t.startswith("license:")), None)
+        licence = base_licence
         source = pair.base
-        if licence is None:
-            raise RuntimeError(
-                f"neither {pair.repo!r} nor its base {pair.base!r} carries a license: "
-                'tag; refusing to write "unknown" -- fix the tag lookup or the '
-                "checkpoint before staging it"
-            )
-
-    if licence not in ACCEPTABLE_LICENCES:
+    if base_licence is None:
         raise RuntimeError(
-            f"{pair.repo!r} resolves to licence {licence!r} (via {source}), which is "
-            f"not in ACCEPTABLE_LICENCES ({sorted(ACCEPTABLE_LICENCES)}) -- this "
-            "project's model choice was made on licence grounds; a human needs to "
-            "decide whether this checkpoint's output may ship inside an MIT product"
+            f"{pair.base!r}, the base of {pair.repo!r}, carries no license: tag; "
+            'refusing to write "unknown" -- fix the tag lookup or the checkpoint '
+            "before staging it"
         )
-    return licence, source, info.sha
+
+    _require_acceptable(pair.repo, licence, source)
+    _require_acceptable(pair.repo, base_licence, pair.base)
+    return licence, source, base_licence, info.sha
 
 
 def stage(name: str, pair: Pair, out_root: Path) -> Path:
     from huggingface_hub import hf_hub_download
 
-    licence, licence_source, revision = licence_and_revision(pair)
+    licence, licence_source, base_licence, revision = licence_and_revision(pair)
     print(f"==> {name}: {pair.repo}@{revision[:12]} ({licence}, via {licence_source})")
 
     target = out_root / name
@@ -192,6 +226,14 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
         digest = sha256_of(dest)
         size = dest.stat().st_size
         print(f"    {key:<16} {relative:<42} {size / 1_048_576:6.1f} MB  {digest[:12]}")
+        pinned = pair.sha256.get(key)
+        if pair.sha256 and digest != pinned:
+            dest.unlink()
+            raise RuntimeError(
+                f"{pair.repo}@{revision[:12]} {relative}: sha256 {digest} does not "
+                f"match the pinned {pinned} -- the export changed under its pin, or "
+                "the pin is wrong; staging nothing the mirror would serve unchecked"
+            )
         files.append({"name": key, "path": relative, "bytes": size, "sha256": digest})
 
     manifest = {
@@ -202,6 +244,8 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
             "revision": revision,
             "licence": licence,
             "licence_source": licence_source,
+            "base": pair.base,
+            "base_licence": base_licence,
         },
         "files": files,
     }

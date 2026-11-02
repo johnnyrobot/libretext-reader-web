@@ -289,6 +289,16 @@ noncommercial terms travel with them to anyone who receives them, and they are n
 distributed here — staging fetches them. Whether those terms suit a given distribution is
 a legal question, not a code one, and it is not settled by this repository being MIT.
 
+The text is translated in the browser by Opus-MT from
+[Helsinki-NLP](https://huggingface.co/Helsinki-NLP) (the OPUS-MT project, University of
+Helsinki): `opus-mt-en-fr` and `opus-mt-en-es` (Apache 2.0) and `opus-mt-en-de`
+(CC BY 4.0) through Xenova's ONNX exports, and `opus-mt-tc-big-en-pt` (**CC BY 4.0**)
+through a third-party ONNX export,
+[`Douglasrambo/opus-mt-tc-big-en-pt-onnx`](https://huggingface.co/Douglasrambo/opus-mt-tc-big-en-pt-onnx).
+That export is pinned to revision `738ee4cc` with every file's sha256 in
+`scripts/convert-mt-models.py`, and staging stops if the repo or its base stops carrying
+a permissive licence. Like the voices, none of these weights is committed.
+
 Supertonic, which spoke the translations until LT-217, is gone from Listen mode entirely,
 with no fallback in any language.
 
