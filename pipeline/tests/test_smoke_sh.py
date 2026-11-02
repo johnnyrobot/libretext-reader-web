@@ -49,11 +49,12 @@ def speech_json(break_offsets=False):
                        "stats": {"sentences": 12}}, ensure_ascii=False, indent=2)
 
 
-def manifest(name):
+def manifest(name, drop=()):
     voices = ["voices/qIxlZ7Ei8KvWlyQH.bin", "voices/bXwrkHhURL1VFJdG.bin"] if name == "phonon" \
         else ["voices/M1.bin", "voices/F1.bin"]
     paths = ["config.json", "tokenizer.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx", *voices]
-    return {"version": 1, "files": [{"name": p, "path": p, "bytes": 1, "sha256": "0" * 64} for p in paths]}
+    return {"version": 1, "files": [{"name": p, "path": p, "bytes": 1, "sha256": "0" * 64}
+                                    for p in paths if p not in drop]}
 
 
 @pytest.fixture
@@ -75,22 +76,22 @@ def mirror(tmp_path):
         (tmp_path / path).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / path).write_text(body, encoding="utf-8")
 
-    immutable = set()   # paths a test wants cached for a year, wrongly
+    headers = {}   # path -> {header: a wrong value, or None to leave it out}
 
     class Live(serve_local.Handler):
         def send_header(self, keyword, value):
             if keyword == "Content-Security-Policy" and not self.path.startswith(("/_assets/tts/", *BOOKS)):
                 value = STRICT_CSP
-            if keyword == "Cache-Control" and self.path in immutable:
-                value = "public, max-age=31536000, immutable"
-            super().send_header(keyword, value)
+            value = headers.get(self.path, {}).get(keyword, value)
+            if value is not None:
+                super().send_header(keyword, value)
 
         def log_message(self, fmt, *args):
             pass
 
     server = serve_local.Server(("127.0.0.1", 0), functools.partial(Live, directory=str(tmp_path)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield SimpleNamespace(root=tmp_path, immutable=immutable, base=f"http://127.0.0.1:{server.server_address[1]}")
+    yield SimpleNamespace(root=tmp_path, headers=headers, base=f"http://127.0.0.1:{server.server_address[1]}")
     server.shutdown()
     server.server_close()
 
@@ -126,7 +127,7 @@ def test_a_host_that_serves_english_only_passes_when_it_says_so(mirror):
     assert failed(out) == []
     code, out = smoke(mirror)
     assert code == 1, out
-    assert "phonon-fr: its models and voices are served, immutable" in failed(out)
+    assert "phonon-fr: its files are served, models and voices immutable" in failed(out)
 
 
 def test_a_speech_json_whose_offsets_do_not_round_trip_fails(mirror):
@@ -143,17 +144,25 @@ def test_a_404_worker_fails(mirror):
     (mirror.root / "_assets/tts/phonon.worker.js").unlink()
     code, out = smoke(mirror)
     assert code == 1, out
-    assert "the worker carries its own COEP" in failed(out)
+    assert "the worker carries its own COEP and CORP" in failed(out)
+
+
+def test_a_worker_without_corp_fails(mirror):
+    mirror.headers["/_assets/tts/phonon.worker.js"] = {"Cross-Origin-Resource-Policy": None}
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert failed(out) == ["the worker carries its own COEP and CORP"]
 
 
 @pytest.mark.parametrize("missing", ["phonon/onnx/mimi_decoder.onnx", "phonon-de/onnx/flow_lm.onnx",
-                                     "phonon-pt/voices/F1.bin", "phonon-fr/manifest.json"])
+                                     "phonon-pt/voices/F1.bin", "phonon-fr/manifest.json",
+                                     "phonon-es/config.json", "phonon/tokenizer.json"])
 def test_a_404_model_voice_or_manifest_fails(mirror, missing):
     (mirror.root / "_assets/tts" / missing).unlink()
     code, out = smoke(mirror)
     assert code == 1, out
     lang_dir = missing.split("/")[0]
-    expected = [f"{lang_dir}: its models and voices are served, immutable"]
+    expected = [f"{lang_dir}: its files are served, models and voices immutable"]
     if missing.endswith("manifest.json"):   # nor can it be shown to revalidate
         expected.append("the code and the manifests revalidate")
     assert failed(out) == expected
@@ -163,17 +172,45 @@ def test_a_manifest_that_is_not_json_says_so(mirror):
     (mirror.root / "_assets/tts/phonon-es/manifest.json").write_text("<html>Not found</html>", encoding="utf-8")
     code, out = smoke(mirror)
     assert code == 1, out
-    assert failed(out) == ["phonon-es: its models and voices are served, immutable"]
+    assert failed(out) == ["phonon-es: its files are served, models and voices immutable"]
     assert "manifest.json is not a manifest (JSONDecodeError" in out
     assert "Traceback" not in out
+
+
+# The worker loads both models and both menu voices by name (src/phonon.worker.mjs),
+# so a manifest that leaves one out fails on a reader's click, not here.
+@pytest.mark.parametrize("lang_dir, left_out", [("phonon-de", "onnx/mimi_decoder.onnx"),
+                                                ("phonon-pt", "voices/F1.bin"),
+                                                ("phonon", "voices/bXwrkHhURL1VFJdG.bin")])
+def test_a_manifest_without_a_file_the_worker_loads_fails(mirror, lang_dir, left_out):
+    (mirror.root / "_assets/tts" / lang_dir / "manifest.json").write_text(
+        json.dumps(manifest(lang_dir, drop=(left_out,))), encoding="utf-8")
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert failed(out) == [f"{lang_dir}: its files are served, models and voices immutable"]
+    assert f"manifest.json lacks {left_out}" in out
+
+
+def test_a_model_that_is_immutable_but_not_kept_for_a_year_fails(mirror):
+    mirror.headers["/_assets/tts/phonon-fr/onnx/flow_lm.onnx"] = {"Cache-Control": "public, max-age=0, immutable"}
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert failed(out) == ["phonon-fr: its files are served, models and voices immutable"]
 
 
 # A manifest cached for a year outlives a restage (LT-222); an immutable reader.js
 # kept two fixes from reaching a reader (2026-08-23).
 @pytest.mark.parametrize("path", ["/_assets/tts/reader.js", "/_assets/tts/phonon.worker.js",
                                   "/_assets/tts/phonon/manifest.json", "/_assets/tts/phonon-es/manifest.json"])
-def test_code_or_a_manifest_cached_for_a_year_fails(mirror, path):
-    mirror.immutable.add(path)
+@pytest.mark.parametrize("cache", ["public, max-age=31536000, immutable", "public, max-age=31536000, must-revalidate"])
+def test_code_or_a_manifest_cached_for_a_year_fails(mirror, path, cache):
+    mirror.headers[path] = {"Cache-Control": cache}
     code, out = smoke(mirror)
     assert code == 1, out
     assert failed(out) == ["the code and the manifests revalidate"]
+
+
+def test_smoke_requires_the_english_voices_the_worker_loads():
+    worker = (ROOT / "src" / "phonon.worker.mjs").read_text(encoding="utf-8")
+    ids = re.search(r"VOICES = Object\.freeze\(\{ M1: '(\w+)', F1: '(\w+)' \}\)", worker).groups()
+    assert f'voices = ["{ids[0]}", "{ids[1]}"]' in (ROOT / "scripts" / "smoke.sh").read_text(encoding="utf-8")

@@ -21,7 +21,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 fails=0 checks=0
-note() { printf '  %-60s %s\n' "$1" "$2"; checks=$((checks + 1)); }
+note() { printf '  %-62s %s\n' "$1" "$2"; checks=$((checks + 1)); }
 bad()  { note "$1" "FAIL  $2"; fails=$((fails + 1)); }
 good() { note "$1" "ok"; }
 
@@ -64,21 +64,25 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
 
 # Caddy sets these headers on any path, a 404 included, so every asset check also
 # requires a 200: against the retired Supertonic paths they were green on nothing.
-# served PATH HEADER-PATTERN WHY-NOT: prints nothing when PATH answers 200 with a
-# header matching the pattern, and otherwise why not.
+# served PATH [HEADER-PATTERN WHY-NOT]...: prints nothing when PATH answers 200
+# with a header matching each pattern (extended regex), and otherwise why not.
 # The status comes from curl's %{http_code}, not the first header line, which
 # behind a proxy is the proxy's own "200 Connection established".
 served() {
-  local h s
-  h=$(curl -sSI --max-time 30 -w '%{http_code}' "$BASE/_assets/tts/$1" || true)
+  local path=$1 h s
+  shift
+  h=$(curl -sSI --max-time 30 -w '%{http_code}' "$BASE/_assets/tts/$path" || true)
   s="${h##*$'\n'}"
-  if [ "$s" != 200 ]; then echo "$1: HTTP ${s:-none}"
-  elif ! grep -qi "$2" <<<"$h"; then echo "$1 $3"
-  fi
+  if [ "$s" != 200 ]; then echo "$path: HTTP ${s:-none}"; return; fi
+  while [ $# -ge 2 ]; do
+    grep -Eqi "$1" <<<"$h" || { echo "$path $2"; return; }
+    shift 2
+  done
 }
 
-why=$(served phonon.worker.js 'cross-origin-embedder-policy: require-corp' "lacks COEP, so the browser will refuse to instantiate it")
-if [ -z "$why" ]; then good "the worker carries its own COEP"; else bad "the worker carries its own COEP" "$why"; fi
+why=$(served phonon.worker.js 'cross-origin-embedder-policy: require-corp' "lacks COEP, so the browser will refuse to instantiate it" \
+                              'cross-origin-resource-policy: same-origin' "lacks CORP: same-origin")
+if [ -z "$why" ]; then good "the worker carries its own COEP and CORP"; else bad "the worker carries its own COEP and CORP" "$why"; fi
 
 # The cache policy is SPLIT, and both halves are load-bearing. Every model and voice
 # file each Phonon manifest names must be there and cached for a year, or ~200 MB
@@ -93,18 +97,24 @@ if [ -z "$why" ]; then good "the worker carries its own COEP"; else bad "the wor
 VOICES="${SMOKE_VOICES:-phonon phonon-fr phonon-de phonon-es phonon-pt}"
 # shellcheck disable=SC2086 # VOICES is a list, split on spaces
 for lang_dir in $VOICES; do
-  check="$lang_dir: its models and voices are served, immutable"
+  check="$lang_dir: its files are served, models and voices immutable"
   code=$(curl -sS --max-time 30 -o "$tmp/$lang_dir.json" -w '%{http_code}' "$BASE/_assets/tts/$lang_dir/manifest.json" || true)
   if [ "$code" != 200 ]; then bad "$check" "$lang_dir/manifest.json: HTTP ${code:-none}"; continue; fi
-  if ! files=$(python3 - "$tmp/$lang_dir.json" <<'PY'
+  # The worker loads both models and the Male and Female voice by name
+  # (src/phonon.worker.mjs): English's under VOICES' IDs, a translation's as M1/F1.
+  if ! files=$(python3 - "$tmp/$lang_dir.json" "$lang_dir" <<'PY'
 import json, sys
 try:
     with open(sys.argv[1], encoding="utf-8") as f:
-        paths = [e["path"] for e in json.load(f)["files"] if e["path"].startswith(("onnx/", "voices/"))]
+        paths = [e["path"] for e in json.load(f)["files"]]
 except Exception as e:
     print(f"manifest.json is not a manifest ({type(e).__name__}: {e})"); raise SystemExit(1)
-if not any(p.startswith("onnx/") for p in paths) or not any(p.startswith("voices/") for p in paths):
-    print("manifest.json names no model or no voice"); raise SystemExit(1)
+voices = ["qIxlZ7Ei8KvWlyQH", "bXwrkHhURL1VFJdG"] if sys.argv[2] == "phonon" else ["M1", "F1"]
+need = ["config.json", "tokenizer.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
+        *(f"voices/{v}.bin" for v in voices)]
+missing = [p for p in need if p not in paths]
+if missing:
+    print("manifest.json lacks " + ", ".join(missing)); raise SystemExit(1)
 print("\n".join(paths))
 PY
   ); then
@@ -112,7 +122,11 @@ PY
   fi
   why=""
   while IFS= read -r path; do
-    why=$(served "$lang_dir/$path" 'cache-control: public.*immutable' "is not immutable")
+    case "$path" in
+      onnx/*|voices/*) why=$(served "$lang_dir/$path" 'cache-control:.*max-age=31536000([^0-9]|$)' "is not cached for a year" \
+                                                       'cache-control:.*immutable' "is not immutable") ;;
+      *) why=$(served "$lang_dir/$path") ;;
+    esac
     [ -z "$why" ] || break
   done <<<"$files"
   if [ -z "$why" ]; then good "$check"; else bad "$check" "$why"; fi
@@ -124,7 +138,8 @@ done
 stale=""
 # shellcheck disable=SC2086 # VOICES is a list, split on spaces
 for path in reader.js phonon.worker.js $(printf '%s/manifest.json ' $VOICES); do
-  why=$(served "$path" 'cache-control: .*must-revalidate' "does not revalidate")
+  why=$(served "$path" 'cache-control:.*max-age=0([^0-9]|$)' "is kept fresh, not revalidated" \
+                       'cache-control:.*must-revalidate' "does not revalidate")
   [ -z "$why" ] || stale="${stale:+$stale; }$why"
 done
 if [ -z "$stale" ]; then good "the code and the manifests revalidate"
