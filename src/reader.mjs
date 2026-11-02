@@ -242,11 +242,11 @@ export function enterReaderMode() {
   if (session) return Promise.resolve();
   // Cleared however entering ends -- declined, cancelled or failed -- so the
   // button still works the next time it is pressed.
-  entering ??= enter().finally(() => { entering = null; });
+  entering ??= runEntry().finally(() => { entering = null; });
   return entering;
 }
 
-async function enter() {
+async function runEntry() {
   const manifest = await loadSpeechManifest();
   const root = document.getElementById('main-content');
   if (!root) return;
@@ -257,7 +257,7 @@ async function enter() {
   // scrolling them into the bibliography to reach the button.
   //
   // This still costs a visitor who never presses the button nothing: it runs
-  // only while entering, which only a click reaches.
+  // only from enterReaderMode, which only a click reaches.
   ensureStylesheet();
 
   // A reader from before LT-217 may still hold Supertonic's ~380 MB.

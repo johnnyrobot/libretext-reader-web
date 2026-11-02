@@ -54,6 +54,8 @@ test.describe('leaving and re-entering Reader Mode', () => {
     await page.goto(IN_SCOPE);
 
     await page.locator('#tts-enter').click();
+    // A fixed wait, not a condition: the bug is a press that lands while nothing
+    // visible has happened yet, so there is nothing on the page to wait for.
     await page.waitForTimeout(1_000);
     await page.locator('#tts-enter').click();
 
@@ -66,5 +68,18 @@ test.describe('leaving and re-entering Reader Mode', () => {
     await page.locator('.tts-bar').waitFor({ state: 'visible' });
     await expect(page.locator('.tts-dialog')).toHaveCount(0);
     await expect(page.locator('.tts-bar')).toHaveCount(1);
+  });
+
+  // Sharing the entry in progress must not make the button single-use: a reader
+  // who says "Not now" can still change their mind (LT-223).
+  test('after "Not now", pressing Enter Reader Mode asks again', async ({ page }) => {
+    await page.goto(IN_SCOPE);
+
+    await page.locator('#tts-enter').click();
+    await page.locator('[data-act="decline"]').click();
+    await expect(page.locator('.tts-dialog')).toHaveCount(0);
+
+    await page.locator('#tts-enter').click();
+    await expect(page.getByRole('heading', { name: 'Listen to this page' })).toBeVisible();
   });
 });
