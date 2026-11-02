@@ -3,7 +3,7 @@
 
     python3 scripts/stage-phonon-lang.py fr <STAGE>/_assets/tts/phonon-fr
 
-Reads `phonon:<lang>` from ~/.ollama/models, checks it against the Ollama ID
+Reads `phonon:<lang>` from ~/.ollama/models (or OLLAMA_MODELS), checks it against the Ollama ID
 pinned below, and writes the files `src/phonon.worker.mjs` loads, in the same
 layout and manifest shape as scripts/fetch-phonon.py writes for English. The
 weights are CC BY-NC 4.0 and never committed, so the target must be outside
@@ -391,11 +391,16 @@ def _refuse_a_tracked_target(target: Path) -> None:
     import subprocess
 
     existing = next(p for p in (target, *target.parents) if p.exists())
+    git = lambda *args: subprocess.run(["git", "-C", str(existing), *args], capture_output=True, text=True,
+                                       env={**os.environ, "LC_ALL": "C"})
     try:
-        inside = subprocess.run(["git", "-C", str(existing), "rev-parse", "--is-inside-work-tree"],
-                                capture_output=True, text=True).stdout.strip() == "true"
-        ignored = inside and subprocess.run(["git", "-C", str(existing), "check-ignore", "-q",
-                                             str(target / "manifest.json")]).returncode == 0
+        probe = git("rev-parse", "--is-inside-work-tree")
+        if probe.returncode != 0 and "not a git repository" not in probe.stderr:
+            raise SystemExit(f"{target}: git could not tell whether a checkout would commit the CC BY-NC "
+                             f"weights there ({probe.stderr.strip()}); refusing")
+        inside = probe.stdout.strip() == "true"
+        # The folder itself, so every file staged in it is covered, not one name a pattern happens to match.
+        ignored = inside and git("check-ignore", "-q", f"{target}/").returncode == 0
     except FileNotFoundError:   # no git: fall back to this repo alone
         inside, ignored = target == ROOT or ROOT in target.parents, False
     if inside and not ignored:
@@ -410,8 +415,6 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
     target = Path(target).resolve()
     _refuse_a_tracked_target(target)
 
-    import onnx
-
     english = _english_export()
     template = english.CACHE
     for relative in ("config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx"):
@@ -419,6 +422,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
             raise SystemExit(f"the English export's {relative} is missing or unpinned; run scripts/fetch-phonon.py")
 
     copy = read_ollama(lang, PINS[lang], models)
+    import onnx
     template_config = json.loads((template / "config.json").read_bytes())
     files = {
         "config.json": json.dumps(build_config(copy, template_config), indent=2).encode(),

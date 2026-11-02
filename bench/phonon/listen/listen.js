@@ -83,7 +83,11 @@ function playChunk(samples, sampleRate) {
 /** Speak `text` in `lang`, streaming it to the speakers; resolves with what was measured. */
 export async function speak(lang, text, { mute = false } = {}) {
   const coldStart = !engines.has(lang);
+  // Stop while the model is still loading: nothing is rendering yet, so just don't start.
+  let stoppedLoading = false;
+  stopCurrent = () => { stoppedLoading = true; stopCurrent = null; };
   const { worker, loadMs, bytes } = await startEngine(lang);
+  if (stoppedLoading) return { lang, text, outcome: 'stopped' };
   stopAudio();
   const id = `lt216-${nextId++}`;
   const sent = performance.now();
@@ -162,7 +166,7 @@ function choose(lang) {
 addEventListener('DOMContentLoaded', () => {
   for (const [code, { name }] of Object.entries(LANGS)) $('lang').add(new Option(name, code));
   const asked = new URLSearchParams(location.search).get('lang');
-  $('lang').value = asked in LANGS ? asked : 'fr';
+  $('lang').value = Object.hasOwn(LANGS, asked ?? '') ? asked : 'fr';
   choose($('lang').value);
   $('lang').addEventListener('change', () => choose($('lang').value));
   $('play').addEventListener('click', async () => {

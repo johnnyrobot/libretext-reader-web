@@ -609,10 +609,11 @@ No 40M ONNX export exists. The browser files are built by
 or `OLLAMA_MODELS`; Ollama 0.40.13), each pinned by the ID `ollama list` shows,
 the sha256 of its inner manifest. Every blob is checked against its own digest
 before it is read. No 40M weight comes from Hugging Face and no token is
-needed; the one Hub file the build uses is the English template below, the
-Apache 2.0 export `scripts/fetch-phonon.py` already fetches for English, at a
-pinned revision. The script refuses a target that any git checkout would
-track; a git-ignored stage inside one, such as `scripts/stage-local.sh`'s
+needed; the only Hub files the build uses are the English template below
+(its config.json, flow_lm.onnx and mimi_decoder.onnx), the Apache 2.0 export
+`scripts/fetch-phonon.py` already fetches for English, at a pinned revision.
+The script refuses a target that any git checkout would track (or where git
+cannot tell); a git-ignored stage inside one, such as `scripts/stage-local.sh`'s
 `.stage/`, is allowed, so LT-217 can stage into its usual layout.
 
 | Tag | Pinned ID |
@@ -643,7 +644,7 @@ right. The grown graph was run in ORT twice: with the cloned layers' output
 projections zeroed it must speak exactly as the 6-layer English graph does, and
 with them left in it must not, and each clone must read and write only its own
 cache. `pipeline/tests/test_stage_phonon_lang.py` holds all
-of this (17 tests). Each language's files come to 199.6 MB (190.3 MiB), against
+of this (19 tests). Each language's files come to 199.6 MB (190.3 MiB), against
 English's 162.2 MB (154.7 MiB).
 
 Route (b), the `phonon-tts` npm package, was not tried. The ticket says to

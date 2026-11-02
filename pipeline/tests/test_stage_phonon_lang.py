@@ -95,11 +95,12 @@ def test_pins_one_ollama_id_per_language():
 
 EN_PIN = "sha256:6667dd188d2e30e1448b0476ccbd36bdc8802225a848541d5049f450e2a983e0"
 TEMPLATE = ROOT / "bench" / "assets" / "phonon-31m-en" / "4f0cda7c60dddb4862d0e68ff9ff60c32ffdc9f4"
-OLLAMA = Path.home() / ".ollama" / "models"
+OLLAMA = stage_lang.OLLAMA_MODELS
 needs_real_copies = pytest.mark.skipif(
-    not (TEMPLATE / "onnx" / "flow_lm.onnx").is_file()
+    importlib.util.find_spec("onnx") is None
+    or not (TEMPLATE / "onnx" / "flow_lm.onnx").is_file()
     or not (OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / "31m-en").is_file(),
-    reason="needs the English export (scripts/fetch-phonon.py) and `ollama pull phonon:31m-en`")
+    reason="needs onnx, the English export (scripts/fetch-phonon.py) and `ollama pull phonon:31m-en`")
 
 
 @pytest.fixture(scope="module")
@@ -285,11 +286,11 @@ def test_refuses_a_copy_whose_mimi_is_not_the_templates():
         stage_lang.build_mimi_decoder(onnx.ModelProto(), copy, template_config)
 
 
-def _checkout(path):
+def _checkout(path, ignores=".stage/"):
     import subprocess
     path.mkdir(parents=True)
     subprocess.run(["git", "init", "-q", str(path)], check=True)
-    (path / ".gitignore").write_text(".stage/\n")
+    (path / ".gitignore").write_text(ignores + "\n")
     return path
 
 
@@ -302,6 +303,21 @@ def test_refuses_to_stage_where_another_checkout_would_commit_the_weights(tmp_pa
     other = _checkout(tmp_path / "other")
     with pytest.raises(SystemExit, match="git would commit"):
         stage_lang.stage("fr", other / "_assets" / "tts" / "phonon-fr")
+
+
+def test_refuses_a_checkout_that_ignores_the_manifest_but_not_the_weights(tmp_path):
+    other = _checkout(tmp_path / "other", ignores="*.json")
+    with pytest.raises(SystemExit, match="git would commit"):
+        stage_lang.stage("fr", other / "_assets" / "tts" / "phonon-fr")
+
+
+def test_lets_a_checkouts_ignored_stage_through(tmp_path):
+    """LT-217 stages into scripts/stage-local.sh's .stage/; with no Ollama copy
+    here it stops later, for that, and not at the guard."""
+    target = _checkout(tmp_path / "checkout") / ".stage" / "_assets" / "tts" / "phonon-fr"
+    with pytest.raises(SystemExit) as stopped:
+        stage_lang.stage("fr", target, models=tmp_path / "no-ollama")
+    assert "git would commit" not in str(stopped.value)
 
 
 def test_refuses_a_language_it_has_no_pin_for(tmp_path):

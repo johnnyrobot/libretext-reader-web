@@ -79,7 +79,10 @@ def score(directory, lang):
 
 def main():
     args = sys.argv[1:]
-    directory = pathlib.Path(args.pop(0)) if args and pathlib.Path(args[0]).is_dir() else pathlib.Path("/Users/Shared/LT-216/work/measure")
+    known = {key for item in SET["items"] for key in item} - {"id", "category"}
+    directory = pathlib.Path(args.pop(0) if args and args[0] not in known else "/Users/Shared/LT-216/work/measure")
+    if not directory.is_dir():
+        raise SystemExit(f"{directory}: no such folder of measured audio")
     langs = args or [p.name for p in sorted(directory.iterdir()) if (p / "timings.json").exists()]
     for lang in langs:
         total, rows = score(directory, lang)
