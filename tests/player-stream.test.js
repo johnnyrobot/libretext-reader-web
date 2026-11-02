@@ -121,7 +121,9 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen).toEqual(['a']);           // still the same sentence
   });
 
-  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays', async () => {
+  // Some of a was heard before the guard withdrew it, so b is not the first
+  // sentence heard: it was rendered ahead, and waits to be whole.
+  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays whole', async () => {
     player.play();
     await tick();
     const a = engine.jobs.get('a');
@@ -129,7 +131,10 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.reset();
     a.finish('skipped');
     await tick();
-    engine.jobs.get('b').finish();
+    const b = engine.jobs.get('b');
+    b.chunk(); await tick();
+    expect(seen).toEqual(['a']);
+    b.finish();
     await tick();
 
     expect(skipped).toEqual(['a']);

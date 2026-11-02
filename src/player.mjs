@@ -17,7 +17,8 @@
  * has passed it, so a runaway there is never heard. Time to first sound is
  * unchanged. The cost is a possible pause between sentences: the worker renders
  * one sentence at a time, in order, so a long sentence after a short streamed one
- * may not be whole by its turn, nor the one after a sentence the guard skipped.
+ * may not be whole by its turn, nor the one after a streamed sentence the guard
+ * withdrew and skipped.
  */
 
 import { createStreamPlayback } from './stream-playback.mjs';
@@ -59,7 +60,8 @@ export function createPlayer({
   let streamPlayback = null;
   let awaitingFirstSound = false;
   // Set by play() and seekTo(), cleared once a sentence starts playing: whether
-  // the sentence now awaited may play as a stream rather than whole.
+  // the sentence now awaited may play as a stream rather than whole. A sentence
+  // skipped or failed before any sound leaves it set, so the next one streams.
   let waitingToHear = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
