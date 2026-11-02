@@ -413,7 +413,12 @@ def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
     manifest = stage_lang.stage("fr", target)
 
     assert manifest["source"] == {"repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"], "licence": "cc-by-nc-4.0"}
-    assert manifest["voices"] == stage_lang.voice_sources("fr", stage_lang.VOICES["fr"])
+    assert manifest["voices"] == {
+        "M1": {"voice": "default", "repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"],
+               "licence": "cc-by-nc-4.0"},
+        "F1": {"voice": "Lilou", "repo": "ollama:phonon:40m-fr", "revision": stage_lang.VOICE_PINS["fr"],
+               "licence": "apache-2.0"},
+    }
     assert sorted(f["path"] for f in manifest["files"]) == [
         "config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
         "tokenizer.json", "tokenizer_config.json", "voices/F1.bin", "voices/M1.bin"]

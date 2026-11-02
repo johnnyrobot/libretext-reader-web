@@ -107,7 +107,8 @@ Ollama ID) into the two ONNX graphs the browser runs, with the Male and Female v
 other comes from the voice catalogue in `phonon:40m-<lang>` (also pinned), so both
 `ollama pull phonon:<lang>` and `ollama pull phonon:40m-<lang>` must have run first. It
 needs numpy and onnx, and refuses a target inside this repository, because those weights
-are CC BY-NC 4.0. The weights are not in this repository (see *Model weights* below). Then lay out the served directory:
+are CC BY-NC 4.0. The weights are not in this repository (see *Model weights* below).
+Then lay out the served directory:
 
 ```
 /_assets/tts/

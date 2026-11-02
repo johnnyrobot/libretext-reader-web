@@ -1,6 +1,9 @@
 """THROWAWAY SPIKE (LT-222). Stage every voice of each language's catalogue for the bench.
 
-    PYTHON=bench/phonon/.venv/bin/python bench/phonon/.venv/bin/python bench/phonon/lt222/stage.py STAGE [fr de es pt]
+    PYTHON=$VENV/bin/python $VENV/bin/python bench/phonon/lt222/stage.py STAGE [fr de es pt]
+
+VENV is any venv with numpy and onnx, which scripts/stage-phonon-lang.py needs
+(LT-222 used /Users/Shared/LT-216/venv; the bench venv has no onnx).
 
 Builds STAGE as bench/phonon/listen/stage.sh does (it runs it with LANGS=" ",
 a blank that is not empty, so it stages no language: just the worker, English

@@ -2,8 +2,8 @@
 
 import { formatBytes } from './consent.mjs';
 
-// Two voices in every language, from gradium/phonon-voices: the worker maps M1
-// and F1 to each language's Male and Female voice (LT-222). One clear pair is a
+// Two voices in every language: the worker maps M1 and F1 to each language's
+// Male and Female voice (LT-222; bench/phonon/FINDINGS.md says which). One clear pair is a
 // better choice than a long menu of names nobody has heard, and the reader's
 // pick carries across a language switch.
 const VOICES = [['M1', 'Male'], ['F1', 'Female']];
