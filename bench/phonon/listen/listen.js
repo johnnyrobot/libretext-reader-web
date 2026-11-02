@@ -42,7 +42,7 @@ function startEngine(lang) {
       if (data.type === 'progress') {
         progress.set(data.file, [data.loaded ?? 0, data.total ?? 0]);
         const [got, all] = [...progress.values()].reduce(([a, b], [c, d]) => [a + c, b + d], [0, 0]);
-        if (all) status(`Loading ${LANGS[lang].name}: ${(got / 1048576).toFixed(0)} of ${(all / 1048576).toFixed(0)} MB`);
+        if (all) status(`Loading ${LANGS[lang].name}: ${(got / 1e6).toFixed(0)} of ${(all / 1e6).toFixed(0)} MB`);
       } else if (data.type === 'ready') {
         worker.removeEventListener('message', onInit);
         const bytes = [...progress.values()].reduce((sum, [, total]) => sum + total, 0);
@@ -148,7 +148,7 @@ function showStats(run) {
   const rows = [
     ['First sound', `${(run.firstSoundMs / 1000).toFixed(2)} s after Play`],
     ['Speed (RTF)', `${run.rtf.toFixed(2)} (render ${(run.renderMs / 1000).toFixed(1)} s for ${run.seconds.toFixed(1)} s of speech)`],
-    ['Model download', `${(run.bytes / 1048576).toFixed(0)} MB${run.loadMs ? `, loaded in ${(run.loadMs / 1000).toFixed(1)} s` : ''}`],
+    ['Model download', `${(run.bytes / 1e6).toFixed(0)} MB${run.loadMs ? `, loaded in ${(run.loadMs / 1000).toFixed(1)} s` : ''}`],
   ];
   $('stats').replaceChildren(...rows.flatMap(([k, v]) => {
     const dt = document.createElement('dt'); dt.textContent = k;

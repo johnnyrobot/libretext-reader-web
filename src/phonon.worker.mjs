@@ -2,7 +2,9 @@
  * English speech with Phonon 31M (onnx-community/phonon-31m-en, Apache 2.0), in
  * the reader's browser. LT-214 moved English Listen mode here from Supertonic;
  * the nine translation tracks stay on `engine.worker.mjs`, which a reader who
- * only ever listens in English never downloads.
+ * only ever listens in English never downloads. Given a staged manifest, it also
+ * speaks the Phonon 40M French, German, Spanish and Portuguese models
+ * (scripts/stage-phonon-lang.py, LT-216); the reader does not offer them yet.
  *
  * Protocol, the same shape as `engine.worker.mjs` so `engine.mjs` drives both,
  * with two additions for streaming:

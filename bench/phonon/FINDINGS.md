@@ -3,7 +3,9 @@
 THROWAWAY SPIKE. Nothing here changes `src/` or `pipeline/`; the scripts beside
 this file exist to produce the numbers below and can be deleted once a decision
 is made. Sources for every licence and model fact are in
-[`notes/sources.md`](notes/sources.md).
+[`notes/sources.md`](notes/sources.md). The LT-216 section is the exception:
+the worker fix and the stage script it describes (`scripts/`, with its tests
+in `pipeline/tests/`) are kept.
 
 ## Recommendation
 
