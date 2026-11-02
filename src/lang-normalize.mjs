@@ -11,7 +11,7 @@
  * client-side reader against the 9,407 deployed Spanish sentences. Of the four
  * things that differ, three are variations — quantisation, checkpoint, tokenizer.
  * This one is a defect: without it **21.0% of the book's sentences** reach
- * Supertonic carrying raw digits, and it says `Había 21 mujeres` where the
+ * the voice carrying raw digits, and it says `Había 21 mujeres` where the
  * deployed track says `Había veintiuno mujeres`.
  *
  * **This runs BEFORE `restore()`, on the masked line.** Load-bearing, and the
@@ -448,919 +448,6 @@ export function normalizeFrForSpeech(text) {
   return cleanup(out);
 }
 
-// ---------------------------------------------------------------------------
-// Italian. The THIRD language, and the first to invert BOTH marks relative to
-// English. The en-it checkpoint was MEASURED before any rule below was written:
-//
-//     $1,200   -> "$ 1.200"   DOT thousands, sign LEADING with a space
-//     $15.50   -> "$ 15,50"   decimal COMMA
-//     68%      -> "68%"       NO space before the sign (French has one)
-//     25,000   -> "25.000"    DOT thousands
-//     et al.   -> "et al."    preserved
-//     1st/2nd  -> "il primo"/"il secondo"   already spelled out
-//
-// So a DOT is a thousands group and a COMMA is a decimal — the inverse of
-// English on both marks, where Spanish preserved the English forms and French
-// inverted only one. Reading either the English way gives a wrong VALUE.
-//
-// THE HARD PART is that the dot is ambiguous WITHIN Italian, which neither
-// previous language had to face: "1.200" is twelve hundred, "7.5" in
-// "Figura 7.5" is a section number, "2.0" in "CC BY 2.0" is a version. Only
-// GROUP SIZE tells them apart — a thousands group is ALWAYS exactly three
-// digits — and the priority is the opposite of what a port would assume.
-// Measured across the 9,423 shipped Italian sentences: the 1-2 digit dot form
-// occurs 335 times against 20 real thousands groups, so reading a dot as
-// thousands unconditionally corrupts 335 readings to fix 20.
-// ---------------------------------------------------------------------------
-
-const IT_ONES = [
-  'zero', 'uno', 'due', 'tre', 'quattro', 'cinque', 'sei', 'sette', 'otto',
-  'nove', 'dieci', 'undici', 'dodici', 'tredici', 'quattordici', 'quindici',
-  'sedici', 'diciassette', 'diciotto', 'diciannove',
-];
-const IT_TENS = {
-  2: 'venti', 3: 'trenta', 4: 'quaranta', 5: 'cinquanta',
-  6: 'sessanta', 7: 'settanta', 8: 'ottanta', 9: 'novanta',
-};
-
-function itUnderHundred(value) {
-  if (value < 20) return IT_ONES[value];
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  let head = IT_TENS[tens];
-  if (ones === 0) return head;
-  // The tens ELIDE their final vowel before the two vowel-initial ones:
-  // ventuno and ventotto, never "ventiuno"/"ventiotto". Nothing in Spanish or
-  // French does this, so it is the first thing a port gets wrong.
-  if (ones === 1 || ones === 8) head = head.slice(0, -1);
-  // "tre" takes an accent as the final element of a compound: ventitré.
-  return head + (ones === 3 ? 'tré' : IT_ONES[ones]);
-}
-
-function itUnderThousand(value) {
-  if (value < 100) return itUnderHundred(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  // "cento" is INVARIABLE — duecento, never "duecenti" — and one hundred is
-  // bare "cento", never "unocento".
-  let head = hundreds === 1 ? 'cento' : `${IT_ONES[hundreds]}cento`;
-  if (rest === 0) return head;
-  const tail = itUnderHundred(rest);
-  // cento drops its own final o before a tail starting with one: centottanta.
-  if (tail.startsWith('o')) head = head.slice(0, -1);
-  return head + tail;
-}
-
-function itIntToWords(value) {
-  if (value < 0) return `meno ${itIntToWords(-value)}`;
-  if (value >= 1000000) {
-    const millions = Math.floor(value / 1000000);
-    const rest = value % 1000000;
-    const head = millions === 1 ? 'un milione' : `${itIntToWords(millions)} milioni`;
-    return head + (rest ? ` ${itIntToWords(rest)}` : '');
-  }
-  if (value >= 1000) {
-    const thousands = Math.floor(value / 1000);
-    const rest = value % 1000;
-    // Singular "mille", plural "-mila", fused onto whatever precedes it.
-    const head = thousands === 1 ? 'mille' : `${itUnderThousand(thousands)}mila`;
-    return head + (rest ? itUnderThousand(rest) : '');
-  }
-  return itUnderThousand(value);
-}
-
-const itDigitsToWords = (digits) => [...digits].map((d) => IT_ONES[Number(d)]).join(' ');
-const itInt = (token) => Number(token.replace(/\./g, ''));
-// "uno" loses its final vowel before a noun: un dollaro, ventun dollari.
-const itApocopate = (phrase) => (phrase === 'uno' ? 'un'
-  : (phrase.endsWith('uno') ? phrase.slice(0, -1) : phrase));
-
-function itNumberPhrase(token) {
-  const digits = token.replace(/\./g, '');
-  // Same two identifier tells as the Spanish and French passes.
-  if (!token.includes('.')
-      && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return itDigitsToWords(digits);
-  }
-  return itIntToWords(Number(digits));
-}
-
-// 1-3 digits then one or more DOT groups of EXACTLY three. The exactness is the
-// entire guard keeping "Figura 7.5" and "CC BY 2.0" out.
-const IT_GROUPED = '\\d{1,3}(?:\\.\\d{3})+(?!\\d)';
-const IT_AMOUNT = `(?:${IT_GROUPED}|\\d+)(?:,\\d+)?`;
-// A scale word after a currency amount means the comma is a DECIMAL inside a
-// scaled quantity, not a cents separator: "$ 8,3 trilioni" read as dollars and
-// cents gives $8.30 rather than $8.3 trillion, a wrong VALUE.
-const IT_SCALE = '(?:mila|milione|milioni|miliardo|miliardi|bilione|bilioni|trilione|trilioni)';
-const IT_CURRENCY_SCALE_RE = new RegExp(`\\$\\s?(\\d+(?:,\\d+)?)\\s+(${IT_SCALE})${B}`, 'gu');
-const IT_CURRENCY_CENTS_RE = new RegExp(`\\$\\s?(\\d+),(\\d{1,2})(?!\\d)(?!\\s+${IT_SCALE}${B})`, 'gu');
-const IT_CURRENCY_SIGN_RE = new RegExp(`\\$\\s?(${IT_GROUPED}|\\d+)`, 'gu');
-const IT_PERCENT_RE = new RegExp(`${B}(${IT_AMOUNT})\\s?%`, 'gu');
-const IT_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
-// A dot group of ONE OR TWO digits: a section, figure or version number, never
-// a thousand. 335 occurrences against 20 real thousands groups.
-const IT_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-const IT_YEAR_RE = new RegExp(`${B}(?:1[5-9]\\d{2}|20\\d{2})${B}`, 'gu');
-const IT_INTEGER_RE = new RegExp(`${B}(?:${IT_GROUPED}|\\d+)${B}`, 'gu');
-
-const itMoney = (value) => `${itApocopate(itIntToWords(value))} ${value === 1 ? 'dollaro' : 'dollari'}`;
-const itFraction = (whole, part, joiner) => `${itIntToWords(Number(whole))} ${joiner} ${itDigitsToWords(part)}`;
-
-function itCurrencyScale(_match, amount, scale) {
-  const phrase = amount.includes(',')
-    ? itFraction(...amount.split(','), 'virgola')
-    : itIntToWords(Number(amount));
-  return `${phrase} ${scale} di dollari`;
-}
-
-function itCurrencyCents(_match, whole, fraction) {
-  const cents = Number(fraction.padEnd(2, '0').slice(0, 2));
-  let phrase = itMoney(Number(whole));
-  if (cents) {
-    phrase += ` e ${itApocopate(itIntToWords(cents))} ${cents === 1 ? 'centesimo' : 'centesimi'}`;
-  }
-  return phrase;
-}
-
-/**
- * Italian translated text -> Italian spoken form.
- *
- * Pass order is load-bearing, with one ordering specific to Italian: the
- * SECTION-DOT pass must run before the integer pass but may run in any order
- * relative to the grouped-thousand pass, because the two regexes are made
- * mutually exclusive by GROUP SIZE rather than by sequence.
- *
- * `et al.` has NO rule, measured rather than omitted: it survives the en-it
- * checkpoint intact 100 times out of 100, and it is correct Italian academic
- * prose. The Spanish rule exists because that checkpoint mangled it.
- */
-export function normalizeItForSpeech(text) {
-  let out = restoreLeadingZero(text).replace(IT_CURRENCY_SCALE_RE, itCurrencyScale);
-  out = out.replace(IT_CURRENCY_CENTS_RE, itCurrencyCents);
-  out = out.replace(IT_CURRENCY_SIGN_RE, (_m, amount) => itMoney(itInt(amount)));
-  out = out.replace(IT_PERCENT_RE, (_m, amount) => {
-    if (!amount.includes(',')) return `${itNumberPhrase(amount)} per cento`;
-    return `${itFraction(...amount.split(','), 'virgola')} per cento`;
-  });
-  out = out.replace(IT_COMMA_DECIMAL_RE,
-    (_m, whole, fraction) => itFraction(whole, fraction, 'virgola'));
-  out = out.replace(IT_SECTION_DOT_RE,
-    (_m, whole, fraction) => itFraction(whole, fraction, 'punto'));
-  out = out.replace(IT_YEAR_RE, (m) => itIntToWords(Number(m)));
-  out = out.replace(IT_INTEGER_RE, (m) => itNumberPhrase(m));
-  return cleanup(out);
-}
-
-// ---------------------------------------------------------------------------
-// Dutch. The FOURTH language, and the fourth distinct convention in four tries.
-// The en-nl checkpoint was MEASURED on the deployed corpus before any rule below
-// was written (bench/formats/measure.py, 2026-08-27):
-//
-//     8,000     -> "8.000"          DOT thousands, 14 of 15
-//     $50       -> "$50"            sign LEADING, tight
-//     $400 bil  -> "$ 400 miljard"  sign LEADING, spaced — both forms occur
-//     $8.3 tril -> "$8,3 triljoen"  decimal COMMA inside a scaled amount
-//     $1.00     -> "$1,00"          decimal COMMA in cents
-//     Figure 1.3-> "Figuur 1.3"     decimal DOT preserved
-//     20%       -> "20%"            NO space before the sign, 58 of 58
-//     et al.    -> "et al."         preserved 59 of 60, so NO rule
-//
-// Dutch takes ITALIAN's dot thousands and keeps ENGLISH's dot decimal at the
-// same time, so one mark does two jobs in the same sentence — which no earlier
-// language here had to face:
-//
-//     es  dot = decimal      comma = thousands   (English forms kept)
-//     fr  comma = decimal    space = thousands
-//     it  comma = decimal    dot   = thousands
-//     nl  dot = decimal AND dot = thousands      <- both, same mark
-//
-// GROUP SIZE is the only thing separating them: a thousands group is ALWAYS
-// exactly three digits.
-//
-// Two things a port from any earlier language gets wrong: Dutch puts the UNIT
-// BEFORE THE TEN and joins with "en" (eenentwintig), taking a trema on that
-// joint after a unit ending in -e (tweeëntwintig); and Dutch reads a YEAR BY
-// HUNDREDS like English — 1961 is "negentienhonderdeenenzestig", where the
-// es/fr/it plain-cardinal rule would give "duizend negenhonderdeenenzestig".
-// ---------------------------------------------------------------------------
-
-const NL_ONES = [
-  'nul', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht',
-  'negen', 'tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien',
-  'zestien', 'zeventien', 'achttien', 'negentien',
-];
-const NL_TENS = {
-  2: 'twintig', 3: 'dertig', 4: 'veertig', 5: 'vijftig',
-  6: 'zestig', 7: 'zeventig', 8: 'tachtig', 9: 'negentig',
-};
-
-function nlUnderHundred(value) {
-  if (value < 20) return NL_ONES[value];
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  if (ones === 0) return NL_TENS[tens];
-  const unit = NL_ONES[ones];
-  // "twee" + "en" would spell "tweeen", three vowels reading as one long sound.
-  // Dutch marks the boundary with a diaeresis instead.
-  const joint = unit.endsWith('e') ? 'ën' : 'en';
-  return unit + joint + NL_TENS[tens];
-}
-
-function nlUnderThousand(value) {
-  if (value < 100) return nlUnderHundred(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  // One hundred is bare "honderd", never "eenhonderd", and the whole
-  // sub-thousand number is ONE word.
-  const head = hundreds === 1 ? 'honderd' : `${NL_ONES[hundreds]}honderd`;
-  return head + (rest ? nlUnderHundred(rest) : '');
-}
-
-function nlIntToWords(value) {
-  if (value < 0) return `min ${nlIntToWords(-value)}`;
-  // Standalone, the numeral one is "een" — which is also the indefinite
-  // article. Dutch disambiguates the numeral with accents, and this module only
-  // ever emits numerals. Compounds (eenentwintig, honderdeen) are built from the
-  // bare table entry and are deliberately not touched.
-  if (value === 1) return 'één';
-  if (value >= 1_000_000_000) {
-    const billions = Math.floor(value / 1_000_000_000);
-    const rest = value % 1_000_000_000;
-    return `${nlIntToWords(billions)} miljard${rest ? ` ${nlIntToWords(rest)}` : ''}`;
-  }
-  if (value >= 1_000_000) {
-    const millions = Math.floor(value / 1_000_000);
-    const rest = value % 1_000_000;
-    return `${nlIntToWords(millions)} miljoen${rest ? ` ${nlIntToWords(rest)}` : ''}`;
-  }
-  if (value >= 1_000) {
-    const thousands = Math.floor(value / 1_000);
-    const rest = value % 1_000;
-    // The multiplier FUSES onto "duizend" (tweeduizend, twintigduizend) but the
-    // remainder is a separate word: "tweeduizend vijfhonderd".
-    const head = thousands === 1 ? 'duizend' : `${nlUnderThousand(thousands)}duizend`;
-    return head + (rest ? ` ${nlUnderThousand(rest)}` : '');
-  }
-  return nlUnderThousand(value);
-}
-
-const nlDigitsToWords = (digits) => [...digits].map((d) => NL_ONES[Number(d)]).join(' ');
-const nlInt = (token) => Number(token.replace(/\./g, ''));
-
-/**
- * A year below 2000 is read BY HUNDREDS, as in English and unlike es/fr/it.
- * From 2000 the hundreds reading stops being how anyone says it and the plain
- * cardinal takes over.
- */
-function nlYearPhrase(value) {
-  if (value >= 2000) return nlIntToWords(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  return `${nlUnderHundred(hundreds)}honderd${rest ? nlUnderHundred(rest) : ''}`;
-}
-
-function nlNumberPhrase(token) {
-  const digits = token.replace(/\./g, '');
-  // The same two identifier tells as every other language here: an ungrouped run
-  // this long is a DOI tail or a collapsed page range, and a leading zero is
-  // deleted outright by a cardinal reading.
-  if (!token.includes('.')
-      && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return nlDigitsToWords(digits);
-  }
-  return nlIntToWords(Number(digits));
-}
-
-// A grouped thousand: 1-3 digits then one or more DOT-separated groups of
-// EXACTLY three. That exactness is the whole guard separating "8.000" from
-// "Figuur 7.5" and "CC BY 2.0".
-const NL_GROUPED = '\\d{1,3}(?:\\.\\d{3})+(?!\\d)';
-const NL_AMOUNT = `(?:${NL_GROUPED}|\\d+)(?:,\\d+)?`;
-
-// A scale word after a currency amount means the comma is a DECIMAL inside a
-// scaled quantity, not a cents separator: "$8,3 triljoen" read as cents gives
-// $8.30 for $8.3 trillion, a wrong VALUE.
-const NL_SCALE = '(?:duizend|miljoen|miljard|biljoen|triljoen)';
-const NL_CURRENCY_SCALE_RE = new RegExp(`\\$\\s?(\\d+(?:,\\d+)?)\\s+(${NL_SCALE})${B}`, 'gu');
-const NL_CURRENCY_CENTS_RE = new RegExp(`\\$\\s?(\\d+),(\\d{1,2})(?!\\d)(?!\\s+${NL_SCALE}${B})`, 'gu');
-const NL_CURRENCY_SIGN_RE = new RegExp(`\\$\\s?(${NL_GROUPED}|\\d+)`, 'gu');
-const NL_PERCENT_RE = new RegExp(`${B}(${NL_AMOUNT})\\s?%`, 'gu');
-const NL_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
-// A dot group of ONE OR TWO digits: a section number, a figure number or a
-// version, never a thousand.
-const NL_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-const NL_YEAR_RE = new RegExp(`${B}(?:1[5-9]\\d{2}|20\\d{2})${B}`, 'gu');
-const NL_INTEGER_RE = new RegExp(`${B}(?:${NL_GROUPED}|\\d+)${B}`, 'gu');
-
-// Dutch keeps a measure word SINGULAR after a numeral — "vijftig dollar", never
-// "vijftig dollars". Every Romance language shipped here pluralises, so this is
-// the line a port gets wrong without ever looking wrong.
-const nlMoney = (value) => `${nlIntToWords(value)} dollar`;
-const nlFraction = (whole, part, joiner) => `${nlIntToWords(Number(whole))} ${joiner} ${nlDigitsToWords(part)}`;
-
-function nlCurrencyScale(_match, amount, scale) {
-  const phrase = amount.includes(',')
-    ? nlFraction(...amount.split(','), 'komma')
-    : nlIntToWords(Number(amount));
-  return `${phrase} ${scale} dollar`;
-}
-
-// A zero DOLLARS part is dropped, not read: `$0,25` as "nul dollar en
-// vijfentwintig cent" is not how a price is said. Found by running the finished
-// pass over the whole 9,430-sentence track, not by any unit test.
-function nlCurrencyCents(_match, whole, fraction) {
-  const cents = Number(fraction.padEnd(2, '0').slice(0, 2));
-  const dollars = Number(whole);
-  if (dollars === 0 && cents) return `${nlIntToWords(cents)} cent`;
-  let phrase = nlMoney(dollars);
-  if (cents) phrase += ` en ${nlIntToWords(cents)} cent`;
-  return phrase;
-}
-
-/**
- * Dutch translated text -> Dutch spoken form.
- *
- * Pass order is the same shape as the other three: currency claims its digits
- * first or `$15,50` becomes a decimal beside a dollar sign. The year pass runs
- * before the integer pass because in Dutch the two genuinely DISAGREE — 1961 is
- * "negentienhonderdeenenzestig" as a year and "duizend negenhonderdeenenzestig"
- * as a quantity. In es/fr/it the two agree and the ordering only decides which
- * rule gets the credit; here it decides the words.
- */
-export function normalizeNlForSpeech(text) {
-  let out = restoreLeadingZero(text).replace(NL_CURRENCY_SCALE_RE, nlCurrencyScale);
-  out = out.replace(NL_CURRENCY_CENTS_RE, nlCurrencyCents);
-  out = out.replace(NL_CURRENCY_SIGN_RE, (_m, amount) => nlMoney(nlInt(amount)));
-  out = out.replace(NL_PERCENT_RE, (_m, amount) => {
-    if (!amount.includes(',')) return `${nlNumberPhrase(amount)} procent`;
-    return `${nlFraction(...amount.split(','), 'komma')} procent`;
-  });
-  out = out.replace(NL_COMMA_DECIMAL_RE,
-    (_m, whole, fraction) => nlFraction(whole, fraction, 'komma'));
-  out = out.replace(NL_SECTION_DOT_RE,
-    (_m, whole, fraction) => nlFraction(whole, fraction, 'punt'));
-  out = out.replace(NL_YEAR_RE, (m) => nlYearPhrase(Number(m)));
-  out = out.replace(NL_INTEGER_RE, (m) => nlNumberPhrase(m));
-  return cleanup(out);
-}
-
-// ---------------------------------------------------------------------------
-// Hungarian. The FIFTH language and the first AGGLUTINATIVE one — a different
-// KIND of problem, not a harder version of the previous four. The en-hu
-// checkpoint MEASURED (the SMALL opus-mt-en-hu, which is what this browser
-// ships; the build-time gate is registered against tc-big, a different model):
-//
-//     8,000     → "8000"          NO separator at four digits
-//     20,000    → "20 000"        SPACE separator from five
-//     $50       → "50 dollárért"  sign already gone: WORD + case suffix
-//     $8.3 tril → "8,3 trillió dollárt"   decimal COMMA
-//     Figure 1.3→ "1.3 ábra"      decimal DOT preserved
-//     20%       → "20%-a"         percent sign carrying a HYPHENATED SUFFIX
-//     2042      → "2042-ig"       year carrying a HYPHENATED SUFFIX
-//     et al.    → "et al."        preserved 59 of 60, so NO rule
-//
-// THE NEW PROBLEM is the hyphen. Hungarian attaches a case ending directly to a
-// numeral written in digits, joined by a hyphen. Spelling the number out
-// DELETES that hyphen and fuses the ending onto the word: "húsz százaléka",
-// "kétezer-negyvenkettőig". Every earlier language could substitute a number in
-// place; here the substitution has to carry a suffix across, and a pass that
-// ignores the hyphen leaves "húsz százalék -a" — a dangling morpheme read aloud
-// as a word.
-//
-// The suffix is NOT generated, only re-attached: the checkpoint already chose
-// its form (vowel harmony picked -ben over -ban) for the digit's own reading.
-//
-// THE 2000 RULE decides where hyphens go INSIDE a number, and no other language
-// here has anything like it: one word up to 2000, hyphenated thousands group
-// above it. 1999 is ezerkilencszázkilencvenkilenc; 2042 is kétezer-negyvenkettő.
-// The threshold is the VALUE, not the digit count.
-//
-// kettő/két is the one form this module CHOOSES rather than reads: "kettő"
-// stands alone, "két" goes before the noun it counts. Prose is almost always
-// attributive, so a following word selects "két" — except after a coordinating
-// conjunction, where "2 és 3" is "kettő és három".
-// ---------------------------------------------------------------------------
-
-const HU_ONES = ['nulla', 'egy', 'kettő', 'három', 'négy', 'öt', 'hat', 'hét',
-  'nyolc', 'kilenc'];
-const HU_TENS = {
-  1: 'tíz', 2: 'húsz', 3: 'harminc', 4: 'negyven', 5: 'ötven',
-  6: 'hatvan', 7: 'hetven', 8: 'nyolcvan', 9: 'kilencven',
-};
-// 11-19 and 21-29 do NOT reuse the bare tens word — it changes shape before a
-// unit. From 30 up it is regular.
-const HU_TEEN_STEMS = { 1: 'tizen', 2: 'huszon' };
-// A numeral standing before the noun it counts uses the attributive form.
-const HU_ATTRIBUTIVE = { 2: 'két' };
-// A numeral followed by one of these is an item in a LIST, not a quantity.
-const HU_CONJUNCTIONS = new Set(['és', 'vagy', 'illetve', 'meg', 'valamint']);
-
-const huOnes = (value, attributive) => (
-  attributive && HU_ATTRIBUTIVE[value] ? HU_ATTRIBUTIVE[value] : HU_ONES[value]);
-
-function huUnderHundred(value, attributive = false) {
-  if (value < 10) return huOnes(value, attributive);
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  if (ones === 0) return HU_TENS[tens];
-  return (HU_TEEN_STEMS[tens] ?? HU_TENS[tens]) + huOnes(ones, attributive);
-}
-
-function huUnderThousand(value, attributive = false) {
-  if (value < 100) return huUnderHundred(value, attributive);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  const head = hundreds === 1 ? 'száz' : `${huUnderHundred(hundreds, true)}száz`;
-  return head + (rest ? huUnderHundred(rest, attributive) : '');
-}
-
-/**
- * The 2000 rule lives here: one word up to 2000, hyphenated above it.
- * The threshold is the VALUE, so 1999 and 2001 are spelled differently despite
- * both being four digits.
- */
-function huIntToWords(value, attributive = false) {
-  if (value < 0) return `mínusz ${huIntToWords(-value, attributive)}`;
-  if (value >= 1_000_000_000) {
-    const head = Math.floor(value / 1_000_000_000);
-    const rest = value % 1_000_000_000;
-    return `${huUnderThousand(head, true)}milliárd${rest ? `-${huIntToWords(rest, attributive)}` : ''}`;
-  }
-  if (value >= 1_000_000) {
-    const head = Math.floor(value / 1_000_000);
-    const rest = value % 1_000_000;
-    return `${huUnderThousand(head, true)}millió${rest ? `-${huIntToWords(rest, attributive)}` : ''}`;
-  }
-  if (value >= 1_000) {
-    const thousands = Math.floor(value / 1_000);
-    const rest = value % 1_000;
-    const head = thousands === 1 ? 'ezer' : `${huUnderThousand(thousands, true)}ezer`;
-    if (!rest) return head;
-    return head + (value > 2000 ? '-' : '') + huUnderThousand(rest, attributive);
-  }
-  return huUnderThousand(value, attributive);
-}
-
-const huDigitsToWords = (digits) => [...digits].map((d) => HU_ONES[Number(d)]).join(' ');
-const huInt = (token) => Number(token.replace(/[  ]/g, ''));
-
-// A grouped thousand: 1-3 digits then SPACE-separated groups of exactly three,
-// as French does. Four-digit numbers are written solid in Hungarian and are
-// matched by the plain integer pattern instead.
-const HU_GROUPED = '\\d{1,3}(?:[\\u0020\\u00a0]\\d{3})+(?!\\d)';
-const HU_AMOUNT = `(?:${HU_GROUPED}|\\d+)(?:,\\d+)?`;
-// The accented letters are LISTED rather than given as a range: `á-ű` spans
-// most of Latin Extended-A and would match letters no Hungarian ending contains.
-const HU_WORD = '[a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ]';
-
-// The hyphenated-suffix forms, which must both run BEFORE their bare
-// counterparts or the bare rule consumes the number and strands the ending.
-const HU_PERCENT_SUFFIX_RE = new RegExp(`(${HU_AMOUNT})\\s?%-(${HU_WORD}+)`, 'gu');
-const HU_PERCENT_RE = new RegExp(`(${HU_AMOUNT})\\s?%`, 'gu');
-// A comma before EXACTLY three digits is an English thousands separator the
-// checkpoint failed to localise, not a Hungarian decimal. MEASURED: five commas
-// between digits, four genuine 1-2 digit decimals and one leak — `40,320`,
-// which read as a decimal is forty-point-three-two for forty thousand three
-// hundred twenty. A wrong VALUE, which is what earns a rule from one occurrence.
-const HU_COMMA_THOUSANDS_RE = new RegExp(`${B}(\\d{1,3}),(\\d{3})(?!\\d)`, 'gu');
-// ...so the decimal rule is capped at two fractional digits, and the two are
-// mutually exclusive by group size.
-const HU_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d{1,2})(?!\\d)`, 'gu');
-const HU_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-const HU_NUMBER_SUFFIX_RE = new RegExp(`${B}(${HU_GROUPED}|\\d+)-(${HU_WORD}+)`, 'gu');
-// The currency form CARRYING a suffix, claimed before the bare one. `$30-os`
-// reached by the bare rule becomes "harminc dollár" with "-os" stranded beside
-// it — this module's own two passes orphaning a morpheme between them.
-const HU_CURRENCY_SUFFIX_RE = new RegExp(`\\$\\s?(${HU_GROUPED}|\\d+)-(${HU_WORD}+)`, 'gu');
-const HU_CURRENCY_RE = new RegExp(`\\$\\s?(${HU_GROUPED}|\\d+)`, 'gu');
-const HU_INTEGER_RE = new RegExp(`${B}(?:${HU_GROUPED}|\\d+)${B}`, 'gu');
-const HU_FOLLOWING_WORD_RE = new RegExp(`^[\\u0020\\u00a0]+(${HU_WORD}+)`, 'u');
-
-const huFraction = (whole, part, joiner) => `${huIntToWords(Number(whole))} ${joiner} ${huDigitsToWords(part)}`;
-
-function huNumberPhrase(token, attributive = false) {
-  const digits = token.replace(/[  ]/g, '');
-  if (!/[  ]/.test(token)
-      && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return huDigitsToWords(digits);
-  }
-  return huIntToWords(Number(digits), attributive);
-}
-
-/**
- * True when a word follows the number, so it is counting that word. A numeral
- * before a coordinating conjunction is an item in a list, not a quantity.
- */
-function huIsAttributive(text, end) {
-  const match = HU_FOLLOWING_WORD_RE.exec(text.slice(end));
-  return Boolean(match) && !HU_CONJUNCTIONS.has(match[1].toLowerCase());
-}
-
-/**
- * Hungarian translated text -> Hungarian spoken form.
- *
- * Pass order carries one requirement no earlier language had: BOTH suffixed
- * forms must run before their bare counterparts. `20%-a` reached by the bare
- * percent rule becomes "húsz százalék -a", leaving the case ending as a
- * separate token the voice reads as a word.
- */
-export function normalizeHuForSpeech(text) {
-  let out = restoreLeadingZero(text).replace(HU_PERCENT_SUFFIX_RE, (_m, amount, suffix) => {
-    if (!amount.includes(',')) return `${huNumberPhrase(amount)} százalék${suffix}`;
-    return `${huFraction(...amount.split(','), 'egész')} százalék${suffix}`;
-  });
-  out = out.replace(HU_PERCENT_RE, (_m, amount) => {
-    if (!amount.includes(',')) return `${huNumberPhrase(amount)} százalék`;
-    return `${huFraction(...amount.split(','), 'egész')} százalék`;
-  });
-  out = out.replace(HU_CURRENCY_SUFFIX_RE,
-    (_m, amount, suffix) => `${huIntToWords(huInt(amount), true)} dollár${suffix}`);
-  out = out.replace(HU_CURRENCY_RE, (_m, amount) => `${huIntToWords(huInt(amount), true)} dollár`);
-  // Rewritten to the SPACE Hungarian actually uses rather than deleted: deleting
-  // it pushes 40320 past IDENTIFIER_DIGITS and the number comes out read digit
-  // by digit, which is how the first version of this rule failed.
-  out = out.replace(HU_COMMA_THOUSANDS_RE, (_m, head, tail) => `${head} ${tail}`);
-  out = out.replace(HU_COMMA_DECIMAL_RE,
-    (_m, whole, fraction) => huFraction(whole, fraction, 'egész'));
-  out = out.replace(HU_SECTION_DOT_RE,
-    (_m, whole, fraction) => huFraction(whole, fraction, 'pont'));
-  out = out.replace(HU_NUMBER_SUFFIX_RE,
-    (_m, amount, suffix) => huNumberPhrase(amount) + suffix);
-  // HU_INTEGER_RE has NO capture groups — B and HU_GROUPED are both
-  // non-capturing — so the callback's second argument is the OFFSET, not a
-  // group. Getting that wrong reads `undefined.slice` at the first integer.
-  out = out.replace(HU_INTEGER_RE,
-    (m, offset, whole) => huNumberPhrase(m, huIsAttributive(whole, offset + m.length)));
-  return cleanup(out);
-}
-
-// ---------------------------------------------------------------------------
-// Danish. The SIXTH language. Its number FORMATS look exactly like Dutch's —
-// dot thousands, dot decimal preserved, percent tight, `et al.` untouched —
-// which is the trap, because the WORDS behind them are not portable. MEASURED
-// on the deployed corpus before any rule below was written:
-//
-//     8,000     → "8.000"          DOT thousands, 14 of 15
-//     $50       → "50 dollars"     often already a WORD, and PLURAL
-//     $30,000   → "$ 30.000"       when the sign survives, LEADING
-//     $8.3 tril → "$8,3 billioner" decimal COMMA, and the LONG scale
-//     Figure 1.3→ "figur 1.3"      decimal DOT preserved
-//     20%       → "20%"            NO space before the sign, 58 of 58
-//     et al.    → "et al."         preserved 100 of 100, so NO rule
-//     20th c.   → "det 20. århundrede"   ORDINAL as digits plus a PERIOD
-//
-// Three things a port from Dutch gets wrong, all measured: the measure word is
-// PLURAL ("halvtreds dollars", where Dutch keeps it singular); the tens are
-// VIGESIMAL from fifty up (halvtreds/tres/halvfjerds/firs/halvfems are scores,
-// not derivable from the unit words); and "og" joins a SUB-HUNDRED tail to
-// whatever precedes it — "to tusind og toogfyrre" but "to tusind fem hundrede".
-//
-// Shared with Dutch: the unit comes BEFORE the ten (enogtyve), and a year below
-// 2000 is read BY HUNDREDS with the plain cardinal taking over from 2000.
-// ---------------------------------------------------------------------------
-
-const DA_ONES = [
-  'nul', 'en', 'to', 'tre', 'fire', 'fem', 'seks', 'syv', 'otte', 'ni',
-  'ti', 'elleve', 'tolv', 'tretten', 'fjorten', 'femten', 'seksten',
-  'sytten', 'atten', 'nitten',
-];
-const DA_TENS = {
-  2: 'tyve', 3: 'tredive', 4: 'fyrre', 5: 'halvtreds',
-  6: 'tres', 7: 'halvfjerds', 8: 'firs', 9: 'halvfems',
-};
-const DA_ORDINAL_ONES = [
-  null, 'første', 'anden', 'tredje', 'fjerde', 'femte', 'sjette', 'syvende',
-  'ottende', 'niende', 'tiende', 'ellevte', 'tolvte', 'trettende',
-  'fjortende', 'femtende', 'sekstende', 'syttende', 'attende', 'nittende',
-];
-// The tens ordinals restore the LONG vigesimal forms the cardinals abbreviate:
-// "fyrre" but "fyrretyvende", "tres" but "tresindstyvende". Not derivable.
-const DA_ORDINAL_TENS = {
-  2: 'tyvende', 3: 'tredivte', 4: 'fyrretyvende', 5: 'halvtredsindstyvende',
-  6: 'tresindstyvende', 7: 'halvfjerdsindstyvende', 8: 'firsindstyvende',
-  9: 'halvfemsindstyvende',
-};
-
-function daUnderHundred(value) {
-  if (value < 20) return DA_ONES[value];
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  if (ones === 0) return DA_TENS[tens];
-  // Unit BEFORE the ten, joined by "og". No vowel change, unlike Dutch's trema.
-  return `${DA_ONES[ones]}og${DA_TENS[tens]}`;
-}
-
-function daUnderThousand(value) {
-  if (value < 100) return daUnderHundred(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  const head = hundreds === 1 ? 'hundrede' : `${DA_ONES[hundreds]} hundrede`;
-  return head + (rest ? ` og ${daUnderHundred(rest)}` : '');
-}
-
-/**
- * "og" joins a SUB-HUNDRED tail to whatever precedes it, and only that:
- * "to tusind og toogfyrre" but "to tusind fem hundrede".
- */
-function daIntToWords(value) {
-  if (value < 0) return `minus ${daIntToWords(-value)}`;
-  for (const [limit, singular, plural] of [
-    [1_000_000_000, 'milliard', 'milliarder'], [1_000_000, 'million', 'millioner'],
-  ]) {
-    if (value >= limit) {
-      const head = Math.floor(value / limit);
-      const rest = value % limit;
-      const word = `${daIntToWords(head)} ${head === 1 ? singular : plural}`;
-      if (!rest) return word;
-      return word + (rest < 100 ? ` og ${daUnderHundred(rest)}` : ` ${daIntToWords(rest)}`);
-    }
-  }
-  if (value >= 1_000) {
-    const thousands = Math.floor(value / 1_000);
-    const rest = value % 1_000;
-    const head = thousands === 1 ? 'tusind' : `${daUnderThousand(thousands)} tusind`;
-    if (!rest) return head;
-    return head + (rest < 100 ? ` og ${daUnderHundred(rest)}` : ` ${daUnderThousand(rest)}`);
-  }
-  return daUnderThousand(value);
-}
-
-/** 1-99 only — every date and every century. A compound takes the unit's
- * CARDINAL and the ten's ORDINAL: enogtyvende, toogfyrretyvende. */
-function daOrdinal(value) {
-  if (value < 20) return DA_ORDINAL_ONES[value];
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  if (ones === 0) return DA_ORDINAL_TENS[tens];
-  return `${DA_ONES[ones]}og${DA_ORDINAL_TENS[tens]}`;
-}
-
-const daDigitsToWords = (digits) => [...digits].map((d) => DA_ONES[Number(d)]).join(' ');
-const daInt = (token) => Number(token.replace(/\./g, ''));
-
-/** A year below 2000 is read BY HUNDREDS. From 2000 the plain cardinal takes over. */
-function daYearPhrase(value) {
-  if (value >= 2000) return daIntToWords(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  return `${daUnderHundred(hundreds)} hundrede${rest ? ` og ${daUnderHundred(rest)}` : ''}`;
-}
-
-function daNumberPhrase(token) {
-  const digits = token.replace(/\./g, '');
-  if (!token.includes('.')
-      && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return daDigitsToWords(digits);
-  }
-  return daIntToWords(Number(digits));
-}
-
-const DA_GROUPED = '\\d{1,3}(?:\\.\\d{3})+(?!\\d)';
-const DA_AMOUNT = `(?:${DA_GROUPED}|\\d+)(?:,\\d+)?`;
-// Danish uses the LONG scale, so the checkpoint writes "billioner" for the
-// English trillion. The rule reads whatever word is there rather than
-// converting, so the scale system never has to be modelled.
-const DA_SCALE = '(?:tusind|million|millioner|milliard|milliarder|billion|billioner)';
-const DA_CURRENCY_SCALE_RE = new RegExp(`\\$\\s?(\\d+(?:,\\d+)?)\\s+(${DA_SCALE})${B}`, 'gu');
-const DA_CURRENCY_CENTS_RE = new RegExp(`\\$\\s?(\\d+),(\\d{1,2})(?!\\d)(?!\\s+${DA_SCALE}${B})`, 'gu');
-const DA_CURRENCY_SIGN_RE = new RegExp(`\\$\\s?(${DA_GROUPED}|\\d+)`, 'gu');
-const DA_PERCENT_RE = new RegExp(`${B}(${DA_AMOUNT})\\s?%`, 'gu');
-const DA_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
-const DA_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-// THE ORDINAL. Danish writes one as digits plus a PERIOD, so without this the
-// cardinal pass says "det tyve. århundrede" — a number and a stray full stop.
-// 13 occurrences in the 9,430 translated sentences.
-//
-// THE GUARD IS THE FOLLOWING WORD'S CASE, measured rather than reasoned: `20.`
-// ending a sentence is character-for-character an ordinal. Measured on this
-// corpus: 13 forms followed by a LOWERCASE word, every one a real ordinal, and
-// ZERO followed by an uppercase one.
-const DA_ORDINAL_RE = /(?<!\d)(\d{1,2})\.(?=\s+[a-zæøå])/gu;
-const DA_YEAR_RE = new RegExp(`${B}(?:1[5-9]\\d{2}|20\\d{2})${B}`, 'gu');
-const DA_INTEGER_RE = new RegExp(`${B}(?:${DA_GROUPED}|\\d+)${B}`, 'gu');
-
-// PLURAL after a numeral, which the checkpoint itself writes and which inverts
-// Dutch — the language whose number formats Danish otherwise matches exactly.
-const daMoney = (value) => `${daIntToWords(value)} ${value === 1 ? 'dollar' : 'dollars'}`;
-const daFraction = (whole, part, joiner) => `${daIntToWords(Number(whole))} ${joiner} ${daDigitsToWords(part)}`;
-
-function daCurrencyScale(_match, amount, scale) {
-  const phrase = amount.includes(',')
-    ? daFraction(...amount.split(','), 'komma')
-    : daIntToWords(Number(amount));
-  return `${phrase} ${scale} dollars`;
-}
-
-function daCurrencyCents(_match, whole, fraction) {
-  const cents = Number(fraction.padEnd(2, '0').slice(0, 2));
-  const dollars = Number(whole);
-  if (dollars === 0 && cents) return `${daIntToWords(cents)} cent`;
-  let phrase = daMoney(dollars);
-  if (cents) phrase += ` og ${daIntToWords(cents)} cent`;
-  return phrase;
-}
-
-/**
- * Danish translated text -> Danish spoken form.
- *
- * Same pass order as Dutch, and for the same reasons. The ORDINAL pass is
- * Danish's own and runs before the year and integer passes: `Den 26. marts` has
- * to be claimed as an ordinal before the integer pass reads it as a cardinal
- * and leaves the period behind as a sentence end.
- */
-export function normalizeDaForSpeech(text) {
-  let out = restoreLeadingZero(text).replace(DA_CURRENCY_SCALE_RE, daCurrencyScale);
-  out = out.replace(DA_CURRENCY_CENTS_RE, daCurrencyCents);
-  out = out.replace(DA_CURRENCY_SIGN_RE, (_m, amount) => daMoney(daInt(amount)));
-  out = out.replace(DA_PERCENT_RE, (_m, amount) => {
-    if (!amount.includes(',')) return `${daNumberPhrase(amount)} procent`;
-    return `${daFraction(...amount.split(','), 'komma')} procent`;
-  });
-  out = out.replace(DA_COMMA_DECIMAL_RE,
-    (_m, whole, fraction) => daFraction(whole, fraction, 'komma'));
-  out = out.replace(DA_SECTION_DOT_RE,
-    (_m, whole, fraction) => daFraction(whole, fraction, 'punktum'));
-  out = out.replace(DA_ORDINAL_RE, (_m, value) => daOrdinal(Number(value)));
-  out = out.replace(DA_YEAR_RE, (m) => daYearPhrase(Number(m)));
-  out = out.replace(DA_INTEGER_RE, (m) => daNumberPhrase(m));
-  return cleanup(out);
-}
-
-// ---------------------------------------------------------------------------
-// Swedish. The SEVENTH language, and the one that broke the "Scandinavian, so
-// it will be Danish" prediction hardest. MEASURED on the deployed corpus:
-//
-//     8,000     → "8.000" AND "20 000"   BOTH separators, in the same book
-//     $50       → "50 dollar"            INVARIABLE, where Danish pluralises
-//     $8.3 tril → "8,3 biljoner dollar"  decimal COMMA, LONG scale
-//     20%       → "20 %" AND "35%"       BOTH spacings, 37 against 31
-//     et al.    → "et al." (71) AND "m.fl." (29)
-//     1900s     → "1900-talet"           HYPHEN suffix, as Hungarian does
-//     r = .30   → "r = .30"              LEADING-DOT decimal, no zero
-//
-// The checkpoint is INCONSISTENT about two things at once, which no earlier one
-// was: a thousands group with a dot 12 times and a space 7, and a percent sign
-// spaced 37 times and tight 31. A rule written from either half is wrong a
-// third of the time.
-//
-// THE TENS GO FIRST AND THERE IS NO JOINER: tjugoett, trettiofem, nittionio.
-// Dutch, Danish and German all put the UNIT first, so the one structural habit
-// those three share is exactly the one Swedish drops — and it is the rule a
-// port from Danish gets wrong on every number between 21 and 99.
-//
-// `dollar` is INVARIABLE, as in Dutch and unlike Danish. `m.fl.` earns a rule
-// where `et al.` does not: `et al.` reads as words, `m.fl.` reads as letters.
-// ---------------------------------------------------------------------------
-
-const SV_ONES = [
-  'noll', 'ett', 'två', 'tre', 'fyra', 'fem', 'sex', 'sju', 'åtta', 'nio',
-  'tio', 'elva', 'tolv', 'tretton', 'fjorton', 'femton', 'sexton',
-  'sjutton', 'arton', 'nitton',
-];
-const SV_TENS = {
-  2: 'tjugo', 3: 'trettio', 4: 'fyrtio', 5: 'femtio',
-  6: 'sextio', 7: 'sjuttio', 8: 'åttio', 9: 'nittio',
-};
-
-function svUnderHundred(value) {
-  if (value < 20) return SV_ONES[value];
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  // TEN FIRST, no joiner — tjugoett. Dutch, Danish and German do the opposite.
-  return SV_TENS[tens] + (ones ? SV_ONES[ones] : '');
-}
-
-function svUnderThousand(value) {
-  if (value < 100) return svUnderHundred(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  const head = hundreds === 1 ? 'hundra' : `${SV_ONES[hundreds]}hundra`;
-  return head + (rest ? svUnderHundred(rest) : '');
-}
-
-function svIntToWords(value) {
-  if (value < 0) return `minus ${svIntToWords(-value)}`;
-  for (const [limit, singular, plural] of [
-    [1_000_000_000_000, 'biljon', 'biljoner'],
-    [1_000_000_000, 'miljard', 'miljarder'],
-    [1_000_000, 'miljon', 'miljoner'],
-  ]) {
-    if (value >= limit) {
-      const head = Math.floor(value / limit);
-      const rest = value % limit;
-      const word = head === 1 ? `en ${singular}` : `${svIntToWords(head)} ${plural}`;
-      return word + (rest ? ` ${svIntToWords(rest)}` : '');
-    }
-  }
-  if (value >= 1_000) {
-    const thousands = Math.floor(value / 1_000);
-    const rest = value % 1_000;
-    // Swedish writes a whole number as ONE word — "tvåtusenfemhundra" — which
-    // is standard orthography. Danish spaces its parts because Danish does.
-    const head = thousands === 1 ? 'tusen' : `${svUnderThousand(thousands)}tusen`;
-    return head + (rest ? svUnderThousand(rest) : '');
-  }
-  return svUnderThousand(value);
-}
-
-const svDigitsToWords = (digits) => [...digits].map((d) => SV_ONES[Number(d)]).join(' ');
-const svStrip = (token) => token.replace(/[.  ]/g, '');
-const svInt = (token) => Number(svStrip(token));
-
-/** Read BY HUNDREDS below 2000, as in Dutch and Danish. */
-function svYearPhrase(value) {
-  if (value >= 2000) return svIntToWords(value);
-  const hundreds = Math.floor(value / 100);
-  const rest = value % 100;
-  return `${svUnderHundred(hundreds)}hundra${rest ? svUnderHundred(rest) : ''}`;
-}
-
-function svNumberPhrase(token) {
-  const digits = svStrip(token);
-  const grouped = /[.  ]/.test(token);
-  if (!grouped
-      && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return svDigitsToWords(digits);
-  }
-  return svIntToWords(Number(digits));
-}
-
-// BOTH separators, because the checkpoint writes both. Either way the group must
-// be EXACTLY three digits — 311 short dot forms against 12 real thousands.
-const SV_GROUPED = '\\d{1,3}(?:(?:\\.|[\\u0020\\u00a0])\\d{3})+(?!\\d)';
-const SV_AMOUNT = `(?:${SV_GROUPED}|\\d+)(?:,\\d+)?`;
-const SV_SCALE = '(?:tusen|miljon|miljoner|miljard|miljarder|biljon|biljoner)';
-const SV_CURRENCY_SCALE_RE = new RegExp(`\\$\\s?(\\d+(?:,\\d+)?)\\s+(${SV_SCALE})${B}`, 'gu');
-const SV_CURRENCY_CENTS_RE = new RegExp(`\\$\\s?(\\d+),(\\d{1,2})(?!\\d)(?!\\s+${SV_SCALE}${B})`, 'gu');
-const SV_CURRENCY_SIGN_RE = new RegExp(`\\$\\s?(${SV_GROUPED}|\\d+)`, 'gu');
-const SV_PERCENT_RE = new RegExp(`${B}(${SV_AMOUNT})\\s?%`, 'gu');
-const SV_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
-const SV_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-const SV_WORD = '[a-zA-ZåäöÅÄÖ]';
-// The hyphen suffix, 35 occurrences — Hungarian's mechanism in a Germanic
-// language. Runs BEFORE the year and integer passes or the word is stranded.
-const SV_SUFFIX_RE = new RegExp(`${B}(\\d+)-(${SV_WORD}+)`, 'gu');
-const SV_YEAR_RE = new RegExp(`${B}(?:1[5-9]\\d{2}|20\\d{2})${B}`, 'gu');
-const SV_YEAR_ONLY_RE = /^(?:1[5-9]\d{2}|20\d{2})$/u;
-const SV_INTEGER_RE = new RegExp(`${B}(?:${SV_GROUPED}|\\d+)${B}`, 'gu');
-const SV_M_FL_RE = /\bm\.\s?fl\./gu;
-
-// INVARIABLE after a numeral, as in Dutch. The checkpoint writes "dollar" 13
-// times and "dollars" never.
-const svMoney = (value) => `${svIntToWords(value)} dollar`;
-const svFraction = (whole, part, joiner) => `${svIntToWords(Number(whole))} ${joiner} ${svDigitsToWords(part)}`;
-
-function svCurrencyScale(_match, amount, scale) {
-  const phrase = amount.includes(',')
-    ? svFraction(...amount.split(','), 'komma')
-    : svIntToWords(Number(amount));
-  return `${phrase} ${scale} dollar`;
-}
-
-function svCurrencyCents(_match, whole, fraction) {
-  const cents = Number(fraction.padEnd(2, '0').slice(0, 2));
-  const dollars = Number(whole);
-  if (dollars === 0 && cents) return `${svIntToWords(cents)} cent`;
-  let phrase = svMoney(dollars);
-  if (cents) phrase += ` och ${svIntToWords(cents)} cent`;
-  return phrase;
-}
-
-/** `1960-talet` → "nittonhundrasextiotalet", `5-åriga` → "femåriga". A decade
- * reads its number as a YEAR, which is why this cannot run after the year pass. */
-function svSuffixed(_match, digits, word) {
-  const phrase = SV_YEAR_ONLY_RE.test(digits)
-    ? svYearPhrase(Number(digits)) : svNumberPhrase(digits);
-  return phrase + word;
-}
-
-/**
- * Swedish translated text -> Swedish spoken form.
- *
- * Two orderings are Swedish's own: the HYPHEN-SUFFIX pass runs before the year
- * and integer passes, or `1960-talet` loses its word; and `m.fl.` is expanded
- * first, before any dot rule can look at its two full stops.
- */
-export function normalizeSvForSpeech(text) {
-  let out = restoreLeadingZero(text).replace(SV_M_FL_RE, 'med flera');
-  out = out.replace(SV_CURRENCY_SCALE_RE, svCurrencyScale);
-  out = out.replace(SV_CURRENCY_CENTS_RE, svCurrencyCents);
-  out = out.replace(SV_CURRENCY_SIGN_RE, (_m, amount) => svMoney(svInt(amount)));
-  out = out.replace(SV_PERCENT_RE, (_m, amount) => {
-    if (!amount.includes(',')) return `${svNumberPhrase(amount)} procent`;
-    return `${svFraction(...amount.split(','), 'komma')} procent`;
-  });
-  out = out.replace(SV_COMMA_DECIMAL_RE,
-    (_m, whole, fraction) => svFraction(whole, fraction, 'komma'));
-  out = out.replace(SV_SECTION_DOT_RE,
-    (_m, whole, fraction) => svFraction(whole, fraction, 'punkt'));
-  out = out.replace(SV_SUFFIX_RE, svSuffixed);
-  out = out.replace(SV_YEAR_RE, (m) => svYearPhrase(Number(m)));
-  out = out.replace(SV_INTEGER_RE, (m) => svNumberPhrase(m));
-  return cleanup(out);
-}
-
 // German. The EIGHTH language and the FIFTH distinct convention — and the first
 // that both preserves and localises. Measured with bench/formats/measure.py on
 // the deployed post-splitter corpus; counts in bench/formats/de.json:
@@ -1578,248 +665,177 @@ export function normalizeDeForSpeech(text) {
   return cleanup(out);
 }
 
+// ---------------------------------------------------------------------------
+// Portuguese (LT-217), BRAZILIAN: the en-pt export writes "colônias" and "US$",
+// so the voice gets Brazilian forms (dezesseis, bilhão) rather than European
+// ones (dezasseis, mil milhões). Measured on 146 corpus sentences translated
+// one at a time by Douglasrambo/opus-mt-tc-big-en-pt-onnx, the only en-pt ONNX
+// export transformers.js can load; there is no deployed pt track to count over.
+// ---------------------------------------------------------------------------
 
-// Czech. The NINTH language, the SIXTH distinct convention, and the first that
-// is neither Germanic nor Romance. Measured with bench/formats/measure.py and
-// COUNTED over all 9,430 translated sentences with bench/formats/count.py;
-// shapes in bench/formats/cs.json.
-//
-//     thousands -> SPACE     17   8,000 -> 8 000, 40,320 -> 40 320
-//     dot groups              0   <- see below; this is the finding
-//     short dot KEPT        301   obr. 1.3, CC BY 2.0
-//     percent attached       80   3%, 54%          percent spaced: 0
-//     comma decimal           7   8,3 bilionu / 14,4% / 2,0
-//     leaked English comma    3   50,000 / 1,424 / 5 000,000
-//     $ surviving             3   ($20), ($1)
-//     et al. preserved       95   no rule earned
-//
-// THE DOT AMBIGUITY IS GONE, and that is a measurement. Italian, Dutch, Danish
-// and German each had to separate a thousands dot from a section number by
-// GROUP SIZE, on ratios of 20-against-335, 19-against-281, 19-against-316 and
-// 20-against-328. en-cs writes ZERO dot groups, so all 301 of its dots are
-// section numbers or versions. What replaces it is Hungarian's problem: a SPACE
-// separator, and three English commas that survived unlocalised.
-const CS_ONES = [
-  'nula', 'jedna', 'dva', 'tři', 'čtyři', 'pět', 'šest', 'sedm', 'osm',
-  'devět', 'deset', 'jedenáct', 'dvanáct', 'třináct', 'čtrnáct', 'patnáct',
-  'šestnáct', 'sedmnáct', 'osmnáct', 'devatenáct',
+const PT_ONES = [
+  'zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito',
+  'nove', 'dez', 'onze', 'doze', 'treze', 'catorze', 'quinze', 'dezesseis',
+  'dezessete', 'dezoito', 'dezenove',
 ];
-const CS_TENS = {
-  2: 'dvacet', 3: 'třicet', 4: 'čtyřicet', 5: 'padesát',
-  6: 'šedesát', 7: 'sedmdesát', 8: 'osmdesát', 9: 'devadesát',
+const PT_TENS = {
+  2: 'vinte', 3: 'trinta', 4: 'quarenta', 5: 'cinquenta',
+  6: 'sessenta', 7: 'setenta', 8: 'oitenta', 9: 'noventa',
 };
-// 200 is a surviving DUAL — "dvě stě", not the plural "sta" that 300 and 400
-// take, and not the genitive "set" that 500 upward take. Three forms of one
-// word across nine entries, which is why this is a table.
-const CS_HUNDREDS = {
-  1: 'sto', 2: 'dvě stě', 3: 'tři sta', 4: 'čtyři sta', 5: 'pět set',
-  6: 'šest set', 7: 'sedm set', 8: 'osm set', 9: 'devět set',
+// 100 alone is "cem"; 101-199 take "cento". Every other hundred is one word.
+const PT_HUNDREDS = {
+  1: 'cento', 2: 'duzentos', 3: 'trezentos', 4: 'quatrocentos', 5: 'quinhentos',
+  6: 'seiscentos', 7: 'setecentos', 8: 'oitocentos', 9: 'novecentos',
 };
-// ONLY 1 and 2 inflect for gender. Neuter and feminine share a form for 2 and
-// differ for 1, so this is a table rather than a pair of suffix rules.
-const CS_GENDERED = { 1: { m: 'jeden', f: 'jedna', n: 'jedno' }, 2: { m: 'dva', f: 'dvě', n: 'dvě' } };
 
-const csOnes = (value, gender) => (gender && CS_GENDERED[value]
-  ? CS_GENDERED[value][gender] : CS_ONES[value]);
-
-function csUnderHundred(value, gender) {
-  if (value < 20) return csOnes(value, gender);
-  const tens = Math.floor(value / 10);
-  const ones = value % 10;
-  if (!ones) return CS_TENS[tens];
-  // Separate words, ten first — "dvacet jedna". Czech's fused unit-first form
-  // ("jedenadvacet") is archaic and the checkpoint uses neither, because it
-  // leaves the digits.
-  return `${CS_TENS[tens]} ${csOnes(ones, gender)}`;
-}
-
-function csUnderThousand(value, gender) {
-  if (value < 100) return csUnderHundred(value, gender);
+function ptUnderThousand(value) {
+  if (value === 100) return 'cem';
   const hundreds = Math.floor(value / 100);
   const rest = value % 100;
-  return CS_HUNDREDS[hundreds] + (rest ? ` ${csUnderHundred(rest, gender)}` : '');
+  const parts = hundreds ? [PT_HUNDREDS[hundreds]] : [];
+  if (rest >= 20) {
+    parts.push(PT_TENS[Math.floor(rest / 10)]);
+    if (rest % 10) parts.push(PT_ONES[rest % 10]);
+  } else if (rest || !parts.length) {
+    parts.push(PT_ONES[rest]);
+  }
+  // Every part is joined with "e": cento e vinte e um.
+  return parts.join(' e ');
 }
 
-// LONG SCALE, and it is the checkpoint's as well as the language's: a Czech
-// "bilion" is 10^12 where an English "billion" is 10^9. en-cs already emits the
-// right word unaided, so nothing here translates a scale word. Each entry
-// carries the noun's GENDER, because the numeral in front of it agrees:
-// "dva miliony" but "dvě miliardy".
-const CS_SCALES = [
-  [1e12, 'm', ['bilion', 'biliony', 'bilionů']],
-  [1e9, 'f', ['miliarda', 'miliardy', 'miliard']],
-  [1e6, 'm', ['milion', 'miliony', 'milionů']],
+/** Whether "e" joins a scale word to what follows it. Only before a single
+ * group that is under 100 or a round hundred: "mil e duzentos", "dois mil e
+ * dezenove", but "mil duzentos e cinquenta". */
+function ptTakesE(rest) {
+  let group = rest;
+  while (group && group % 1000 === 0) group /= 1000;
+  return group < 100 || (group < 1000 && group % 100 === 0);
+}
+
+// Short scale, as in Brazil: bilhão is 10^9.
+const PT_SCALES = [
+  [1_000_000_000_000, 'trilhão', 'trilhões'],
+  [1_000_000_000, 'bilhão', 'bilhões'],
+  [1_000_000, 'milhão', 'milhões'],
+  [1_000, 'mil', 'mil'],
 ];
 
-function csIntToWords(value, gender) {
-  if (value < 0) return `minus ${csIntToWords(-value, gender)}`;
-  for (const [limit, scaleGender, forms] of CS_SCALES) {
-    if (value >= limit) {
-      const head = Math.floor(value / limit);
-      const rest = value % limit;
-      // Bare "milion", not "jeden milion" — as with "tisíc" below, and unlike
-      // German's "eine Million".
-      const word = head === 1 ? forms[0] : csCounted(head, forms, scaleGender);
-      return word + (rest ? ` ${csIntToWords(rest, gender)}` : '');
-    }
+function ptIntToWords(value) {
+  if (value < 0) return `menos ${ptIntToWords(-value)}`;
+  for (const [limit, singular, plural] of PT_SCALES) {
+    if (value < limit) continue;
+    const head = Math.floor(value / limit);
+    const rest = value % limit;
+    let word;
+    if (limit === 1_000) word = head === 1 ? 'mil' : `${ptIntToWords(head)} mil`; // "mil", never "um mil"
+    else word = head === 1 ? `um ${singular}` : `${ptIntToWords(head)} ${plural}`;
+    if (!rest) return word;
+    return word + (ptTakesE(rest) ? ' e ' : ' ') + ptIntToWords(rest);
   }
-  if (value >= 1000) {
-    const thousands = Math.floor(value / 1000);
-    const rest = value % 1000;
-    const head = thousands === 1 ? 'tisíc'
-      : csCounted(thousands, ['tisíc', 'tisíce', 'tisíc'], 'm');
-    return head + (rest ? ` ${csUnderThousand(rest, gender)}` : '');
-  }
-  return csUnderThousand(value, gender);
+  return ptUnderThousand(value);
 }
 
-/**
- * A numeral and the noun it counts, in the form that numeral governs.
- *
- * The one piece of Czech morphology no earlier language needed, and the
- * checkpoint's own output is the evidence: en-cs writes `$4` as "4 dolary" and
- * `$50` as "50 dolarů", two different words for one noun.
- *
- *     1        nominative singular   jeden dolar     jedno procento
- *     2, 3, 4  nominative plural     dva dolary      dvě procenta
- *     anything genitive plural       padesát dolarů  dvacet procent
- *
- * Gender reaches only 1 and 2 and belongs to the noun, so the caller names it:
- * procento is neuter and dolar masculine, which is why 2% and $2 do not read
- * the numeral the same way.
- */
-function csCounted(value, forms, gender) {
-  if (value === 1) return `${csIntToWords(1, gender)} ${forms[0]}`;
-  if (value >= 2 && value <= 4) return `${csIntToWords(value, gender)} ${forms[1]}`;
-  // NO GENDER here: a numeral agrees with its noun only where the noun is
-  // nominative, which is the two branches above. Once it drops to the genitive
-  // plural the numeral takes its base form — "osmdesát dva procent", not
-  // "osmdesát dvě procent".
-  return `${csIntToWords(value)} ${forms[2]}`;
-}
+const ptDigitsToWords = (digits) => [...digits].map((d) => PT_ONES[Number(d)]).join(' ');
+const ptStrip = (token) => token.replace(/[.,]/gu, '');
 
-const csDigitsToWords = (digits) => [...digits].map((d) => CS_ONES[Number(d)]).join(' ');
-const csStrip = (token) => token.replace(/[   ]/gu, '');
-const csInt = (token) => Number(csStrip(token));
-
-/** Czech reads a year as the PLAIN CARDINAL — 1997 is "tisíc devět set
- * devadesát sedm", not the by-hundreds reading Dutch, Danish, Swedish and
- * German all take. It keeps its own pass for the reason `yearPhrase` records:
- * the next language's author has to answer this question. */
-const csYearPhrase = (value) => csIntToWords(value);
-
-function csNumberPhrase(token) {
-  const digits = csStrip(token);
+function ptNumberPhrase(token) {
+  const digits = ptStrip(token);
   if (digits === token
       && (digits.length >= IDENTIFIER_DIGITS || (digits.length > 1 && digits[0] === '0'))) {
-    return csDigitsToWords(digits);
+    return ptDigitsToWords(digits);
   }
-  return csIntToWords(Number(digits));
+  return ptIntToWords(Number(digits));
 }
 
-// A SPACE and nothing else: 17 space groups against zero dot groups. The
-// separator is a plain U+0020 in all 17, checked rather than assumed; the
-// no-break and narrow no-break spaces are accepted anyway because the cost is
-// nothing.
-const CS_GROUPED = '\\d{1,3}(?:[\\u0020\\u00a0\\u202f]\\d{3})+(?!\\d)';
-const CS_AMOUNT = `(?:${CS_GROUPED}|\\d+)(?:,\\s?\\d+)?`;
-// THREE `$` survive translation in the whole corpus, because en-cs otherwise
-// writes the word already inflected. So this is the only currency rule, and the
-// cents and scale-word rules every earlier language carries are absent by
-// MEASUREMENT: no `$N,NN` and no `$N bilionu` form occurs.
-const CS_CURRENCY_RE = new RegExp(`\\$\\s?(${CS_GROUPED}|\\d+)`, 'gu');
-const CS_PERCENT_RE = new RegExp(`(${CS_AMOUNT})\\s?%`, 'gu');
-// A comma before EXACTLY three digits is an English thousands separator the
-// checkpoint failed to localise — Hungarian's leak, and the same fix. Three
-// occurrences, all wrong VALUES if read as decimals. Rewritten to the SPACE
-// Czech uses rather than deleted, because deleting it pushes `1424` past
-// IDENTIFIER_DIGITS and it comes out read digit by digit.
-const CS_COMMA_THOUSANDS_RE = new RegExp(`${B}(\\d{1,3}),(\\d{3})(?!\\d)`, 'gu');
-// TIGHT COMMA ONLY. Allowing `,\s?` was the first version of this rule and the
-// corpus caught it at once: `oblasti 1, 2, 4 a 5` came out as "oblasti jedna
-// celá dva, čtyři a pět". The spaced forms the checkpoint really does write are
-// claimed by rules carrying their own guard — the `%` below, and the whole-line
-// anchor after it.
-const CS_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d{1,2})(?!\\d)`, 'gu');
-// Capped at two fraction digits like every other language here, for a DIFFERENT
-// reason than any of them: Czech needs no group-size test, since the corpus
-// holds no dot thousands at all. The cap keeps `doi: 10.1177` out.
-const CS_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
-// Ten table cells whose entire text is a decimal the checkpoint both localised
-// and spaced: `57.1` -> `57, 1`. The whole-line anchor IS the guard — the same
-// shape inside a sentence is a list.
-const CS_CELL_DECIMAL_RE = /^\s*(\d+), (\d{1,2})\s*$/u;
-const CS_YEAR_RE = new RegExp(`${B}(?:1[5-9]\\d{2}|20\\d{2})${B}`, 'gu');
-const CS_INTEGER_RE = new RegExp(`${B}(?:${CS_GROUPED}|\\d+)${B}`, 'gu');
+// Thousands are a DOT, and the one leaked English COMMA group measured
+// ("$1,250" -> "1,250 dólares") reads as a group too. A group is exactly three
+// digits after a 1-3 digit head that does not start with 0, which keeps "1.3",
+// "0,5" and "12,50" out of it. The cost, recorded: a three-place decimal such as
+// "3,141" would read as a thousand; en-pt wrote none, every decimal measured had
+// one or two places. The space group ("1 250") appeared only in BATCHED output,
+// which the browser never runs (src/translate.worker.mjs), so it has no rule.
+const PT_GROUPED = '[1-9]\\d{0,2}(?:\\.\\d{3})+(?!\\d)|[1-9]\\d{0,2}(?:,\\d{3})+(?!\\d)';
+const PT_GROUPED_RE = new RegExp(`${B}(?:${PT_GROUPED})`, 'gu');
+const PT_GROUPED_ONLY_RE = new RegExp(`^(?:${PT_GROUPED})$`, 'u');
+// A whole part, grouped or not. With a decimal after it, "1.250,50" (or the
+// leaked "1,250.50") is ONE amount: read apart, the head became a number and
+// the ",50" was left behind.
+const PT_WHOLE = `(?:${PT_GROUPED}|\\d+)`;
+// The English form leaks through as well: "1,250.5", its dot the decimal.
+const PT_EN_DECIMAL = '[1-9]\\d{0,2}(?:,\\d{3})+\\.\\d+';
+const PT_EN_DECIMAL_ONLY_RE = new RegExp(`^${PT_EN_DECIMAL}$`, 'u');
+const PT_GROUPED_DECIMAL_RE = new RegExp(
+  `${B}([1-9]\\d{0,2}(?:\\.\\d{3})+),(\\d+)${B}|${B}([1-9]\\d{0,2}(?:,\\d{3})+)\\.(\\d+)${B}`, 'gu');
+const PT_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
+// A short dot is KEPT from English, as in German: "Tabela 1.3", "3.14", "2.0".
+const PT_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
+const PT_INTEGER_RE = new RegExp(`${B}\\d+${B}`, 'gu');
+const PT_AMOUNT = `(?:${PT_EN_DECIMAL}|(?:${PT_GROUPED}|\\d+)(?:,\\d+)?)`;
 
-// "dolar" is masculine, "procento" neuter, and both inflect after a numeral.
-// These are the only nouns this module inserts, so they are the only places the
-// agreement can be got right at all.
-const CS_DOLLAR = ['dolar', 'dolary', 'dolarů'];
-const CS_PERCENT = ['procento', 'procenta', 'procent'];
+// The sign was measured three ways: "US$ 3 milhões", "US $" and a bare "$".
+const PT_SIGN = `(?:${B}US\\s?)?\\$\\s?`;
+const PT_SCALE = '(?:milhão|milhões|bilhão|bilhões|trilhão|trilhões)';
+const PT_SCALE_END_RE = new RegExp(`${PT_SCALE}$`, 'u');
+// An English dot before a scale ("US$ 1.5 bilhão") is a decimal, read as a comma.
+const PT_CURRENCY_SCALE_RE = new RegExp(
+  `${PT_SIGN}(\\d+(?:,\\d+|\\.\\d{1,2}(?!\\d))?)\\s+(${PT_SCALE})${B}`, 'gu');
+// Cents after a sign, with either mark: "US$ 12,50", or English "$3.50".
+const PT_CURRENCY_CENTS_RE = new RegExp(
+  `${PT_SIGN}(${PT_WHOLE})[.,](\\d{1,2})(?!\\d)(?!\\s+${PT_SCALE}${B})`, 'gu');
+const PT_CURRENCY_SIGN_RE = new RegExp(`${PT_SIGN}(${PT_GROUPED}|\\d+)`, 'gu');
+// And spelled out after the amount: "12,50 dólares", or English "1,250.50 dólares".
+const PT_CURRENCY_WORD_RE = new RegExp(`${B}(${PT_WHOLE})[.,](\\d{1,2})\\s+dólares${B}`, 'gu');
+const PT_PERCENT_RE = new RegExp(`${B}(${PT_AMOUNT})\\s?%`, 'gu');
+// en-pt kept "et al." three times in four; the voice would read the Latin.
+const PT_ET_AL_RE = new RegExp(`${B}et\\s+al\\.`, 'gu');
 
-/** The word between a decimal's two halves, which in Czech is not the name of
- * the mark but a COUNTED ADJECTIVE agreeing with the number in front of it:
- * "jedna celá pět", "dvě celé pět", "pět celých pět". Czech's two decimal
- * joiners therefore behave differently, and only this one inflects — the dot is
- * read "tečka", the name of the character, because a dot between digits is a
- * section number or a version and never a decimal. */
-function csWholeWord(value) {
-  if (value <= 1) return 'celá';
-  if (value >= 2 && value <= 4) return 'celé';
-  return 'celých';
+const ptFraction = (whole, part, joiner) => `${ptIntToWords(Number(whole))} ${joiner} ${ptDigitsToWords(part)}`;
+
+function ptAmount(amount) {
+  if (PT_EN_DECIMAL_ONLY_RE.test(amount)) {
+    const dot = amount.lastIndexOf('.');
+    return ptFraction(amount.slice(0, dot).replace(/,/gu, ''), amount.slice(dot + 1), 'vírgula');
+  }
+  if (PT_GROUPED_ONLY_RE.test(amount) || !amount.includes(',')) return ptNumberPhrase(amount);
+  const cut = amount.lastIndexOf(',');
+  return ptFraction(amount.slice(0, cut).replace(/\./gu, ''), amount.slice(cut + 1), 'vírgula');
 }
 
-/** A comma decimal. Feminine where the whole part is 1-4, agreeing with "celá";
- * above 4 the noun is genitive plural and the numeral reverts to its base form,
- * so 42,9 is "čtyřicet dva celých devět". Same rule as csCounted. */
-function csFraction(whole, part) {
-  const value = Number(whole);
-  const gender = value >= 1 && value <= 4 ? 'f' : undefined;
-  return `${csIntToWords(value, gender)} ${csWholeWord(value)} ${csDigitsToWords(part)}`;
+/** A whole scale word takes "de": "um milhão de dólares", "mil dólares". */
+function ptMoney(value) {
+  const words = ptIntToWords(value);
+  if (PT_SCALE_END_RE.test(words)) return `${words} de dólares`;
+  return `${words} ${value === 1 ? 'dólar' : 'dólares'}`;
 }
 
-const csSection = (whole, part) => `${csIntToWords(Number(whole))} tečka ${csDigitsToWords(part)}`;
-
-function csPercent(_match, amount) {
-  if (!amount.includes(',')) return csCounted(csInt(amount), CS_PERCENT, 'n');
-  // Genitive singular after a decimal — "čtrnáct celých čtyři procenta", which
-  // is spelled like the nominative plural above and reached by another rule.
-  const [whole, part] = amount.split(',').map((p) => p.trim());
-  return `${csFraction(whole, part)} procenta`;
+function ptCurrencyCents(_match, whole, fraction) {
+  const dollars = Number(ptStrip(whole));
+  const cents = Number(fraction.padEnd(2, '0'));
+  const centavos = `${ptIntToWords(cents)} ${cents === 1 ? 'centavo' : 'centavos'}`;
+  if (dollars === 0 && cents) return centavos;
+  return ptMoney(dollars) + (cents ? ` e ${centavos}` : '');
 }
 
-/**
- * Czech translated text -> Czech spoken form.
- *
- * Pass order is the shared one with a single Czech addition: the comma
- * THOUSANDS rewrite runs before anything that reads a comma, so a leaked
- * `1,424` reaches the speller by the same path a written `1 424` does. It runs
- * before the currency rule too — Hungarian puts its own after — so a leaked
- * `$50,000` would be read as fifty thousand rather than as fifty.
- *
- * ORDINALS ARE NOT HANDLED, deliberately, and Czech is the strongest case for
- * that call yet. The checkpoint marks one with a trailing dot in 29 lines —
- * `20. století`, `26. března`, `21. prosincem` — and reading it needs the
- * ordinal declined to agree with its noun in whatever case that noun stands in.
- * Danish could take this rule because a Danish ordinal has ONE form; German was
- * denied it because the dot is ambiguous. Czech has both problems at once.
- *
- * Full list of what else is recorded rather than fixed — the glued
- * `10sekundové`, the surviving `1970s`, `0,25 dolarů`, the six dotted
- * abbreviations — is in `pipeline/lang_normalize.normalize_cs_for_speech`,
- * which is the specification.
- */
-export function normalizeCsForSpeech(text) {
+/** Portuguese translated text -> Brazilian Portuguese spoken form. */
+export function normalizePtForSpeech(text) {
   let out = restoreLeadingZero(text);
-  out = out.replace(CS_COMMA_THOUSANDS_RE, '$1 $2');
-  out = out.replace(CS_CELL_DECIMAL_RE, (_m, whole, part) => csFraction(whole, part));
-  out = out.replace(CS_CURRENCY_RE, (_m, amount) => csCounted(csInt(amount), CS_DOLLAR, 'm'));
-  out = out.replace(CS_PERCENT_RE, csPercent);
-  out = out.replace(CS_COMMA_DECIMAL_RE, (_m, whole, part) => csFraction(whole, part));
-  out = out.replace(CS_SECTION_DOT_RE, (_m, whole, part) => csSection(whole, part));
-  out = out.replace(CS_YEAR_RE, (m) => csYearPhrase(Number(m)));
-  out = out.replace(CS_INTEGER_RE, (m) => csNumberPhrase(m));
+  out = out.replace(PT_ET_AL_RE, 'e outros');
+  // Currency and percentages claim their digits first, as in every language.
+  out = out.replace(PT_CURRENCY_SCALE_RE,
+    (_m, amount, scale) => `${ptAmount(amount.replace('.', ','))} ${scale} de dólares`);
+  out = out.replace(PT_CURRENCY_CENTS_RE, ptCurrencyCents);
+  out = out.replace(PT_CURRENCY_SIGN_RE, (_m, amount) => ptMoney(Number(ptStrip(amount))));
+  out = out.replace(PT_CURRENCY_WORD_RE, ptCurrencyCents);
+  out = out.replace(PT_PERCENT_RE, (_m, amount) => `${ptAmount(amount)} por cento`);
+  out = out.replace(PT_GROUPED_DECIMAL_RE,
+    (_m, whole, fraction, enWhole, enFraction) => ptFraction(ptStrip(whole ?? enWhole), fraction ?? enFraction, 'vírgula'));
+  // Groups before the comma decimal, so "1,250" is never "um vírgula dois...".
+  out = out.replace(PT_GROUPED_RE, (m) => ptNumberPhrase(m));
+  out = out.replace(PT_COMMA_DECIMAL_RE,
+    (_m, whole, fraction) => ptFraction(whole, fraction, 'vírgula'));
+  out = out.replace(PT_SECTION_DOT_RE,
+    (_m, whole, fraction) => ptFraction(whole, fraction, 'ponto'));
+  out = out.replace(PT_INTEGER_RE, (m) => ptNumberPhrase(m));
   return cleanup(out);
 }
 
@@ -1828,19 +844,13 @@ export function normalizeCsForSpeech(text) {
  * is absent is not an error — callers look one up with a fallback to identity, so
  * a language without a normaliser behaves exactly as it did before this existed.
  *
- * Spanish is first because it is the only pair with a hosted ONNX export, and the
- * only one the oracle diff has measured evidence for at all. Next cheapest, once
- * Spanish is proven: the other Romance languages that share the plain-cardinal
- * year reading (fr, it, pt, ro).
+ * Since LT-217 Listen mode translates into es, fr, de and pt only, the
+ * languages Phonon can speak; the other normalisers were removed with their
+ * tracks. A code missing here gets identity.
  */
 export const NORMALIZERS = {
   es: normalizeEsForSpeech,
   fr: normalizeFrForSpeech,
-  it: normalizeItForSpeech,
-  nl: normalizeNlForSpeech,
-  hu: normalizeHuForSpeech,
-  da: normalizeDaForSpeech,
-  sv: normalizeSvForSpeech,
   de: normalizeDeForSpeech,
-  cs: normalizeCsForSpeech,
+  pt: normalizePtForSpeech,
 };

@@ -8,7 +8,7 @@
  *
  * Phonon (English, LT-214) streams: a sentence starts speaking on its first 80 ms
  * frame rather than when it has finished rendering. Every request asks for the
- * stream; an engine that cannot stream (Supertonic) simply never sends any, and
+ * stream; an engine that cannot stream simply never sends any, and
  * the sentence plays as one buffer as it always did.
  *
  * Only the sentence the reader is waiting on -- the first one heard after play or

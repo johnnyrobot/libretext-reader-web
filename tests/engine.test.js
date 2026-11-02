@@ -87,6 +87,16 @@ describe('engine.mjs', () => {
     expect(worker.terminated).toBe(true);
   });
 
+  // A translation voice still loading is terminated when the reader picks
+  // another language (LT-217). Its loader must hear about it, not wait forever.
+  it('terminate rejects an init still loading', async () => {
+    const worker = { postMessage: () => {}, terminate: () => {} };
+    const engine = createEngine({ createWorker: () => worker });
+    const ready = engine.init({ voice: 'M1', lang: 'fr' });
+    engine.terminate();
+    await expect(ready).rejects.toThrow(/terminated/);
+  });
+
   it('setLang resolves when the worker acknowledges', async () => {
     const posted = [];
     const worker = {
@@ -279,7 +289,7 @@ describe('engine.mjs', () => {
       expect(cancel.id).toBe(synth.id);
     });
 
-    it('a sentence from the Supertonic worker resolves with outcome ok', async () => {
+    it('a sentence from a worker with no length guard resolves with outcome ok', async () => {
       const { engine } = engineWithFakeWorker();
       await engine.init({ voice: 'M1', lang: 'en' });
       await expect(engine.synthesize('b1s0', 'Text.')).resolves.toMatchObject({ outcome: 'ok' });

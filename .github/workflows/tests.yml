@@ -57,3 +57,8 @@ jobs:
 
       - run: npm ci
       - run: npx vitest run
+
+      # LT-217: Listen mode runs Phonon only, with no fallback. The build must
+      # carry no Supertonic file and no code pointing at one.
+      - run: npm run build
+      - run: node scripts/check-no-supertonic.mjs dist/_assets/tts

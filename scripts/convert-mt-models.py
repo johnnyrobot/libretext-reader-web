@@ -3,7 +3,8 @@
 mirror instead of the Hugging Face CDN.
 
 Named "convert" to match its sibling scripts/convert-models.py, but nothing is
-converted here: Xenova publishes the ONNX exports transformers.js expects, and
+converted here: Xenova (and, for Portuguese, one pinned third-party export)
+publishes the ONNX exports transformers.js expects, and
 re-exporting them locally would only risk producing something subtly different
 from what the runtime is tested against. This script fetches, licence-checks,
 pins, verifies and stages them.
@@ -12,9 +13,8 @@ Two reasons the browser must not fetch these from the CDN directly:
   * the mirror's pages set a CSP that blocks the cross-origin request outright;
   * a CDN fetch tells a third party which book a reader just opened.
 
-Output is `<out>/<pair>/manifest.json` in exactly the shape
-scripts/write_model_manifest.py writes -- `{version, files:[{name,path,bytes,
-sha256}]}` -- because src/models.mjs already reads that shape, verifies sha256
+Output is `<out>/<pair>/manifest.json` in exactly the shape the Phonon manifest
+uses -- `{version, files:[{name,path,bytes,sha256}]}` -- because src/models.mjs already reads that shape, verifies sha256
 before use, streams progress, and re-downloads a truncated file. The extra
 provenance keys alongside it are ignored by that reader.
 """
@@ -23,7 +23,7 @@ import argparse
 import hashlib
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # Same list, same reasoning, as scripts/convert-models.py: this project picked
@@ -37,81 +37,32 @@ ACCEPTABLE_LICENCES = {"apache-2.0", "cc-by-4.0", "mit"}
 class Pair:
     repo: str  # the ONNX export transformers.js loads
     base: str  # the PyTorch checkpoint it was quantized from
+    # FILES keys this export does not publish. Named per pair, never skipped on a
+    # failed download, so a file missing from any other export still stops the run.
+    absent: frozenset[str] = frozenset()
+    # A commit to stage from, and the sha256 of every file staged from it. Set for
+    # an export nobody on this project vouches for: a third party can rewrite its
+    # repo, and the mirror serves whatever bytes this run copies. Left unset, the
+    # run takes the repo's current commit and records it.
+    revision: str | None = None
+    sha256: dict[str, str] = field(default_factory=dict)
 
 
 PAIRS = {
     "en-es": Pair(repo="Xenova/opus-mt-en-es", base="Helsinki-NLP/opus-mt-en-es"),
-    # Second pair, 2026-08-25 (design §12 open decision 1). French rather than
+    # Added 2026-08-25 (design §12 open decision 1). French rather than
     # any of the other 27 because it is the other language with a demo book
     # behind it, and because it shares the Romance plain-cardinal year reading
     # that pipeline/lang_normalize.py's Spanish pass already established.
     #
     # Note what is NOT here: opus-mt-tc-big-en-fr exists and is the better
-    # checkpoint, but there is no ONNX export of it, exactly as with Spanish.
+    # checkpoint, but Xenova has no ONNX export of it, exactly as with Spanish.
     # The browser gets the smaller model or nothing.
     "en-fr": Pair(repo="Xenova/opus-mt-en-fr", base="Helsinki-NLP/opus-mt-en-fr"),
-    # Third pair, 2026-08-26. Italian was chosen by MEASUREMENT rather than
-    # argument: all 14 remaining reachable languages were screened on the QA
-    # gate's own 472-sentence sample (bench/sweep/sweep.py), and Italian gates
-    # at 1.4831% -- deployed Spanish's rate to six decimals -- with the best
-    # median of the fourteen.
-    #
-    # The same "smaller model or nothing" caveat as es and fr applies, and it was
-    # CHECKED here rather than assumed. The gate ran opus-mt-tc-big-en-it; the
-    # browser runs this export, quantized from the SMALL checkpoint. Qualifying
-    # one checkpoint and shipping another is a real gap, so the small one was
-    # screened on the identical sample before this line was added:
-    #
-    #     tc-big  1.4831%  prose 0.42%  median 0.8317  ships
-    #     small   1.4831%  prose 0.42%  median 0.8095  ships   <- what ships
-    #
-    # Same seven failures, same count. The smaller model costs 0.022 of median
-    # and nothing at the gate.
-    "en-it": Pair(repo="Xenova/opus-mt-en-it", base="Helsinki-NLP/opus-mt-en-it"),
-    # Fourth and fifth pairs, 2026-08-27. Both were re-screened on the DEPLOYED
-    # post-splitter corpus rather than reusing the 2026-08-25 sweep numbers,
-    # which were measured before the splitter fix moved 626 sentences.
-    #
-    # Dutch is the strongest language this project has measured: 0.42% (2 of
-    # 472), median 0.8333, against deployed Spanish's 0.6356%. It has no
-    # checkpoint gap at all -- pipeline/languages.py registers opus-mt-en-nl,
-    # which IS the checkpoint this export was quantized from, so the gate ran
-    # the model the browser runs.
-    "en-nl": Pair(repo="Xenova/opus-mt-en-nl", base="Helsinki-NLP/opus-mt-en-nl"),
-    # Hungarian DOES have that gap, and unlike Italian's the two models differ.
-    # hu is registered against opus-mt-tc-big-en-hu and no ONNX export of any
-    # tc-big checkpoint exists, so the browser runs the SMALL one. Screened on
-    # the identical 472-sentence sample:
-    #
-    #     tc-big  1.06%  prose 0.42%  median 0.7568  ships
-    #     small   1.91%  prose 0.85%  median 0.7500  ships   <- what ships
-    #
-    # 9 failures against the cap's 9.44, so it passes on the model that ships
-    # and the margin is one sentence. Recorded because a later reader comparing
-    # 1.91% to Dutch's 0.42% should see that the gap is the checkpoint, not the
-    # language: on tc-big Hungarian is a 1.06% language.
-    #
-    # FINNISH WAS IN THIS BATCH AND IS NOT HERE. Same gap, other side of the
-    # line: fi gates at 1.27% on tc-big and 2.12% (10 of 472) on the small
-    # export the browser would load, over the 2.00% cap. No threshold was
-    # changed and no export of the better checkpoint exists to reach for.
-    "en-hu": Pair(repo="Xenova/opus-mt-en-hu", base="Helsinki-NLP/opus-mt-en-hu"),
-    # Sixth pair, 2026-08-27, chosen by the owner as Finnish's replacement.
-    # Danish has NO checkpoint gap: pipeline/languages.py registers
-    # opus-mt-en-da, which is the checkpoint this export was quantized from
-    # (config verified identical: vocab 58930, d_model 512, 6x8), so its
-    # 1.27% (6 of 472, median 0.8333) is the number for the model that ships.
-    "en-da": Pair(repo="Xenova/opus-mt-en-da", base="Helsinki-NLP/opus-mt-en-da"),
-    # Seventh pair, 2026-08-27. Swedish gates at 1.27% (6 of 472), median
-    # 0.8108, on the post-splitter corpus, and it cannot have a checkpoint gap
-    # at all: opus-mt-tc-big-en-sv DOES NOT EXIST, so the registered forward and
-    # this export's base are necessarily the same model (config verified:
-    # vocab 56434, d_model 512, 6x8).
-    "en-sv": Pair(repo="Xenova/opus-mt-en-sv", base="Helsinki-NLP/opus-mt-en-sv"),
-    # Eighth pair, 2026-08-27, and the best numbers of any language screened for
+    # Added 2026-08-27, with the best numbers of any language screened for
     # this project: 1.27% (6 of 472), prose 0.21%, median 0.8090 on the
-    # post-splitter corpus. The prose rate ties Swedish's for the lowest ever
-    # measured here, and German is the largest audience among everything that
+    # post-splitter corpus. The prose rate ties the lowest ever measured here
+    # (Swedish's, a track LT-217 removed), and German is the largest audience among everything that
     # remains reachable.
     #
     # No checkpoint gap: pipeline/languages.py registers opus-mt-en-de, which IS
@@ -122,28 +73,46 @@ PAIRS = {
     # The four candidates screened alongside it all failed decisively and are
     # recorded so nobody re-runs them: id 2.75%, ru 3.39%, ar 5.72%, uk 7.63%.
     "en-de": Pair(repo="Xenova/opus-mt-en-de", base="Helsinki-NLP/opus-mt-en-de"),
-    # Ninth pair, 2026-08-28, and the LAST language that clears the gate: after
-    # this the well is dry until a better ONNX export appears. Czech gates at
-    # 1.48% (7 of 472), median 0.7500, on the post-splitter corpus.
+    # Added in LT-217 (2026-11-01). Portuguese is the one language here not
+    # exported by Xenova: Douglasrambo/opus-mt-tc-big-en-pt-onnx is a third-party
+    # export, pinned by revision and hash like the rest, of the cc-by-4.0
+    # Helsinki-NLP checkpoint. No checkpoint gap: pipeline/languages.py registers
+    # opus-mt-tc-big-en-pt, which IS this export's base. Xenova/opus-mt-en-ROMANCE
+    # was measured first and returned garbage.
     #
-    # No checkpoint gap: pipeline/languages.py registers opus-mt-en-cs, which IS
-    # the checkpoint this export was quantized from -- verified rather than
-    # assumed, since that gap is exactly what put Finnish and Romanian out. The
-    # export's config declares `_name_or_path: Helsinki-NLP/opus-mt-en-cs` and
-    # matches it on vocab 62509, d_model 512 and 6x8 layers.
+    # The quality gate, one sentence at a time on the same 472 sentences as the
+    # others: 6 failures, under the bar of 12 (LT-217).
     #
-    # Every other reachable language has now been screened on this corpus and
-    # failed on the model that would ship: fi 2.12%, ro 2.54%, id 2.75%,
-    # ru 3.39%, ar 5.72%, uk 7.63%, vi 13.14%, ja 51.27%. Recorded so nobody
-    # re-runs them without a new export to justify it.
-    "en-cs": Pair(repo="Xenova/opus-mt-en-cs", base="Helsinki-NLP/opus-mt-en-cs"),
+    # Measured on 146 corpus sentences: batched with padding it generates past the
+    # sentence (21 lines ended in "))))))" or "......"); one sentence at a time it
+    # produced none, so src/translate.worker.mjs never batches pt. No ">>pob<<" or
+    # ">>por<<" target prefix, matching the pipeline: all three runs read as
+    # Brazilian Portuguese, and the Speech Text corpus was built from this one.
+    #
+    # It publishes no vocab.json. Nothing reads one: transformers.js builds the
+    # Marian tokenizer from tokenizer.json, and the Node runs above loaded it so.
+    #
+    # Pinned 2026-11-01. The ONNX hashes are the Hub's LFS oids at that commit; the
+    # four JSON files were downloaded from it and hashed.
+    "en-pt": Pair(repo="Douglasrambo/opus-mt-tc-big-en-pt-onnx",
+                  base="Helsinki-NLP/opus-mt-tc-big-en-pt",
+                  absent=frozenset({"vocab"}),
+                  revision="738ee4cce801ce7c519954e4b78d02d5057b6740",
+                  sha256={
+                      "encoder": "66329e9fdb0f8a112ebfd4e0eee4304296d5e7891dd34438c312452dcb14a8e9",
+                      "decoder": "8bf7b7a36556e60ef53ed17b11573f63235e04a80cb36a8ca6c7312925185ca9",
+                      "tokenizer": "47fbbc561252cfa491200d63c91bdda8a1ceeb653da63d8845ef827bf24acdfb",
+                      "config": "7a133252d86d032f8ecea9b74a0145cecf0d13374db5e4bc602ba52c92153d37",
+                      "generationConfig": "f743934c15ef22a0971f88abd75d2471fadc1888b89837be5adc5f71d86d0d5b",
+                      "tokenizerConfig": "5a5b40b768575d7c8b13e6f45413b248a22a5d7669d2feec7b9a6d6921ef1871",
+                  }),
 }
 
 # name -> path within the repo, kept as the path inside the staged pair too.
 #
 # The `name` keys are the contract with whatever loads the buffers back out of
-# src/models.mjs, exactly as write_model_manifest.py's names are the contract
-# with src/vendor/helper.js. The repo-relative layout is preserved rather than
+# src/models.mjs, exactly as scripts/fetch-phonon.py's names are the contract
+# with src/phonon.worker.mjs. The repo-relative layout is preserved rather than
 # flattened so a transformers.js-style path loader can be pointed at the staged
 # directory later without restaging anything.
 FILES = [
@@ -171,21 +140,43 @@ def sha256_of(path: Path) -> str:
     return digest.hexdigest()
 
 
-def licence_and_revision(pair: Pair) -> tuple[str, str, str]:
-    """Return (licence, licence_source, revision) for `pair`, or raise.
+def _licence_tag(info) -> str | None:
+    return next((t.split(":", 1)[1] for t in info.tags if t.startswith("license:")), None)
 
-    The ONNX repos carry no `license:` tag of their own -- they are quantized
+
+def _require_acceptable(repo: str, licence: str, source: str) -> None:
+    if licence not in ACCEPTABLE_LICENCES:
+        raise RuntimeError(
+            f"{repo!r} resolves to licence {licence!r} (via {source}), which is "
+            f"not in ACCEPTABLE_LICENCES ({sorted(ACCEPTABLE_LICENCES)}) -- this "
+            "project's model choice was made on licence grounds; a human needs to "
+            "decide whether this checkpoint's output may ship inside an MIT product"
+        )
+
+
+def licence_and_revision(pair: Pair) -> tuple[str, str, str, str]:
+    """Return (licence, licence_source, base_licence, revision) for `pair`, or raise.
+
+    The Xenova repos carry no `license:` tag of their own -- they are quantized
     re-exports and declare `base_model:` instead. Resolving the licence through
     that declaration is correct, but writing the result as though the ONNX repo
     had claimed it is not, so the source repo is returned alongside and recorded
-    in the manifest. If Xenova ever adds a tag, it wins over the inherited one.
+    in the manifest. An export that does tag itself is checked on that tag, and
+    its base is checked as well: a re-export's own tag cannot relicense weights
+    it was quantized from.
 
     Raises rather than defaulting: see ACCEPTABLE_LICENCES above.
     """
     from huggingface_hub import model_info
 
-    info = model_info(pair.repo)
-    licence = next((t.split(":", 1)[1] for t in info.tags if t.startswith("license:")), None)
+    info = model_info(pair.repo, revision=pair.revision)
+    if pair.revision is not None and info.sha != pair.revision:
+        raise RuntimeError(
+            f"{pair.repo!r} resolved revision {pair.revision} to {info.sha} -- "
+            "refusing to stage from a commit other than the pinned one"
+        )
+    base_licence = _licence_tag(model_info(pair.base))
+    licence = _licence_tag(info)
     source = pair.repo
 
     if licence is None:
@@ -197,30 +188,24 @@ def licence_and_revision(pair: Pair) -> tuple[str, str, str]:
                 "refusing to inherit a licence from a checkpoint the repo does not "
                 "claim to derive from"
             )
-        base = model_info(pair.base)
-        licence = next((t.split(":", 1)[1] for t in base.tags if t.startswith("license:")), None)
+        licence = base_licence
         source = pair.base
-        if licence is None:
-            raise RuntimeError(
-                f"neither {pair.repo!r} nor its base {pair.base!r} carries a license: "
-                'tag; refusing to write "unknown" -- fix the tag lookup or the '
-                "checkpoint before staging it"
-            )
-
-    if licence not in ACCEPTABLE_LICENCES:
+    if base_licence is None:
         raise RuntimeError(
-            f"{pair.repo!r} resolves to licence {licence!r} (via {source}), which is "
-            f"not in ACCEPTABLE_LICENCES ({sorted(ACCEPTABLE_LICENCES)}) -- this "
-            "project's model choice was made on licence grounds; a human needs to "
-            "decide whether this checkpoint's output may ship inside an MIT product"
+            f"{pair.base!r}, the base of {pair.repo!r}, carries no license: tag; "
+            'refusing to write "unknown" -- fix the tag lookup or the checkpoint '
+            "before staging it"
         )
-    return licence, source, info.sha
+
+    _require_acceptable(pair.repo, licence, source)
+    _require_acceptable(pair.repo, base_licence, pair.base)
+    return licence, source, base_licence, info.sha
 
 
 def stage(name: str, pair: Pair, out_root: Path) -> Path:
     from huggingface_hub import hf_hub_download
 
-    licence, licence_source, revision = licence_and_revision(pair)
+    licence, licence_source, base_licence, revision = licence_and_revision(pair)
     print(f"==> {name}: {pair.repo}@{revision[:12]} ({licence}, via {licence_source})")
 
     target = out_root / name
@@ -228,6 +213,8 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
 
     files = []
     for key, relative in FILES:
+        if key in pair.absent:
+            continue
         # Pinned to the revision the licence was checked against, so a repo that
         # moves under us produces a different manifest rather than files whose
         # provenance line no longer describes them.
@@ -242,6 +229,14 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
         digest = sha256_of(dest)
         size = dest.stat().st_size
         print(f"    {key:<16} {relative:<42} {size / 1_048_576:6.1f} MB  {digest[:12]}")
+        pinned = pair.sha256.get(key)
+        if pair.sha256 and digest != pinned:
+            dest.unlink()
+            raise RuntimeError(
+                f"{pair.repo}@{revision[:12]} {relative}: sha256 {digest} does not "
+                f"match the pinned {pinned} -- the export changed under its pin, or "
+                "the pin is wrong; staging nothing the mirror would serve unchecked"
+            )
         files.append({"name": key, "path": relative, "bytes": size, "sha256": digest})
 
     manifest = {
@@ -252,6 +247,8 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
             "revision": revision,
             "licence": licence,
             "licence_source": licence_source,
+            "base": pair.base,
+            "base_licence": base_licence,
         },
         "files": files,
     }

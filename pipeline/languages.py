@@ -1,4 +1,8 @@
-"""The languages listen mode ships, and the checkpoints that produce them.
+"""The languages the translation pipeline knows, and the checkpoints that produce them.
+
+Listen mode itself ships fewer: since LT-217 only es, fr, de and pt, the
+languages Phonon can speak (scripts/convert-mt-models.py PAIRS). The rest stay
+registered here because the offline pipeline and its tests still screen them.
 
 Model names are recorded, never constructed. `opus-mt-en-<code>` does not exist for
 pt, pl, ko, tr, lt, lv, ja, hr or sl -- those live under `opus-mt-tc-big-en-<code>`
@@ -70,7 +74,8 @@ TARGETS: dict[str, Language] = {lang.code: lang for lang in [
 # Recorded rather than merely absent, so a later reader does not "fix" the omission.
 EXCLUDED: dict[str, str] = {
     "hi": (
-        "Supertonic's unicode_indexer.json maps 62 of 128 Devanagari codepoints. "
+        "Excluded under Supertonic, the voice before LT-217, whose "
+        "unicode_indexer.json maps 62 of 128 Devanagari codepoints. "
         "U+090B DEVANAGARI LETTER VOCALIC R is a core vowel of ordinary academic "
         "Hindi and has no canonical decomposition, so NFKD cannot rescue it. Also "
         "unmapped: U+090C, U+0960, U+0961, the candra vowels, and all ten "

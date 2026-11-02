@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  ensureModels, modelsPresent, deleteModels, checkQuota, checkQuotaFor,
-  CACHE_NAME, MT_CACHE_NAME,
+  ensureModels, modelsPresent, deleteModels, checkQuota, checkQuotaFor, removeRetiredCaches,
+  PHONON_CACHE_NAME as CACHE_NAME, MT_CACHE_NAME,
 } from '../src/models.mjs';
 
 // SHA-256 of the three bytes [1,2,3], precomputed so the test asserts against a
@@ -43,7 +43,7 @@ function fakeCaches() {
 function manifest() {
   return {
     version: 1,
-    files: [{ name: 'ttsJson', path: 'onnx/tts.json', bytes: 3, sha256: SHA_123 }],
+    files: [{ name: 'onnx/flow_lm_main.onnx', path: 'onnx/flow_lm_main.onnx', bytes: 3, sha256: SHA_123 }],
   };
 }
 
@@ -79,39 +79,39 @@ describe('models.mjs', () => {
     }));
 
     const seen = [];
-    const out = await ensureModels('/_assets/tts/manifest.json', (p) => seen.push(p.phase));
+    const out = await ensureModels('/_assets/tts/phonon/manifest.json', (p) => seen.push(p.phase));
 
-    expect(new Uint8Array(out.ttsJson)).toEqual(body);
+    expect(new Uint8Array(out['onnx/flow_lm_main.onnx'])).toEqual(body);
     expect(caches_.store.size).toBe(1);
     expect(seen).toContain('download');
   });
 
   it('serves a cached file without re-downloading it', async () => {
     const body = new Uint8Array([1, 2, 3]);
-    caches_.store.set('/_assets/tts/onnx/tts.json', body.buffer);
+    caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', body.buffer);
     const fetchSpy = vi.fn(async (url) => {
       if (String(url).endsWith('manifest.json')) return Response.json(manifest());
       throw new Error('should not download a cached file');
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const out = await ensureModels('/_assets/tts/manifest.json');
+    const out = await ensureModels('/_assets/tts/phonon/manifest.json');
 
-    expect(new Uint8Array(out.ttsJson)).toEqual(body);
+    expect(new Uint8Array(out['onnx/flow_lm_main.onnx'])).toEqual(body);
     expect(fetchSpy).toHaveBeenCalledTimes(1); // manifest only
   });
 
   it('re-downloads a cached file whose hash does not match', async () => {
-    caches_.store.set('/_assets/tts/onnx/tts.json', new Uint8Array([9, 9, 9]).buffer);
+    caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([9, 9, 9]).buffer);
     const good = new Uint8Array([1, 2, 3]);
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       if (String(url).endsWith('manifest.json')) return Response.json(manifest());
       return new Response(good);
     }));
 
-    const out = await ensureModels('/_assets/tts/manifest.json');
+    const out = await ensureModels('/_assets/tts/phonon/manifest.json');
 
-    expect(new Uint8Array(out.ttsJson)).toEqual(good);
+    expect(new Uint8Array(out['onnx/flow_lm_main.onnx'])).toEqual(good);
   });
 
   it('rejects when a fresh download fails verification', async () => {
@@ -120,7 +120,26 @@ describe('models.mjs', () => {
       return new Response(new Uint8Array([7, 7, 7]));
     }));
 
-    await expect(ensureModels('/_assets/tts/manifest.json')).rejects.toThrow(/integrity/i);
+    await expect(ensureModels('/_assets/tts/phonon/manifest.json')).rejects.toThrow(/integrity/i);
+  });
+
+  // Chrome's private windows keep Cache Storage in memory and refuse one entry
+  // as big as Portuguese's 383 MB decoder ("Unexpected internal error"). The
+  // file is already downloaded and verified, so this visit can still use it.
+  it('still uses a verified file the browser refuses to store', async () => {
+    const body = new Uint8Array([1, 2, 3]);
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).endsWith('manifest.json')) return Response.json(manifest());
+      return new Response(body);
+    }));
+    caches_.api.open = async () => ({
+      async match() { return undefined; },
+      async put() { throw new DOMException('Unexpected internal error.', 'UnknownError'); },
+    });
+
+    const out = await ensureModels('/_assets/tts/phonon/manifest.json');
+
+    expect(new Uint8Array(out['onnx/flow_lm_main.onnx'])).toEqual(body);
   });
 
   it('does not create the cache just by asking whether models are present', async () => {
@@ -131,17 +150,17 @@ describe('models.mjs', () => {
     const fetchSpy = vi.fn(async () => Response.json(manifest()));
     vi.stubGlobal('fetch', fetchSpy);
 
-    expect(await modelsPresent('/_assets/tts/manifest.json')).toBe(false);
+    expect(await modelsPresent('/_assets/tts/phonon/manifest.json')).toBe(false);
     expect(caches_.created.has(CACHE_NAME)).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled(); // nothing cached: no need to read the manifest
   });
 
   it('reports presence and deletes', async () => {
-    caches_.store.set('/_assets/tts/onnx/tts.json', new Uint8Array([1, 2, 3]).buffer);
+    caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([1, 2, 3]).buffer);
     caches_.created.add(CACHE_NAME);
     vi.stubGlobal('fetch', vi.fn(async () => Response.json(manifest())));
 
-    expect(await modelsPresent('/_assets/tts/manifest.json')).toBe(true);
+    expect(await modelsPresent('/_assets/tts/phonon/manifest.json')).toBe(true);
     await deleteModels();
     expect(caches_.store.size).toBe(0);
   });
@@ -179,8 +198,8 @@ describe('models.mjs', () => {
 
   it('puts translation models in their own cache, leaving the voice untouched', async () => {
     // The whole reason for a second cache: deleteModels() deletes a WHOLE cache,
-    // so a reader reclaiming 121 MB of Spanish must not lose the 383 MB voice.
-    caches_.store.set('/_assets/tts/onnx/tts.json', new Uint8Array([1, 2, 3]).buffer);
+    // so a reader reclaiming 121 MB of Spanish must not lose the voice.
+    caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([1, 2, 3]).buffer);
     caches_.created.add(CACHE_NAME);
     vi.stubGlobal('fetch', vi.fn(async (url) => {
       if (String(url).endsWith('manifest.json')) return Response.json(mtManifest());
@@ -197,7 +216,7 @@ describe('models.mjs', () => {
   });
 
   it('deletes one cache without touching the other', async () => {
-    caches_.store.set('/_assets/tts/onnx/tts.json', new Uint8Array([1, 2, 3]).buffer);
+    caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([1, 2, 3]).buffer);
     caches_.storeFor(MT_CACHE_NAME).set('/_assets/tts/mt/en-es/vocab.json',
       new Uint8Array([1, 2, 3]).buffer);
     caches_.created.add(CACHE_NAME);
@@ -218,5 +237,25 @@ describe('models.mjs', () => {
     expect(await modelsPresent('/_assets/tts/mt/en-es/manifest.json', MT_CACHE_NAME)).toBe(false);
     expect(caches_.created.has(MT_CACHE_NAME)).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('removes the cache Supertonic left behind, and only that one (LT-217)', async () => {
+    // A reader who listened to a translation before LT-217 still holds the
+    // ~380 MB Supertonic voice under its old name. Nothing reads it any more.
+    for (const name of ['libretexts-tts-v1', CACHE_NAME, MT_CACHE_NAME]) {
+      caches_.storeFor(name).set('/x', new Uint8Array([1]).buffer);
+      caches_.created.add(name);
+    }
+
+    await removeRetiredCaches();
+
+    expect([...caches_.created].sort()).toEqual([MT_CACHE_NAME, CACHE_NAME].sort());
+    expect(caches_.storeFor(CACHE_NAME).size).toBe(1);
+    expect(caches_.storeFor(MT_CACHE_NAME).size).toBe(1);
+  });
+
+  it('does not create the retired cache by removing it', async () => {
+    await removeRetiredCaches();
+    expect(caches_.created.size).toBe(0);
   });
 });

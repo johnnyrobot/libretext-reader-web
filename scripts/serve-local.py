@@ -9,7 +9,7 @@ Three of these matter and none is cosmetic:
 * **`application/wasm`** -- Python's http.server does not know the type, and
   ONNX Runtime refuses to stream-compile anything else.
 * **immutable on /_assets/tts/** mirrors the Caddy exemption, so a reload does
-  not re-fetch 380 MB.
+  not re-fetch 155 MB.
 
 Usage: scripts/serve-local.py [--root DIR] [--port 8788]
 """

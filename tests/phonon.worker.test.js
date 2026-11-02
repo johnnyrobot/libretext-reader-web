@@ -56,6 +56,16 @@ describe('phonon.worker.mjs', () => {
     expect(VOICES.M1).not.toBe(VOICES.F1);
   });
 
+  it('speaks the language it was loaded for, and refuses any other (LT-217)', async () => {
+    const { handle, of } = handlerWith(fakeModel());
+    await handle({ type: 'init', voice: 'M1', lang: 'fr', manifestUrl: '/_assets/tts/phonon-fr/manifest.json' });
+    await handle({ type: 'setLang', lang: 'fr' });
+    await handle({ type: 'setLang', lang: 'de' });
+    await flush();
+    expect(of('langSet')).toEqual([{ type: 'langSet', lang: 'fr' }]);
+    expect(of('error')).toEqual([expect.objectContaining({ id: 'lang', code: 'UNSUPPORTED_LANG' })]);
+  });
+
   it('refuses a language other than English, against the pending lang request', async () => {
     const { handle, of } = handlerWith(fakeModel());
     await handle({ type: 'init', voice: 'M1', lang: 'en', manifestUrl: '/m.json' });

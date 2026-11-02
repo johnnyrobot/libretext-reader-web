@@ -14,8 +14,8 @@ class FakeWorker {
     queueMicrotask(() => {
       if (message.type === 'init') {
         return this.reply(this.failInit
-          ? { type: 'error', message: 'model unavailable (404)' }
-          : { type: 'ready' });
+          ? { type: 'error', initId: message.initId, message: 'model unavailable (404)' }
+          : { type: 'ready', initId: message.initId });
       }
       if (message.type === 'translate') {
         this.reply({ type: 'translated', id: message.id, lines: message.lines.map((l) => `ES: ${l}`) });
@@ -65,7 +65,7 @@ describe('translator.mjs', () => {
     await translator.init({ pair: 'en-es' });
 
     expect(worker.sent[0]).toEqual({
-      type: 'init', pair: 'en-es', manifestUrl: '/_assets/tts/mt/en-es/manifest.json',
+      type: 'init', pair: 'en-es', manifestUrl: '/_assets/tts/mt/en-es/manifest.json', initId: 1,
     });
   });
 
@@ -91,15 +91,70 @@ describe('translator.mjs', () => {
     expect(worker.sent.filter((m) => m.type === 'init')).toHaveLength(2);
   });
 
+  it('a newer pair replaces a load still in flight: the old one is cancelled (LT-217)', async () => {
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    const french = translator.init({ pair: 'en-fr' });
+    const german = translator.init({ pair: 'en-de' });
+    worker.onmessage({ data: { type: 'ready', initId: worker.sent[1].initId } });
+
+    await expect(german).resolves.toBeUndefined();
+    await expect(french).rejects.toThrow(/cancelled/);
+    // And French is not remembered as loaded: picking it again loads it again.
+    translator.init({ pair: 'en-fr' });
+    expect(worker.sent.filter((m) => m.type === 'init').map((m) => m.pair)).toEqual(['en-fr', 'en-de', 'en-fr']);
+  });
+
+  it('ignores a reply still in transit from the load it replaced', async () => {
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    translator.init({ pair: 'en-fr' }).catch(() => {});
+    const german = translator.init({ pair: 'en-de' });
+    const [fr, de] = worker.sent.map((m) => m.initId);
+    expect(fr).not.toBe(de);
+
+    let settled = false;
+    german.then(() => { settled = true; }, () => { settled = true; });
+    worker.onmessage({ data: { type: 'ready', initId: fr } });
+    worker.onmessage({ data: { type: 'error', initId: fr, message: 'French failed' } });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    worker.onmessage({ data: { type: 'ready', initId: de } });
+    await expect(german).resolves.toBeUndefined();
+  });
+
+  it('shows only the current load\'s download progress; a batch\'s goes to that batch', () => {
+    // A stopped Portuguese queue's batch still running in the worker must not
+    // move the bar of the French download that replaced it.
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    translator.init({ pair: 'en-fr' }).catch(() => {});
+    const download = [];
+    const batch = [];
+    translator.init({ pair: 'en-de', onProgress: (p) => download.push(p.loaded) });
+    translator.translate(['one.'], (p) => batch.push(p.loaded)).catch(() => {});
+    translator.translate(['two.']).catch(() => {});
+    const [fr, de] = worker.sent.filter((m) => m.type === 'init').map((m) => m.initId);
+    const [withBar, without] = worker.sent.filter((m) => m.type === 'translate').map((m) => m.id);
+    worker.onmessage({ data: { type: 'progress', initId: fr, loaded: 1, total: 9 } });
+    worker.onmessage({ data: { type: 'progress', initId: de, loaded: 2, total: 9 } });
+    worker.onmessage({ data: { type: 'progress', id: withBar, loaded: 3, total: 9, phase: 'translate' } });
+    worker.onmessage({ data: { type: 'progress', id: without, loaded: 4, total: 9, phase: 'translate' } });
+    expect(download).toEqual([2]);
+    expect(batch).toEqual([3]);
+  });
+
   it('forwards download progress while loading', async () => {
     const { worker, translator } = withFakeWorker();
     const seen = [];
     const ready = translator.init({ pair: 'en-es', onProgress: (p) => seen.push(p) });
-    worker.reply({ type: 'progress', file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download' });
+    const { initId } = worker.sent[0];
+    worker.reply({ type: 'progress', initId, file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download' });
     await ready;
 
     expect(seen).toEqual([{
-      type: 'progress', file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download',
+      type: 'progress', initId, file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download',
     }]);
   });
 
@@ -121,7 +176,7 @@ describe('translator.mjs', () => {
     worker.postMessage = function (message) {
       this.sent.push(message);
       queueMicrotask(() => this.reply(message.type === 'init'
-        ? { type: 'ready' }
+        ? { type: 'ready', initId: message.initId }
         : { type: 'error', id: message.id, message: 'translator returned 1 lines for 2 sentences' }));
     };
     const translator = createTranslator({ createWorker: () => worker });

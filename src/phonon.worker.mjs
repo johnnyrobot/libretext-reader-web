@@ -1,13 +1,10 @@
 /**
  * English speech with Phonon 31M (onnx-community/phonon-31m-en, Apache 2.0), in
- * the reader's browser. LT-214 moved English Listen mode here from Supertonic;
- * the nine translation tracks stay on `engine.worker.mjs`, which a reader who
- * only ever listens in English never downloads. Given a staged manifest, it also
- * speaks the Phonon 40M French, German, Spanish and Portuguese models
- * (scripts/stage-phonon-lang.py, LT-216); the reader does not offer them yet.
+ * the reader's browser (LT-214). Since LT-217 Phonon is Listen mode's only
+ * engine: the same worker loads fr, de, es or pt from that language's Phonon
+ * 40M (CC BY-NC 4.0), staged by scripts/stage-phonon-lang.py (LT-216).
  *
- * Protocol, the same shape as `engine.worker.mjs` so `engine.mjs` drives both,
- * with two additions for streaming:
+ * Protocol, the one `engine.mjs` drives, with two additions for streaming:
  *
  *   -> { type: 'init', voice, lang, manifestUrl }
  *   <- { type: 'progress', file, loaded, total, phase }
@@ -18,7 +15,7 @@
  *   <- { type: 'audio', id, samples, sampleRate, outcome }
  *   -> { type: 'cancel', id }
  *   -> { type: 'setVoice', voice }  <- { type: 'voiceSet', voice }
- *   -> { type: 'setLang', lang }    <- { type: 'langSet', lang }   English only
+ *   -> { type: 'setLang', lang }    <- { type: 'langSet', lang }   init's lang only
  *   <- { type: 'error', id, code, message }
  *
  * `outcome` is the length guard's verdict (src/phonon-guard.mjs): 'ok',
@@ -33,8 +30,8 @@
 import { ensureModels, PHONON_CACHE_NAME } from './models.mjs';
 import { renderGuarded } from './phonon-guard.mjs';
 
-// The ORT 1.26 binaries transformers.js bundles, staged once for the translator
-// (see translate.worker.mjs for why they must not be engine.worker.mjs's 1.17).
+// The ORT 1.26 binaries transformers.js bundles, staged once and shared with
+// the translator (see translate.worker.mjs for why they come from it).
 const ORT_WASM_PATH = '/_assets/tts/ort-mt/';
 const MAX_THREADS = 8;
 
@@ -57,7 +54,7 @@ export function voiceBuffer(buffers, voiceId) {
 
 // Sampling settings calibrated on the LT-213 bench set (bench/phonon/FINDINGS.md,
 // "LT-214 calibration"). DURATION_DELTA slows Phonon from ~16.2 to ~14.3
-// characters a second, Supertonic's default rate (14.1); it is also what made
+// characters a second, the rate Listen mode spoke at before LT-214 (14.1); it is also what made
 // s18 read cleanly. TEMPERATURE 0.1 tied 0.3 and 0.2 within run-to-run noise
 // and had the lowest mean WER; 0.05 was worst and once cut s16 short.
 export const TEMPERATURE = 0.1;
@@ -226,6 +223,10 @@ async function loadPhonon({ manifestUrl, onProgress }) {
 export function createHandler({ post, load = loadPhonon }) {
   let loading = null;
   let model = null;
+  // Each Phonon model speaks one language: English is the 31M, and fr, de, es
+  // and pt each have their own 40M (LT-216), so the worker speaks the one it
+  // was loaded for.
+  let lang = 'en';
   let queue = Promise.resolve();
   // Ids queued or rendering, and how many times: a cancel for an id that is not
   // here is late (its audio is already sent) and must not be remembered, or it
@@ -260,6 +261,7 @@ export function createHandler({ post, load = loadPhonon }) {
   return async function handle(data) {
     switch (data.type) {
       case 'init':
+        lang = data.lang ?? 'en';
         try {
           loading = load({
             manifestUrl: data.manifestUrl,
@@ -292,10 +294,11 @@ export function createHandler({ post, load = loadPhonon }) {
         });
 
       case 'setLang':
-        // English only: the reader routes every other language to Supertonic
-        // before it gets here, so anything else is a routing bug, said loudly.
-        if (data.lang === 'en') post({ type: 'langSet', lang: 'en' });
-        else post({ type: 'error', id: 'lang', code: 'UNSUPPORTED_LANG', message: `Phonon speaks English only, not ${data.lang}` });
+        // Only the language this model was loaded for: the reader routes every
+        // other language to that language's own worker before it gets here, so
+        // anything else is a routing bug, said loudly.
+        if (data.lang === lang) post({ type: 'langSet', lang });
+        else post({ type: 'error', id: 'lang', code: 'UNSUPPORTED_LANG', message: `This Phonon model speaks ${lang}, not ${data.lang}` });
         return;
 
       default:

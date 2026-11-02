@@ -67,27 +67,15 @@ PAGES = ROOT / "scripts" / "oracle-pages.txt"
 # to build a parity fixture for that language. Same machinery, so it lives here
 # rather than in a near-copy of this file.
 #
-# The per-language entries name THE CHECKPOINT THE BROWSER SHIPS, which for nl
-# and hu is NOT the one pipeline/languages.py registers. hu is registered
-# against opus-mt-tc-big-en-hu, but no ONNX export of any tc-big checkpoint
-# exists, so the browser runs the Xenova export of the small opus-mt-en-hu
-# (verified 2026-08-27: the export's config is vocab=62522 d_model=512 enc=6x8,
-# identical to the small checkpoint and nothing like tc-big's 56973/1024/16).
-# Writing a language's spoken-form rules against tc-big's output would mean
-# writing them against text no reader ever hears -- and the two DO differ: on
-# the gate's own 472-sentence sample hu scores 1.06% on tc-big and 1.91% on the
-# small one.
+# The per-language entries name THE CHECKPOINT THE BROWSER SHIPS. Writing a
+# language's spoken-form rules against another checkpoint's output would mean
+# writing them against text no reader ever hears. it, nl, hu, da, sv and cs were
+# dropped from Listen mode in LT-217; their entries went with them.
 CHECKPOINTS = {
     "small": ("Helsinki-NLP/opus-mt-en-es", ROOT / "models/ct2/opus-mt-en-es"),
     "tcbig": ("Helsinki-NLP/opus-mt-tc-big-en-es", ROOT / "models/ct2/opus-mt-tc-big-en-es"),
     "fr": ("Helsinki-NLP/opus-mt-en-fr", ROOT / "models/ct2/opus-mt-en-fr"),
-    "it": ("Helsinki-NLP/opus-mt-tc-big-en-it", ROOT / "models/ct2/opus-mt-tc-big-en-it"),
-    "nl": ("Helsinki-NLP/opus-mt-en-nl", ROOT / "models/ct2/opus-mt-en-nl"),
-    "hu": ("Helsinki-NLP/opus-mt-en-hu", ROOT / "models/ct2/opus-mt-en-hu"),
-    "da": ("Helsinki-NLP/opus-mt-en-da", ROOT / "models/ct2/opus-mt-en-da"),
-    "sv": ("Helsinki-NLP/opus-mt-en-sv", ROOT / "models/ct2/opus-mt-en-sv"),
     "de": ("Helsinki-NLP/opus-mt-en-de", ROOT / "models/ct2/opus-mt-en-de"),
-    "cs": ("Helsinki-NLP/opus-mt-en-cs", ROOT / "models/ct2/opus-mt-en-cs"),
 }
 
 
@@ -228,8 +216,7 @@ def main() -> None:
     global CORPUS, OUT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", nargs="*",
-                        choices=["mask", "tokens", "small", "tcbig", "fr", "it",
-                                 "nl", "hu", "da", "sv", "de", "cs", "refs"],
+                        choices=["mask", "tokens", "small", "tcbig", "fr", "de", "refs"],
                         help="run a subset; default is all of them")
     parser.add_argument("--corpus", type=Path, default=CORPUS,
                         help="tree of speech.json manifests to read (default "
@@ -243,7 +230,7 @@ def main() -> None:
     OUT = args.out or args.corpus
     OUT.mkdir(parents=True, exist_ok=True)
     want = set(args.only or ["mask", "tokens", "small", "tcbig", "refs"])
-    # fr, it, nl, hu, da, sv, de and cs are opt-in: they are only needed when regenerating that
+    # fr and de are opt-in: they are only needed when regenerating that
     # language's parity fixture, and each costs a full model run.
 
     rows = corpus()
@@ -263,7 +250,7 @@ def main() -> None:
     # browser does not translate them either. Masking and tokenizer parity above
     # still cover all 14,418, because those need no reference to be meaningful.
     attempted = [r for r in rows if not r["reference"]]
-    for which in ("small", "tcbig", "fr", "it", "nl", "hu", "da", "sv", "de", "cs"):
+    for which in ("small", "tcbig", "fr", "de"):
         if which in want:
             restored, raw = do_translate(attempted, masked, which)
             write(f"python-{which}.json", restored)

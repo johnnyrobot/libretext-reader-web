@@ -47,14 +47,21 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   // which pair the worker currently holds to avoid it.
   let loaded = null;
   let loadedPair = null;
+  // Each init is numbered and the worker echoes the number, so a reply still in
+  // transit from a load the reader has replaced cannot settle the newer one.
+  let initSerial = 0;
+  const latest = (data) => data.initId === initSerial;
 
   worker.onmessage = ({ data }) => {
     switch (data.type) {
       case 'progress':
-        onProgress(data);
+        // A batch's progress goes to that batch, and a replaced load's
+        // download to no one: neither may move the current load's bar.
+        if (data.id !== undefined) pending.get(data.id)?.onProgress?.(data);
+        else if (latest(data)) onProgress(data);
         break;
       case 'ready':
-        readyResolve?.();
+        if (latest(data)) readyResolve?.();
         break;
       case 'translated': {
         pending.get(data.id)?.resolve(data.lines);
@@ -66,7 +73,7 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
         if (data.id !== undefined && pending.has(data.id)) {
           pending.get(data.id).reject(error);
           pending.delete(data.id);
-        } else {
+        } else if (latest(data)) {
           readyReject?.(error);
         }
         break;
@@ -84,26 +91,36 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   return {
     init({ pair, onProgress: progress = () => {} }) {
       if (loadedPair === pair) return loaded;
+      // A load still in flight is for a language the reader has since left
+      // (LT-217). The worker keeps only the latest init, so this one will never
+      // hear back: cancel it rather than leave its caller waiting. Already
+      // loaded, this does nothing.
+      readyReject?.(new Error(`translator load cancelled: ${loadedPair}`));
       onProgress = progress;
       loadedPair = pair;
-      loaded = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; })
+      const load = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; })
         // A failed load must not be remembered as the loaded pair, or every
-        // later attempt returns the same rejection without ever retrying.
-        .catch((error) => { loadedPair = null; loaded = null; throw error; });
-      worker.postMessage({ type: 'init', manifestUrl: `${root}${pair}/manifest.json`, pair });
+        // later attempt returns the same rejection without ever retrying. Only
+        // the latest load is the one remembered, so only it is forgotten.
+        .catch((error) => {
+          if (loaded === load) { loadedPair = null; loaded = null; }
+          throw error;
+        });
+      loaded = load;
+      initSerial += 1;
+      worker.postMessage({ type: 'init', manifestUrl: `${root}${pair}/manifest.json`, pair, initId: initSerial });
       return loaded;
     },
 
-    // `onProgress` again, because the worker reports progress during a long
-    // translation too, and a run that reuses init's callback would label
-    // translation progress with the download's wording. Only one operation is in
-    // flight at a time, so one slot is enough.
-    translate(lines, progress) {
-      if (progress) onProgress = progress;
+    // Its own `onProgress`, kept with the batch, because the worker reports
+    // progress during a long translation too: on init's callback it would be
+    // labelled with the download's wording, and a stopped batch still running
+    // would move a newer download's bar.
+    translate(lines, onProgress) {
       const id = nextId;
       nextId += 1;
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        pending.set(id, { resolve, reject, onProgress });
         worker.postMessage({ type: 'translate', id, lines });
       });
     },

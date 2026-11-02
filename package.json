@@ -22,8 +22,7 @@
     "oracle:diff": ".venv/bin/python scripts/oracle-diff.py"
   },
   "dependencies": {
-    "@huggingface/transformers": "^4.2.0",
-    "onnxruntime-web": "^1.17.0"
+    "@huggingface/transformers": "^4.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

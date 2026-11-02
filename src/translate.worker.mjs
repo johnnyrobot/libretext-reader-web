@@ -1,21 +1,22 @@
 /**
  * Translate English sentences to the target language, in the reader's browser.
  *
- * A SEPARATE worker from `engine.worker.mjs`, for two reasons that are not
+ * A SEPARATE worker from the speech worker, for two reasons that are not
  * stylistic. Inference on the main thread freezes the tab for its whole
  * duration. And translation and synthesis must run CONCURRENTLY: the design
  * depends on the translator staying ahead of playback (2.99 sent/s measured
  * against playback's ~0.33), and sharing one worker serialises them, which
  * guarantees it cannot.
  *
- * Protocol, deliberately the same shape as `engine.worker.mjs`:
+ * Protocol, deliberately the same shape as the speech worker's:
  *
- *   -> { type: 'init', manifestUrl, pair }
- *   <- { type: 'progress', file, loaded, total, phase }
- *   <- { type: 'ready' }
+ *   -> { type: 'init', manifestUrl, pair, initId }
+ *   <- { type: 'progress', initId, file, loaded, total, phase }   while loading
+ *   <- { type: 'progress', id, loaded, total, phase: 'translate' }  during a batch
+ *   <- { type: 'ready', initId }          only for the latest init
  *   -> { type: 'translate', id, lines: string[] }
  *   <- { type: 'translated', id, lines: string[] }
- *   <- { type: 'error', id, message }
+ *   <- { type: 'error', id, initId, message }   id for a batch, initId for an init
  *
  * `lines` out is the same length as `lines` in, always. Highlighting is keyed by
  * position, so a length mismatch does not lose one sentence -- it misaligns
@@ -28,16 +29,15 @@ import { mask, restore, PlaceholderError } from './protect.mjs';
 import { shouldFallBack } from './qa.mjs';
 import { NORMALIZERS } from './lang-normalize.mjs';
 
-// A SECOND ONNX Runtime, in its own directory, and this is load-bearing:
-// `engine.worker.mjs` pins onnxruntime-web 1.17.3 and reads its wasm from
-// /_assets/tts/ort/, while transformers.js bundles 1.26.0-dev. The two builds
-// are not interchangeable -- loading 1.17 binaries into 1.26's JS aborts inside
-// the wasm module with nothing that says "wrong version". scripts/stage-local.sh
-// resolves the binaries through transformers.js's own dependency so they cannot
-// drift from the runtime that is actually bundled.
+// The ONNX Runtime binaries transformers.js bundles (1.26.0-dev). ORT builds
+// are not interchangeable -- loading another version's wasm into this JS aborts
+// inside the wasm module with nothing that says "wrong version" -- so
+// scripts/stage-local.sh resolves the binaries through transformers.js's own
+// dependency so they cannot drift from the runtime that is actually bundled.
+// phonon.worker.mjs reads the same directory.
 //
-// ABSOLUTE, for the reason engine.worker.mjs is: a relative path resolves
-// against the ORT module's URL, not the page's.
+// ABSOLUTE: a relative path resolves against the ORT module's URL, not the
+// page's.
 const ORT_WASM_PATH = '/_assets/tts/ort-mt/';
 
 const MAX_THREADS = 8;
@@ -50,6 +50,21 @@ const MAX_THREADS = 8;
 // Chunking lives HERE rather than in the caller because the caller cannot know
 // this, and because every caller would otherwise have to.
 const MAX_BATCH = 8;
+
+// Languages whose export must not be batched at all (LT-217). The en-pt export
+// (Douglasrambo/opus-mt-tc-big-en-pt-onnx) keeps generating past the sentence
+// when its input is padded: 21 of 146 lines ended in "))))))" or "......" in
+// batches of 8, none one at a time. A correctness limit, unlike MAX_BATCH, and
+// it costs Portuguese about 4x the translation time.
+//
+// Xenova's en-de does it too, less often, and when it does every line in the
+// batch trails dozens of dots and the batch runs to the length limit: 25 s per
+// batch on the 3.02 Moods page, where 16 sentences took 51 s batched and showed
+// "Deutsch is slow on this device" even paused, against 24 s one at a time with
+// no box. Where it batches cleanly (1.02) one at a time is about 2.4x slower,
+// still 0.8 sentences/s against MIN_RATE's 0.5 on the M2 Max. French and Spanish
+// did not run away on 3.02 and keep batching.
+const BATCH_BY_LANG = { de: 1, pt: 1 };
 
 /** The translator returned a different number of lines than it was given. */
 export class SentenceCountError extends Error {
@@ -75,10 +90,11 @@ export class SentenceCountError extends Error {
 const identity = (text) => text;
 
 export async function translateBatch(translate, lines, onProgress = () => {}, code = null) {
+  const size = BATCH_BY_LANG[code] ?? MAX_BATCH;
   const out = [];
-  for (let start = 0; start < lines.length; start += MAX_BATCH) {
+  for (let start = 0; start < lines.length; start += size) {
     out.push(...await translateChunk(
-      translate, lines.slice(start, start + MAX_BATCH), NORMALIZERS[code] ?? identity));
+      translate, lines.slice(start, start + size), NORMALIZERS[code] ?? identity));
     // Whole-page translation blocks playback until M2 step 6, and a 45-second
     // wait with a static message is indistinguishable from a hung tab.
     onProgress({ phase: 'translate', loaded: out.length, total: lines.length });
@@ -187,8 +203,8 @@ async function loadTranslator({ manifestUrl, pair, onProgress }) {
     env.backends.onnx.wasm.numThreads = Math.min(MAX_THREADS, navigator.hardwareConcurrency || 1);
   }
 
-  // ONE config, no fallback ladder -- the opposite of engine.worker.mjs's
-  // webgpu-then-wasm try/catch, and deliberately so. A failed session poisons
+  // ONE config, no fallback ladder -- no webgpu-then-wasm try/catch, and
+  // deliberately so. A failed session poisons
   // ORT for the whole page: after one config fails, every later config fails
   // with the identical error, so a second attempt here would not be a fallback,
   // it would be a guaranteed second failure reported as if the first had been
@@ -214,18 +230,31 @@ export function createHandler({ post, load = loadTranslator }) {
   let code = null;
 
   return async function handle(data) {
+    // Only the LATEST init is the reader's (LT-217). A cancelled download keeps
+    // loading after the reader picks another language, and may finish last: its
+    // model must not replace the newer one, and its failure is nobody's error.
+    let replaced = false;
     try {
       if (data.type === 'init') {
         code = String(data.pair ?? '').split('-')[1] ?? null;
-        loading = load({
+        translate = null;
+        const loadingNow = load({
           manifestUrl: data.manifestUrl,
           pair: data.pair,
           onProgress: (p) => post({
-            type: 'progress', file: p.file, loaded: p.loaded, total: p.total, phase: p.phase,
+            type: 'progress', initId: data.initId, file: p.file, loaded: p.loaded, total: p.total, phase: p.phase,
           }),
         });
-        translate = await loading;
-        post({ type: 'ready' });
+        loading = loadingNow;
+        try {
+          const loadedSession = await loadingNow;
+          if (loading !== loadingNow) return;
+          translate = loadedSession;
+        } catch (error) {
+          replaced = loading !== loadingNow;
+          throw error;
+        }
+        post({ type: 'ready', initId: data.initId });
         return;
       }
 
@@ -233,17 +262,17 @@ export function createHandler({ post, load = loadTranslator }) {
         // Awaiting the in-flight init rather than rejecting means the host does
         // not have to serialise init against the first batch; a translate that
         // arrives before any init at all is still a programming error and says so.
-        if (!translate) {
-          if (!loading) throw new Error('translator not initialised');
-          translate = await loading;
-        }
-        const lines = await translateBatch(translate, data.lines, (p) => post({
-          type: 'progress', file: null, loaded: p.loaded, total: p.total, phase: p.phase,
+        // Kept local: a newer init may replace `translate` during the wait.
+        if (!translate && !loading) throw new Error('translator not initialised');
+        const session = translate ?? await loading;
+        const lines = await translateBatch(session, data.lines, (p) => post({
+          type: 'progress', id: data.id, file: null, loaded: p.loaded, total: p.total, phase: p.phase,
         }), code);
         post({ type: 'translated', id: data.id, lines });
       }
     } catch (error) {
-      post({ type: 'error', id: data.id, message: String(error?.message ?? error) });
+      if (replaced) return;
+      post({ type: 'error', id: data.id, initId: data.initId, message: String(error?.message ?? error) });
     }
   };
 }
