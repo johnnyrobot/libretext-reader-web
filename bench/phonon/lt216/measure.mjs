@@ -79,6 +79,8 @@ for (const lang of langs) {
       }, { lang, text: item[lang] });
       const { pcm, sampleRate, ...timing } = run;
       const name = n === 0 ? `${item.id}-cold` : item.id;
+      // A skipped sentence carries no audio: scoring an empty file would count it as all deletions.
+      if (timing.outcome === 'skipped' || !timing.seconds) throw new Error(`${lang} ${name}: ${timing.outcome}, no audio to score`);
       writeFileSync(path.join(dir, `${name}.wav`), wav(Buffer.from(pcm, 'base64'), sampleRate));
       runs.push({ id: item.id, name, category: item.category, ...timing, text: undefined });
       console.log(`  ${lang} ${name}: ${timing.seconds.toFixed(1)} s audio, first sound ${timing.firstSoundMs?.toFixed(0)} ms, ` +

@@ -315,7 +315,7 @@ def test_lets_a_checkouts_ignored_stage_through(tmp_path):
     """LT-217 stages into scripts/stage-local.sh's .stage/; with no Ollama copy
     here it stops later, for that, and not at the guard."""
     target = _checkout(tmp_path / "checkout") / ".stage" / "_assets" / "tts" / "phonon-fr"
-    with pytest.raises(SystemExit) as stopped:
+    with pytest.raises(SystemExit, match=r"the English export's|is not in") as stopped:
         stage_lang.stage("fr", target, models=tmp_path / "no-ollama")
     assert "git would commit" not in str(stopped.value)
 
