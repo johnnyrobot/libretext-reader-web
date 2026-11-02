@@ -50,7 +50,7 @@ CSP = (
 # The README's @ttsmodels: Phonon's weights and voices. Everything else under
 # /_assets/tts/ revalidates, as @ttscode does, and a manifest most of all: one
 # cached for a year outlives a restage (LT-222 gave each language M1 and F1).
-IMMUTABLE = re.compile(r"/_assets/tts/phonon(-(fr|de|es|pt))?/(onnx|voices)/")
+IMMUTABLE_PATHS = re.compile(r"/_assets/tts/phonon(-(fr|de|es|pt))?/(onnx|voices)/")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -63,7 +63,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # /_assets/tts/. A local harness more permissive than the real server is
         # worse than no harness for exactly this class of bug.
         if self.path.startswith("/_assets/tts/"):
-            self.send_header("Cache-Control", "public, max-age=31536000, immutable" if IMMUTABLE.match(self.path)
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable" if IMMUTABLE_PATHS.match(self.path)
                              else "public, max-age=0, must-revalidate")
             self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
             self.send_header("Cross-Origin-Resource-Policy", "same-origin")
