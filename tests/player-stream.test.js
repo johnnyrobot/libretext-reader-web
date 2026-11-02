@@ -99,7 +99,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.finish('ok', 3 * 1920);
     await tick();
     live(context).forEach((n) => n.end());
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
 
     expect(seen).toEqual(['a', 'b']);
@@ -121,7 +121,9 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen).toEqual(['a']);           // still the same sentence
   });
 
-  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays', async () => {
+  // Some of a was heard before the guard withdrew it, so b is not the first
+  // sentence heard: it was rendered ahead, and waits to be whole.
+  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays whole', async () => {
     player.play();
     await tick();
     const a = engine.jobs.get('a');
@@ -129,7 +131,10 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.reset();
     a.finish('skipped');
     await tick();
-    engine.jobs.get('b').chunk();
+    const b = engine.jobs.get('b');
+    b.chunk(); await tick();
+    expect(seen).toEqual(['a']);
+    b.finish();
     await tick();
 
     expect(skipped).toEqual(['a']);
@@ -147,7 +152,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     live(context).forEach((n) => n.end());
     await tick();
-    engine.jobs.get('c')?.chunk();
+    engine.jobs.get('c')?.finish();
     await tick();
 
     expect(skipped).toEqual(['b']);
@@ -192,7 +197,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.fail();
     await tick();
     live(context).forEach((n) => n.end());
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
     expect(seen).toEqual(['a', 'b']);
   });
@@ -205,6 +210,98 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
     engine.jobs.get('a').chunk();
     expect(performance.getEntriesByName('tts:first-sound')).toHaveLength(1);
+  });
+
+  // The runaway trade-off (LT-214). Only the sentence the reader is waiting on
+  // streams; one rendered ahead plays only once the length guard has passed it
+  // whole, so a runaway is never heard. Time to first sound is unchanged; the
+  // cost is a pause before a sentence that is not whole by its turn.
+  it('a sentence rendered ahead that has streamed but not finished waits to be whole', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    const b = engine.jobs.get('b');
+    b.chunk(); b.chunk();
+    await tick();
+
+    live(context).forEach((n) => n.end());
+    const nodesBefore = context.nodes.length;
+    await tick();
+    b.chunk();
+    await tick();
+    expect(seen).toEqual(['a']);              // b's turn, but nothing of it plays yet
+    expect(context.nodes).toHaveLength(nodesBefore);
+
+    b.finish('ok', 3 * 1920);
+    await tick();
+    expect(seen).toEqual(['a', 'b']);
+    expect(live(context)).toHaveLength(1);    // one buffer: the whole sentence
+    expect(live(context)[0].buffer.length).toBe(3 * 1920);
+  });
+
+  // Nothing of b was heard, and what it streamed was never guarded whole, so it
+  // is not played: it is marked, like a sentence the guard skipped.
+  it('a sentence rendered ahead that fails after streaming is marked skipped', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    const b = engine.jobs.get('b');
+    b.chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    const nodesBefore = context.nodes.length;
+    b.fail();
+    await tick();
+    expect(skipped).toEqual(['b']);
+    expect(context.nodes).toHaveLength(nodesBefore);   // none of b is played
+    engine.jobs.get('c').finish();
+    await tick();
+    expect(seen).toEqual(['a', 'c']);
+  });
+
+  it('a sentence rendered ahead that a flush cancels is not marked skipped', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    engine.jobs.get('b').chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    player.flushAudio();
+    await tick();
+    expect(skipped).toEqual([]);
+  });
+
+  // A seek while a sentence rendered ahead waits to be whole cancels it; the
+  // cancelled wait must not clear the "Preparing audio…" the seek has shown.
+  it('a seek during a wait keeps showing that the sentence sought is preparing', async () => {
+    const states = [];
+    player = createPlayer({
+      engine, sentences: SENTENCES(), audioContext: context,
+      onStateChange: (s) => states.push(s),
+    });
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    engine.jobs.get('b').chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    player.seekTo('c');
+    await tick();
+    expect(states.at(-1)).toMatchObject({ buffering: true, message: 'Preparing audio…' });
   });
 
   // Next onto a sentence still rendering. seekTo cancels every request, and the
@@ -250,26 +347,24 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
 
   // The guard withdrew what the next sentence had streamed and is rendering it
   // again. `first` had already resolved on the withdrawn chunk, so its turn
-  // found nothing to play and passed it over, unmarked.
+  // found nothing to play and passed it over, unmarked. a is skipped before a
+  // sound of it is heard, so b is the sentence the reader is waiting on, and
+  // may stream.
   it('a sentence reset before its turn waits for its retry instead of being passed over', async () => {
     player.play();
     await tick();
-    const a = engine.jobs.get('a');
-    a.chunk(); await tick();
-    a.finish();
     const b = engine.jobs.get('b');
     b.chunk();
     b.reset();
+    engine.jobs.get('a').finish('skipped');
     await tick();
-
-    live(context).forEach((n) => n.end());
-    await tick();
+    expect(seen).not.toContain('b');
     expect(seen).not.toContain('c');
 
     b.chunk(); await tick();
-    expect(seen.at(-1)).toBe('b');
+    expect(seen).toEqual(['b']);
     expect(live(context)).toHaveLength(1);
-    expect(skipped).toEqual([]);
+    expect(skipped).toEqual(['a']);
   });
 });
 

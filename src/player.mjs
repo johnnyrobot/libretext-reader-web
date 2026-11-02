@@ -10,6 +10,15 @@
  * frame rather than when it has finished rendering. Every request asks for the
  * stream; an engine that cannot stream (Supertonic) simply never sends any, and
  * the sentence plays as one buffer as it always did.
+ *
+ * Only the sentence the reader is waiting on -- the first one heard after play or
+ * a seek -- plays as a stream. Every sentence after it was rendered ahead, and
+ * plays only once it has finished and the length guard (src/phonon-guard.mjs)
+ * has passed it, so a runaway there is never heard. Time to first sound is
+ * unchanged. The cost is a possible pause between sentences: the worker renders
+ * one sentence at a time, in order, so a long sentence after a short streamed one
+ * may not be whole by its turn, nor the one after a streamed sentence the guard
+ * withdrew and skipped.
  */
 
 import { createStreamPlayback } from './stream-playback.mjs';
@@ -27,8 +36,9 @@ export function createPlayer({
   audioContext,
   onSentenceChange = () => {},
   onStateChange = () => {},
-  // A sentence the length guard gave up on (src/phonon-guard.mjs): silence,
-  // never nonsense, and the reader marks it so the silence is explained.
+  // A sentence the length guard gave up on (src/phonon-guard.mjs), or one
+  // rendered ahead that streamed and then failed while the reader waited on it:
+  // silence, never nonsense, and the reader marks it so the silence is explained.
   onSentenceSkipped = () => {},
 }) {
   const context = audioContext ?? new (globalThis.AudioContext ?? globalThis.webkitAudioContext)();
@@ -50,6 +60,10 @@ export function createPlayer({
   let source = null;
   let streamPlayback = null;
   let awaitingFirstSound = false;
+  // Set by play() and seekTo(), cleared once a sentence starts playing: whether
+  // the sentence now awaited may play as a stream rather than whole. A sentence
+  // skipped or failed before any sound leaves it set, so the next one streams.
+  let waitingToHear = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
   // A SECOND COUNTER, deliberately not the one above. `generation` cancels an
@@ -147,20 +161,30 @@ export function createPlayer({
     for (let offset = 0; offset < lookahead; offset += 1) request(cursor + offset);
   }
 
-  async function waitFor(position) {
+  async function waitFor(position, mayStream) {
     const sentence = sentences[position];
     if (!sentence) return null;
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
 
     request(position);
-    const stream = streams.get(sentence.id);
+    const epoch = audioEpoch;
+    const rendering = streams.get(sentence.id);
+    const stream = mayStream ? rendering : undefined;
     if (stream?.chunks.length) return { stream };
+    // Cleared by whatever plays next, not here: a wait a seek has cancelled
+    // would otherwise clear the seek's own "Preparing audio…".
     state(true, 'Preparing audio…');
-    // Whichever comes first: the first streamed chunk, or the whole sentence.
+    // Whichever comes first: the first streamed chunk, if it may stream, or the
+    // whole sentence.
     await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
-    state(false);
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
     if (stream?.chunks.length && streams.get(sentence.id) === stream) return { stream };
+    // Rendered ahead, streamed, then failed while the reader waited on it: what
+    // it streamed was never guarded whole, so none of it plays. Mark it, as the
+    // guard marks a skip. Not after a flush: that cancelled it, it did not fail.
+    if (!mayStream && epoch === audioEpoch && rendering?.chunks.length) {
+      return { buffer: null, skipped: true };
+    }
     return null;
   }
 
@@ -203,6 +227,7 @@ export function createPlayer({
 
     onSentenceChange(id);
     state(false);
+    waitingToHear = false;
     markFirstSound();
     fill();
   }
@@ -235,7 +260,7 @@ export function createPlayer({
 
     cursor = position;
 
-    const entry = await waitFor(position);
+    const entry = await waitFor(position, waitingToHear);
     if (mine !== generation || !playing) return;
     if (!entry) { await playAt(position + 1); return; }
     if (entry.stream) { playStream(position, mine, entry.stream); return; }
@@ -256,6 +281,7 @@ export function createPlayer({
 
     onSentenceChange(sentences[position].id);
     state(false);
+    waitingToHear = false;
     source.start();
     markFirstSound();
     fill();
@@ -266,6 +292,7 @@ export function createPlayer({
       if (playing) return;
       playing = true;
       awaitingFirstSound = true;
+      waitingToHear = true;
       try { performance.mark('tts:play'); } catch { /* not measured */ }
       if (context.state === 'suspended') await context.resume();
       for (let offset = 0; offset < INITIAL_BUFFER; offset += 1) request(cursor + offset);
@@ -394,6 +421,7 @@ export function createPlayer({
       generation += 1;
       stopSource();
       cursor = position;
+      waitingToHear = true;
       onSentenceChange(id);
       if (playing) await playAt(position);
     },
