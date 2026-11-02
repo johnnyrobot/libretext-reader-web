@@ -489,9 +489,9 @@ test.describe('client-side translation', () => {
       await expect(dialog.locator('h2')).toHaveText('Listen in español');
       // The model and the Spanish voice, since neither is stored yet (LT-217).
       await expect(dialog).toContainText('306 MB');
-      await expect(dialog).toContainText('Phonon by Gradium, CC BY-NC 4.0');
-      // And its Female voice's own licence beside it (LT-222).
-      await expect(dialog).toContainText('Voices: Phonon by Gradium, phonon-voices, Apache 2.0');
+      // Each voice with its own licence (LT-222), in the approved wording (LT-231).
+      await expect(dialog).toContainText('Male voice: Phonon by Gradium, CC BY-NC 4.0.');
+      await expect(dialog).toContainText('Female voice: Phonon by Gradium, phonon-voices, Apache 2.0.');
       await expect(dialog).toContainText('apache-2.0');
       await expect(dialog).toContainText(/delete/i);
 

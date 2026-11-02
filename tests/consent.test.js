@@ -145,9 +145,10 @@ describe('the translation gate when the translation voice is not downloaded yet 
     const text = dialog().textContent.replace(/\s+/g, ' ');
     expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
     expect(text).toContain('190 MB voice that reads español aloud');
-    expect(text).toContain('Phonon by Gradium, CC BY-NC 4.0');
-    // Its Male and Female voices are Gradium's separate Apache 2.0 voice set (LT-222).
-    expect(text).toContain('Voices: Phonon by Gradium, phonon-voices, Apache 2.0');
+    // Each voice under its own licence, in the wording the Chief approved (LT-231):
+    // the Male voice is the model's own, the Female one is from phonon-voices (LT-222).
+    expect(text).toContain('Male voice: Phonon by Gradium, CC BY-NC 4.0.');
+    expect(text).toContain('Female voice: Phonon by Gradium, phonon-voices, Apache 2.0.');
     expect(text).not.toContain('Supertonic');
     expect(text).not.toContain('OpenRAIL-M');
     const link = dialog().querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]');

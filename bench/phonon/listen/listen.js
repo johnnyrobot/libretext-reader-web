@@ -9,7 +9,7 @@
 // names none. Save (LT-219) writes an MP3; mp3.worker.js says how.
 
 const WORKER = '/_assets/tts/phonon.worker.js';
-const NC = 'Phonon by Gradium, CC BY-NC 4.0. Voices: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
+const NC = 'Male voice: Phonon by Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
 
 // The opening sentence of Social Psychology, chapter 1, as the Chief's
 // reference clips (rendered by Ollama, 2026-11-01 17:58 PT) speak it.
