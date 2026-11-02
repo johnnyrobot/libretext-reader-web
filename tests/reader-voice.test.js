@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { changeVoice, changeLanguage, recoverToEnglish, languageOption, offeredPairs } from '../src/reader.mjs';
+import { changeVoice, changeLanguage, recoverToEnglish, languageOption, offeredPairs, switchLanguage } from '../src/reader.mjs';
 
 /* Changing voice must invalidate cached audio IMMEDIATELY, not after the engine
  * round-trip.
@@ -177,5 +177,66 @@ describe('offeredPairs', () => {
   it('labels each offered language in its own name', () => {
     expect(offeredPairs(hosted, voice).map((p) => languageOption(p, false, 0).label))
       .toEqual(['español', 'français', 'Deutsch', 'português']);
+  });
+});
+
+/* Switching language while English plays used to leave English playing through
+ * the whole wait: its lookahead kept synthesising on the same cores the
+ * translator needed, German took over 100 s on the local copy and then showed
+ * "Deutsch is slow on this device". Paused first, it was ready in about 15 s. */
+describe('switchLanguage', () => {
+  function switchFakes({ ready = { s1: 'Hallo.' } } = {}) {
+    const calls = [];
+    const player = {
+      pause: vi.fn(() => calls.push('pause')),
+      flushAudio: vi.fn(() => calls.push('flushAudio')),
+      setSpeechText: vi.fn(),
+    };
+    const engine = { setLang: vi.fn(async (lang) => calls.push(`setLang:${lang}`)) };
+    const controls = { setLang: vi.fn(), setState: vi.fn() };
+    const deps = {
+      player, engine, controls,
+      stopTranslating: vi.fn(() => calls.push('stopTranslating')),
+      startTranslating: vi.fn(async () => { calls.push('startTranslating'); return ready; }),
+      startStreaming: vi.fn(() => calls.push('startStreaming')),
+      reportError: vi.fn(),
+    };
+    return { calls, deps };
+  }
+
+  it('stops English and drops its pending audio before the translation starts preparing', async () => {
+    const { calls, deps } = switchFakes();
+    await switchLanguage('de', deps);
+    expect(calls.slice(0, 4)).toEqual(['stopTranslating', 'pause', 'flushAudio', 'startTranslating']);
+  });
+
+  it('hands the prepared text to the voice, then starts streaming', async () => {
+    const { calls, deps } = switchFakes();
+    await switchLanguage('de', deps);
+    expect(calls.slice(-2)).toEqual(['setLang:de', 'startStreaming']);
+    expect(deps.player.setSpeechText).toHaveBeenLastCalledWith({ s1: 'Hallo.' });
+  });
+
+  it('a declined download puts the reader back in English, silently', async () => {
+    const { calls, deps } = switchFakes({ ready: null });
+    await switchLanguage('de', deps);
+    expect(calls.at(-1)).toBe('setLang:en');
+    expect(deps.controls.setLang).toHaveBeenCalledWith('en');
+    expect(deps.startStreaming).not.toHaveBeenCalled();
+    expect(deps.reportError).not.toHaveBeenCalled();
+  });
+
+  it('a failed switch is reported once and returns to English', async () => {
+    const { deps } = switchFakes();
+    deps.startTranslating.mockRejectedValue(new Error('no model'));
+    await switchLanguage('de', deps);
+    expect(deps.reportError).toHaveBeenCalledWith('no model');
+    expect(deps.engine.setLang).toHaveBeenLastCalledWith('en');
+  });
+
+  it('always clears the progress line', async () => {
+    const { deps } = switchFakes();
+    await switchLanguage('de', deps);
+    expect(deps.controls.setState).toHaveBeenLastCalledWith({ playing: false, buffering: false, message: '' });
   });
 });

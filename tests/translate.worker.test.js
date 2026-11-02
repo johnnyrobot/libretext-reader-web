@@ -154,8 +154,8 @@ describe('translateBatch', () => {
   it('translates Portuguese one sentence at a time', async () => {
     // LT-217: the en-pt export (Douglasrambo/opus-mt-tc-big-en-pt-onnx) runs on
     // past the sentence when it is batched with padding -- 21 of 146 lines
-    // ended in "))))))" or "......" in batches of 8, none one at a time, and the
-    // Xenova en-de and en-es exports batch cleanly. So Portuguese never batches.
+    // ended in "))))))" or "......" in batches of 8, none one at a time. So
+    // Portuguese never batches.
     const runs = [];
     const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
     // No digits: the Portuguese Speech Text pass would rewrite them.
@@ -165,6 +165,20 @@ describe('translateBatch', () => {
 
     expect(out).toEqual(lines.map((l) => SPANISH + l));
     expect(runs).toEqual([1, 1, 1, 1, 1]);
+  });
+
+  it('translates German one sentence at a time', async () => {
+    // LT-217: the Xenova en-de export runs on past the sentence in batches too.
+    // On the 3.02 Moods page both batches of 8 came back with every line trailed
+    // by dozens of dots, and each took 25 s, against 24 s for all 16 one at a
+    // time. 13.01 did it once in two batches; 1.02 not at all.
+    const runs = [];
+    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
+    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.'];
+
+    await translateBatch(spy, lines, () => {}, 'de');
+
+    expect(runs).toEqual([1, 1, 1]);
   });
 
   it('reports how far through the page it is, chunk by chunk', async () => {

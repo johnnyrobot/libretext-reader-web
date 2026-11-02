@@ -155,6 +155,63 @@ export async function recoverToEnglish(player, engine, controls, error, reportEr
   }
 }
 
+/**
+ * The language menu's handler: put the page into `lang`, or back into English.
+ *
+ * ENGLISH STOPS FIRST. Left playing, its lookahead keeps synthesising on the same
+ * cores the translator needs for the whole wait: on the local copy German took
+ * over 100 s and ended on "Deutsch is slow on this device", against about 15 s
+ * paused. So the switch pauses and drops pending audio before anything prepares.
+ * That costs nothing: changeLanguage drops the English audio anyway, and the
+ * reader ended paused on every path before this too.
+ *
+ * Exported so the order can be tested. See tests/reader-voice.test.js.
+ */
+export async function switchLanguage(lang, {
+  player, engine, controls, startTranslating, stopTranslating, startStreaming, reportError,
+}) {
+  try {
+    // Whatever was being translated is for a language the reader has just
+    // left. Stopping FIRST also means a failure below cannot leave a queue
+    // running against a language nothing is listening to.
+    stopTranslating();
+
+    if (lang === 'en') {
+      await changeLanguage(player, engine, 'en', {});
+      return;
+    }
+
+    player.pause();
+    player.flushAudio();
+    const ready = await startTranslating(lang);
+    if (ready === null) {
+      // Declined, or cancelled mid-download, or told the device is too slow
+      // and picked English. Not an error: they answered the question. Put
+      // the page and the menu back in the language that is actually playing,
+      // silently.
+      //
+      // Stopped HERE rather than at each of the three places that return
+      // null, because only the slow-device one has a queue running by then
+      // and the next one added might too -- and a queue left running
+      // translates a book nobody is listening to, which is the exact battery
+      // cost the window bound exists to avoid.
+      stopTranslating();
+      await changeLanguage(player, engine, 'en', {});
+      controls.setLang('en');
+      return;
+    }
+    await changeLanguage(player, engine, lang, ready);
+    startStreaming();
+  } catch (error) {
+    stopTranslating();
+    await recoverToEnglish(player, engine, controls, error, reportError);
+  } finally {
+    // Clear the progress line on BOTH paths. Leaving "Translating into
+    // español…" up after a failure says the opposite of what the error says.
+    controls.setState({ playing: false, buffering: false, message: '' });
+  }
+}
+
 export async function enterReaderMode() {
   if (session) return;
 
@@ -536,51 +593,15 @@ export async function enterReaderMode() {
     // speak reach the menu. pairs.json is written by our own script today,
     // which is exactly the kind of assumption that stops being true quietly.
     languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
-    onLang: async (lang) => {
-      try {
-        // Whatever was being translated is for a language the reader has just
-        // left. Stopping FIRST also means a failure below cannot leave a queue
-        // running against a language nothing is listening to.
-        stopTranslating();
-
-        if (lang === 'en') {
-          await changeLanguage(player, engine, 'en', {});
-          return;
-        }
-
-        const ready = await startTranslating(lang);
-        if (ready === null) {
-          // Declined, or cancelled mid-download, or told the device is too slow
-          // and picked English. Not an error: they answered the question. Put
-          // the page and the menu back in the language that is actually playing,
-          // silently.
-          //
-          // Stopped HERE rather than at each of the three places that return
-          // null, because only the slow-device one has a queue running by then
-          // and the next one added might too -- and a queue left running
-          // translates a book nobody is listening to, which is the exact battery
-          // cost the window bound exists to avoid.
-          stopTranslating();
-          await changeLanguage(player, engine, 'en', {});
-          controls.setLang('en');
-          return;
-        }
-        await changeLanguage(player, engine, lang, ready);
-        // Only now may batches reach the player: before the swap the engine is
-        // still tagged English.
-        streaming = true;
-        // Anything that landed during the swap is in the queue but not in the
-        // player. One catch-up call rather than a race to get the ordering right.
-        player.updateSpeechText(queue.textById());
-      } catch (error) {
-        stopTranslating();
-        await recoverToEnglish(player, engine, controls, error, showError);
-      } finally {
-        // Clear the progress line on BOTH paths. Leaving "Translating into
-        // español…" up after a failure says the opposite of what the error says.
-        controls.setState({ playing: false, buffering: false, message: '' });
-      }
-    },
+    onLang: (lang) => switchLanguage(lang, {
+      player, engine, controls, startTranslating, stopTranslating,
+      // Only now may batches reach the player: before the swap the engine is
+      // still tagged English. Anything that landed during the swap is in the
+      // queue but not in the player, so one catch-up call rather than a race to
+      // get the ordering right.
+      startStreaming: () => { streaming = true; player.updateSpeechText(queue.textById()); },
+      reportError: showError,
+    }),
   });
   controls.setProvider(provider);
 

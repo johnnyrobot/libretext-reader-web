@@ -55,7 +55,15 @@ const MAX_BATCH = 8;
 // when its input is padded: 21 of 146 lines ended in "))))))" or "......" in
 // batches of 8, none one at a time. A correctness limit, unlike MAX_BATCH, and
 // it costs Portuguese about 4x the translation time.
-const BATCH_BY_LANG = { pt: 1 };
+//
+// Xenova's en-de does it too, less often, and when it does every line in the
+// batch trails dozens of dots and the batch runs to the length limit: 25 s per
+// batch on the 3.02 Moods page, where 16 sentences took 51 s batched and showed
+// "Deutsch is slow on this device" even paused, against 24 s one at a time with
+// no box. Where it batches cleanly (1.02) one at a time is about 2.4x slower,
+// still 0.8 sentences/s against MIN_RATE's 0.5 on the M2 Max. French and Spanish
+// did not run away on 3.02 and keep batching.
+const BATCH_BY_LANG = { de: 1, pt: 1 };
 
 /** The translator returned a different number of lines than it was given. */
 export class SentenceCountError extends Error {

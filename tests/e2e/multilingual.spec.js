@@ -39,6 +39,8 @@ test.skip(true, 'no translation voice until LT-216 (LT-217 removed Supertonic)')
 
 const PAGE = '/social_psychology/13:_Competition_and_Cooperation_in_Our_Social_Worlds/'
   + '13.01:_Conflict_Cooperation_Morality_and_Fairness/';
+const MOODS = '/social_psychology/03:_Social_Affect/'
+  + '3.02:_Moods_and_Emotions_in_Our_Social_Lives/';
 const PAIRS = '/_assets/tts/mt/pairs.json';
 
 /** Enter Reader Mode from a cold cache and wait for the engine (see reentry.spec.js
@@ -500,6 +502,50 @@ test.describe('client-side translation', () => {
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
       await expect(page.locator('[data-act="lang"]')).toHaveValue('en');
       await expect(page.locator('.tts-status')).toHaveText('');
+    });
+
+  test('switching language mid-sentence stops English and finishes without the slow-device box',
+    async ({ page }) => {
+      // LT-217. The 3.02 Moods page is the one that showed "Deutsch is slow on
+      // this device" on the local copy: English kept playing through the switch
+      // and competed for the cores, and German's batches ran on to the length
+      // limit. Both are fixed; this is the page that caught them.
+      await page.addInitScript(() => {
+        window.__starts = [];
+        const start = AudioBufferSourceNode.prototype.start;
+        AudioBufferSourceNode.prototype.start = function (...args) {
+          window.__starts.push(performance.now());
+          return start.apply(this, args);
+        };
+      });
+      await page.goto(MOODS);
+      await enterAndWait(page);
+      const select = page.locator('[data-act="lang"]');
+      await expect(select).toBeVisible({ timeout: 120_000 });
+
+      const toggle = page.locator('[data-act="toggle"]');
+      await toggle.click();
+      await expect.poll(() => page.evaluate(() => window.__starts.length),
+        { timeout: 60_000 }).toBeGreaterThan(0);
+
+      await select.selectOption('de');
+      await acceptTranslation(page, 'Deutsch');
+      const accepted = await page.evaluate(() => performance.now());
+
+      // Ready, or the box: whichever comes first is the answer.
+      const outcome = await page.waitForFunction(() => {
+        const heading = document.querySelector('.tts-dialog h2')?.textContent ?? '';
+        if (heading.includes('slow on this device')) return 'slow';
+        const status = document.querySelector('.tts-status')?.textContent ?? '';
+        return !document.querySelector('.tts-dialog') && status === '' ? 'ready' : false;
+      }, null, { timeout: 180_000, polling: 250 });
+      expect(await outcome.jsonValue()).toBe('ready');
+
+      await expect(toggle).toHaveAttribute('aria-label', 'Play');
+      const spokenWhileWaiting = await page.evaluate(
+        (t) => window.__starts.filter((s) => s > t).length, accepted);
+      expect(spokenWhileWaiting, 'English kept playing through the switch').toBe(0);
+      await expect(select).toHaveValue('de');
     });
 
   test('a translation that cannot load puts the reader back in English, once',
