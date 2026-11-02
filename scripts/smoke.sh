@@ -17,10 +17,15 @@ BOOK="${SMOKE_BOOK:-social_psychology}"
 PAGE="${SMOKE_PAGE:-/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/}"
 OUT_OF_SCOPE="${SMOKE_OUT_OF_SCOPE:-/chem101/}"
 
-fails=0
-note() { printf '  %-52s %s\n' "$1" "$2"; }
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+fails=0 checks=0
+note() { printf '  %-60s %s\n' "$1" "$2"; checks=$((checks + 1)); }
 bad()  { note "$1" "FAIL  $2"; fails=$((fails + 1)); }
 good() { note "$1" "ok"; }
+# status HEADERS: the HTTP status in a curl -I response, or "none" when there was none.
+status() { awk 'NR == 1 { s = $2 } END { print (s == "" ? "none" : s) }' <<<"$1"; }
 
 # 1. Sample pages carry the reader.
 html=$(curl -sS --max-time 30 "$BASE$PAGE" || true)
@@ -30,12 +35,15 @@ else
   bad "the in-scope page carries the reader" "button or boot script missing"
 fi
 
-# 2. speech.json parses and its offsets round-trip.
-speech=$(curl -sS --max-time 30 "$BASE${PAGE}speech.json" || true)
-if python3 - <<'PY' <<<"$speech"
+# 2. speech.json parses and its offsets round-trip. The JSON goes to Python as a
+# file, read as UTF-8: given as a here-string beside the heredoc, it replaced the
+# program on stdin, so Python ran the JSON as code and tested nothing (LT-231).
+curl -sS --max-time 30 -o "$tmp/speech.json" "$BASE${PAGE}speech.json" || : >"$tmp/speech.json"
+if python3 - "$tmp/speech.json" <<'PY'
 import json, sys
 try:
-    m = json.load(sys.stdin)
+    with open(sys.argv[1], encoding="utf-8") as f:
+        m = json.load(f)
 except Exception as e:
     print(f"unparseable: {e}"); raise SystemExit(1)
 bad = [s["id"] for b in m["blocks"] if b["kind"] != "notice" for s in b["sentences"]
@@ -56,10 +64,16 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
   && good "the page is cross-origin isolated" \
   || bad "the page is cross-origin isolated" "without it RTF doubles and playback stalls"
 
+# Caddy sets these headers on any path, a 404 included, so every asset check also
+# requires a 200: against the retired Supertonic paths they were green on nothing.
 worker=$(curl -sSI --max-time 30 "$BASE/_assets/tts/phonon.worker.js" || true)
-grep -qi 'cross-origin-embedder-policy: require-corp' <<<"$worker" \
-  && good "the worker carries its own COEP" \
-  || bad "the worker carries its own COEP" "the browser will refuse to instantiate it"
+if [ "$(status "$worker")" != 200 ]; then
+  bad "the worker carries its own COEP" "phonon.worker.js: HTTP $(status "$worker")"
+elif grep -qi 'cross-origin-embedder-policy: require-corp' <<<"$worker"; then
+  good "the worker carries its own COEP"
+else
+  bad "the worker carries its own COEP" "the browser will refuse to instantiate it"
+fi
 
 # The cache policy is SPLIT, and both halves are load-bearing. Models are
 # content-addressed and immutable, or 155 MB re-downloads per visit. The code is
@@ -67,14 +81,45 @@ grep -qi 'cross-origin-embedder-policy: require-corp' <<<"$worker" \
 # immutable reader.js kept two verified fixes from ever reaching a reporter
 # (2026-08-23). This check used to assert immutable on the worker and failed on
 # every run after the split -- a red that accused the deploy for doing the right thing.
-model=$(curl -sSI --max-time 30 "$BASE/_assets/tts/phonon/onnx/mimi_decoder.onnx" || true)
-grep -qi 'cache-control: public.*immutable' <<<"$model" \
-  && good "the models are immutable" \
-  || bad "the models are immutable" "155 MB would re-download on every page view"
+# Every model and voice file each Phonon manifest names, English and the four
+# translations: each must be there and cached for a year, or ~200 MB per language
+# re-downloads on every page view. HEAD only, so this costs nothing to run.
+for voice in phonon phonon-fr phonon-de phonon-es phonon-pt; do
+  check="$voice: its models and voices are served, immutable"
+  code=$(curl -sS --max-time 30 -o "$tmp/$voice.json" -w '%{http_code}' "$BASE/_assets/tts/$voice/manifest.json" || true)
+  if [ "$code" != 200 ]; then bad "$check" "manifest.json: HTTP ${code:-none}"; continue; fi
+  if ! files=$(python3 - "$tmp/$voice.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    paths = [e["path"] for e in json.load(f)["files"] if e["path"].startswith(("onnx/", "voices/"))]
+if not any(p.startswith("onnx/") for p in paths) or not any(p.startswith("voices/") for p in paths):
+    raise SystemExit(1)
+print("\n".join(paths))
+PY
+  ); then
+    bad "$check" "manifest.json names no model or no voice"; continue
+  fi
+  why=""
+  while IFS= read -r path; do
+    h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$voice/$path" || true)
+    if [ "$(status "$h")" != 200 ]; then why="$path: HTTP $(status "$h")"; break; fi
+    grep -qi 'cache-control: public.*immutable' <<<"$h" || { why="$path is not immutable"; break; }
+  done <<<"$files"
+  if [ -z "$why" ]; then good "$check"; else bad "$check" "$why"; fi
+done
 
-grep -qi 'cache-control: .*must-revalidate' <<<"$worker" \
-  && good "the code revalidates" \
-  || bad "the code revalidates" "an immutable bundle keeps returning readers on old code for a year"
+# The code, and each manifest: one cached for a year outlives a restage, and a
+# browser holding a manifest from before LT-222 could not find the voices it names.
+why=""
+for path in reader.js phonon.worker.js phonon/manifest.json phonon-fr/manifest.json \
+            phonon-de/manifest.json phonon-es/manifest.json phonon-pt/manifest.json; do
+  h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$path" || true)
+  if [ "$(status "$h")" != 200 ]; then why="$path: HTTP $(status "$h")"; break; fi
+  grep -qi 'cache-control: .*must-revalidate' <<<"$h" || { why="$path does not revalidate"; break; }
+done
+if [ -z "$why" ]; then good "the code and the manifests revalidate"
+else bad "the code and the manifests revalidate" "$why: returning readers stay on old code for a year"
+fi
 
 grep -qi "script-src 'self' 'wasm-unsafe-eval' blob:" <<<"$headers" \
   && good "the CSP allows wasm and its blob workers" \
@@ -95,7 +140,7 @@ grep -qi "script-src 'self';" <<<"$root" \
   || bad "the rest of the mirror keeps the strict CSP" "the loosened policy escaped its scope"
 
 if [ "$fails" -eq 0 ]; then
-  echo "SMOKE_OK checks=9"
+  echo "SMOKE_OK checks=$checks"
   exit 0
 fi
 echo "SMOKE_FAILED failures=$fails"
