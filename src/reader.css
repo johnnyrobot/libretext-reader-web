@@ -40,6 +40,13 @@
   color: #1a1a1a;
 }
 
+/* A sentence the voice skipped (LT-214): a dotted underline, so it is marked
+   without colour carrying the meaning, and a title saying why. */
+.tts-skipped {
+  text-decoration: underline dotted #b45309;
+  text-underline-offset: 3px;
+}
+
 .tts-bar {
   position: fixed;
   inset-inline: 0;

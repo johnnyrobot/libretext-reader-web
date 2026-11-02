@@ -170,6 +170,20 @@ describe('controls.mjs', () => {
     controls.destroy();
   });
 
+  it('repaints a language\'s size once the translation voice is downloaded (LT-214)', () => {
+    // Until a first translation is picked, each one's download includes the
+    // Supertonic voice that speaks it; after that, only its own model.
+    const controls = mountControls(document.body, { ...handlers(), languages: LANGS() });
+    controls.setLanguageBytes('es', 121_097_315 + 401_604_608);
+    expect(document.querySelector('option[value="es"]').textContent)
+      .toBe('español — machine translation (498 MB download)');
+    controls.setLanguageBytes('es', 121_097_315);
+    expect(document.querySelector('option[value="es"]').textContent)
+      .toBe('español — machine translation (115 MB download)');
+    expect(() => controls.setLanguageBytes('de', 1)).not.toThrow();
+    controls.destroy();
+  });
+
   it('ignores a language it is not showing', () => {
     const controls = mountControls(document.body, { ...handlers(), languages: LANGS() });
     expect(() => controls.setLanguageStored('de', true)).not.toThrow();

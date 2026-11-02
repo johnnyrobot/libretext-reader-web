@@ -35,6 +35,12 @@ cp bench/assets/onnx/* "$TTS/onnx/"
 cp bench/assets/voice_styles/*.json "$TTS/voice_styles/"
 cp bench/assets/ort/* "$TTS/ort/"
 
+# Phonon 31M, the English voice (LT-214). Fetched from the Hub at a pinned
+# revision and checked against pinned hashes; the weights are never committed.
+# Required, unlike the translation models below: English is the default track.
+echo "==> staging Phonon (English voice)"
+python3 "$ROOT/scripts/fetch-phonon.py" "$TTS/phonon"
+
 # Translation models, staged by scripts/convert-mt-models.py. Optional in the
 # same way and for the same reason the translate step below is: it is a ~115 MB
 # fetch per pair, and staging must stay runnable on a machine that has never run

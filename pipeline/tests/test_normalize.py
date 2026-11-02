@@ -394,3 +394,130 @@ def test_an_equals_sign_inside_a_link_is_not_spoken():
     """URL_RE runs first, so a query string never reaches this rule."""
     assert normalize_for_speech("See https://example.org/a?b=c for more") == (
         "See link for more")
+
+
+# LT-214: English is spoken by Phonon now. Each case below was rendered raw
+# through Phonon 31M (path A, wasm fp32) and transcribed by Whisper on
+# 2026-11-01; these are the ones it read wrongly or not at all. What it already
+# reads well (& as "and", < as "is less than", + as "plus", °C, @) is left alone.
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # Heard "five euros" raw, but the integer pass runs first and would have
+        # left "€five", so the pipeline has to own every currency it spells.
+        ("It cost €5 to enter.", "It cost five euros to enter."),
+        ("It cost €1 to enter.", "It cost one euro to enter."),
+        ("The fee was £3.50 each.", "The fee was three pounds and fifty pence each."),
+        ("A ticket costs ¥1,200 in Tokyo.",
+         "A ticket costs one thousand two hundred yen in Tokyo."),
+        # Heard "€9,158".
+        ("Rent rose to ₹15,000 a month.", "Rent rose to fifteen thousand rupees a month."),
+        ("It cost €2.05.", "It cost two euros and five cents."),
+    ],
+)
+def test_speaks_every_currency_symbol(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # Heard "equals": the opposite of what the sentence says.
+        ("Assume that x != y here.", "Assume that x does not equal y here."),
+        ("Assume that x ≠ y here.", "Assume that x does not equal y here."),
+        # Heard "is less than": the "or equal" was lost.
+        ("Assume that x <= y here.", "Assume that x is less than or equal to y here."),
+        ("Assume that x ≤ y here.", "Assume that x is less than or equal to y here."),
+        ("Assume that x >= y here.", "Assume that x is greater than or equal to y here."),
+        ("Assume that x ≥ y here.", "Assume that x is greater than or equal to y here."),
+        ("We have pi ≈ 3.14.", "We have pi approximately equals three point one four."),
+        ("The result was 5 ± 2 units.", "The result was five plus or minus two units."),
+        ("Then 6 ÷ 2 gives 3.", "Then six divided by two gives three."),
+        # Heard "by", which is wrong for the scientific notation chemistry is full of.
+        ("That is 6.02 × 10 atoms.", "That is six point zero two times ten atoms."),
+    ],
+)
+def test_speaks_relations_and_operators(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        ("© 2024 LibreTexts.", "copyright twenty twenty four LibreTexts."),
+        # Heard "Brandy" and "Nae McGree Tee": the marks are not read aloud at all.
+        ("The Brand® and Name™ logos.", "The Brand and Name logos."),
+        ("See § 4 of the act.", "See section four of the act."),
+        ("See §§ 4 of the act.", "See sections four of the act."),
+        ("It was the #1 choice.", "It was the number one choice."),
+        ("There were ~5 people.", "There were about five people."),
+        ("Mix a ½ cup of water.", "Mix a one half cup of water."),
+        ("Add ¾ cup.", "Add three quarters cup."),
+        ("It rose from 10–20 percent.", "It rose from ten to twenty percent."),
+        # Heard "the UK neighbor and the union".
+        ("The U.K. and the E.U. agreed.", "The U K and the E U agreed."),
+        ("They moved to the U.S.", "They moved to the U S."),
+    ],
+)
+def test_speaks_marks_and_initialisms(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+def test_a_temperature_degree_sign_is_spoken():
+    assert normalize_for_speech("It was 25°C at noon.") == (
+        "It was twenty five degrees Celsius at noon.")
+    assert normalize_for_speech("It was 98.6 °F.") == (
+        "It was ninety eight point six degrees Fahrenheit.")
+    assert normalize_for_speech("A 90° angle.") == "A ninety degrees angle."
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # A currency sign or percent with no number after it is left as it is;
+        # the comma used to be taken for an amount, and int("") raised.
+        ("Prices are listed in €, £ and ¥.", "Prices are listed in €, £ and ¥."),
+        ("Up a,% b.", "Up a,% b."),
+        # The comma after an amount is the sentence's, not the number's.
+        ("It costs $5, which is cheap.", "It costs five dollars, which is cheap."),
+        ("It rose 5%, then fell.", "It rose five percent, then fell."),
+        ("It costs $1,250.", "It costs one thousand two hundred fifty dollars."),
+    ],
+)
+def test_a_sign_without_an_amount_is_not_read_as_one(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # Part of a name, not "number": C# is a language.
+        ("Written in C# 7 for speed.", "Written in C# seven for speed."),
+        # A fraction after a whole number is added to it.
+        ("It took 2½ hours.", "It took two and one half hours."),
+        ("It took 2 ¼ hours.", "It took two and one quarter hours."),
+        # Only an unspaced en dash between numbers is a range; a spaced one is
+        # a dash in the sentence, or a minus.
+        ("We get 5 – 3 here.", "We get five – three here."),
+        ("It costs $5–$10.", "It costs five dollars to ten dollars."),
+    ],
+)
+def test_marks_read_in_context(source, expected):
+    assert normalize_for_speech(source) == expected
+
+
+@pytest.mark.parametrize(
+    "source,expected",
+    [
+        # The unit agrees with the whole amount, not with the pence.
+        ("It costs £1.01 now.", "It costs one pound and one penny now."),
+        ("It costs $2.50 now.", "It costs two dollars and fifty cents now."),
+        # A strict inequality is one relation, not "does not equal" then "equals".
+        ("Check that x !== y here.", "Check that x does not equal y here."),
+        # An initialism that ends the text keeps its full stop, even when the
+        # source ends with a newline.
+        ("They moved to the U.S.\n", "They moved to the U S."),
+    ],
+)
+def test_reads_amounts_relations_and_initialisms_whole(source, expected):
+    assert normalize_for_speech(source) == expected

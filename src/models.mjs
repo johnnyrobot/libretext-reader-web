@@ -1,9 +1,13 @@
 export const CACHE_NAME = 'libretexts-tts-v1';
 
 // Translation models live in their OWN cache, not alongside the voice. A reader
-// who wants their 121 MB of Spanish back must not have to throw away the 383 MB
+// who wants their 121 MB of Spanish back must not have to throw away the ~380 MB
 // voice to get it, and vice versa -- deleteModels() deletes a whole cache.
 export const MT_CACHE_NAME = 'libretexts-mt-v1';
+
+// English speech (Phonon, LT-214) in its own cache too, for the same reason: a
+// reader can drop the translation voice without losing the English one.
+export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
 
 async function sha256Hex(buffer) {
   const digest = await crypto.subtle.digest('SHA-256', buffer);

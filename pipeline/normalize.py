@@ -27,8 +27,20 @@ import re
 # recognising spans that must not be touched.
 from pipeline.protect import URL_RE
 EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
-CURRENCY_RE = re.compile(r"\$\s?([\d,]+(?:\.\d+)?)")
-PERCENT_RE = re.compile(r"\b([\d,]+(?:\.\d+)?)\s?%")
+# An amount starts and ends on a digit: a bare "€," is no amount (int("") used
+# to raise on it), and "$5, which" keeps its comma.
+AMOUNT = r"\d(?:[\d,]*\d)?(?:\.\d+)?"
+CURRENCY_RE = re.compile(rf"([$€£¥₹])\s?({AMOUNT})")
+# symbol -> (one, many, one of the minor unit, many of it); None where the
+# currency's minor unit is not spoken in English prose, and the decimal is read.
+CURRENCIES = {
+    "$": ("dollar", "dollars", "cent", "cents"),
+    "€": ("euro", "euros", "cent", "cents"),
+    "£": ("pound", "pounds", "penny", "pence"),
+    "¥": ("yen", "yen", None, None),
+    "₹": ("rupee", "rupees", None, None),
+}
+PERCENT_RE = re.compile(rf"\b({AMOUNT})\s?%")
 DECIMAL_RE = re.compile(r"\b(\d+)\.(\d+)\b")
 # A four-digit year, read in halves. There is no comma group in this pattern on
 # purpose: the thousands separator is the signal that a number is a quantity
@@ -51,6 +63,52 @@ DOTTED_REF_RE = re.compile(r"\b\d+(?:\.\d+){2,}\b")
 # rather than named, because they are vanishingly rare in this prose and a wrong
 # reading is worse than a silent one.
 EQUALS_RE = re.compile(r"\s*(?<![<>!=])=(?!=)\s*")
+# LT-214: Phonon, which speaks English now, does read the compound operators --
+# wrongly. `x != y` was heard as "x equals y" and `x <= y` as "x is less than
+# y", so naming them is no longer the riskier choice. The Unicode relations it
+# garbled ("≤" was heard as "that's E"). Before EQUALS_RE, so none of them
+# leaves an "=" behind for it. `<` and `>` alone Phonon reads correctly.
+RELATIONS = [
+    (re.compile(r"\s*(?:!==?|≠)\s*"), " does not equal "),
+    (re.compile(r"\s*(?:<=|≤)\s*"), " is less than or equal to "),
+    (re.compile(r"\s*(?:>=|≥)\s*"), " is greater than or equal to "),
+    (re.compile(r"\s*≈\s*"), " approximately equals "),
+    (re.compile(r"\s*±\s*"), " plus or minus "),
+    (re.compile(r"\s*÷\s*"), " divided by "),
+    # Phonon says "by", which is right for "3 × 4 m" and wrong for the
+    # scientific notation that fills the chemistry books.
+    (re.compile(r"\s*×\s*"), " times "),
+]
+# Marks Phonon garbles or skips. ® and ™ are dropped rather than named: no one
+# reads them aloud, and Phonon turned "Brand®" into "Brandy".
+MARKS = [
+    (re.compile(r"©\s*"), "copyright "),
+    (re.compile(r"[®™]"), ""),
+    (re.compile(r"§§\s*"), "sections "),
+    (re.compile(r"§\s*"), "section "),
+    # Not after a letter: "C# 7" is a language and its version.
+    (re.compile(r"(?<!\w)#(?=\s?\d)"), "number "),
+    (re.compile(r"~(?=\s?\d)"), "about "),
+    (re.compile(r"\s*°\s*C\b"), " degrees Celsius"),
+    (re.compile(r"\s*°\s*F\b"), " degrees Fahrenheit"),
+    (re.compile(r"\s*°"), " degrees"),
+    # After a whole number a fraction is added to it: "2½" is two and one half.
+    (re.compile(r"(\d)\s*½"), r"\1 and one half"),
+    (re.compile(r"(\d)\s*¼"), r"\1 and one quarter"),
+    (re.compile(r"(\d)\s*¾"), r"\1 and three quarters"),
+    (re.compile(r"\s*½"), " one half"),
+    (re.compile(r"\s*¼"), " one quarter"),
+    (re.compile(r"\s*¾"), " three quarters"),
+    # An unspaced en dash between two numbers is a range, "$5–$10" included. A
+    # spaced one is a dash in the sentence, or a minus, and is left alone. Before
+    # the number passes, which need the digits; the hyphen is left alone too,
+    # since it is also a minus.
+    (re.compile(r"(\d)–(?=[$€£¥₹]?\d)"), r"\1 to "),
+]
+# Dotted capitals, `U.K.`: Phonon heard "U.K. and the E.U." as "the UK neighbor
+# and the union". Spaced letters are read as letters. When the initialism ends
+# the text its last dot was the sentence's full stop too, and is kept.
+INITIALISM_RE = re.compile(r"(?<![\w.])((?:[A-Z]\.){2,})")
 
 REPEATED_PUNCT_RE = re.compile(r"([.!?])[.!?]+")
 WHITESPACE_RE = re.compile(r"\s+")
@@ -264,16 +322,25 @@ def _citation_phrase(match: re.Match) -> str:
 
 
 def _currency(match: re.Match) -> str:
-    amount = match.group(1).replace(",", "")
+    one, many, minor_one, minor_many = CURRENCIES[match.group(1)]
+    amount = match.group(2).replace(",", "")
+    if "." in amount and minor_one is None:
+        return f"{_number_phrase(amount)} {many}"
     if "." in amount:
-        dollars, cents = amount.split(".", 1)
-        cents = cents.ljust(2, "0")[:2]
-        phrase = f"{_int_to_words(int(dollars or 0))} dollars"
-        if int(cents):
-            phrase += f" and {_int_to_words(int(cents))} cents"
+        whole, minor = amount.split(".", 1)
+        minor = int(minor.ljust(2, "0")[:2])
+        value = int(whole or 0)
+        phrase = f"{_int_to_words(value)} {one if value == 1 else many}"
+        if minor:
+            phrase += f" and {_int_to_words(minor)} {minor_one if minor == 1 else minor_many}"
         return phrase
     value = int(amount)
-    return f"{_int_to_words(value)} dollar" + ("" if value == 1 else "s")
+    return f"{_int_to_words(value)} {one if value == 1 else many}"
+
+
+def _initialism(match: re.Match) -> str:
+    letters = " ".join(match.group(1).replace(".", ""))
+    return letters + ("." if not match.string[match.end():].strip() else "")
 
 
 def _cleanup_speech_punctuation(text: str) -> str:
@@ -325,10 +392,15 @@ def normalize_for_speech(text: str) -> str:
     out = EMAIL_RE.sub("email address", out)
     out = URL_RE.sub("link", out)
     # After URL_RE, so a query string's "=" is already gone with the URL.
+    for pattern, replacement in RELATIONS:
+        out = pattern.sub(replacement, out)
     out = EQUALS_RE.sub(" equals ", out)
     for pattern, replacement in ABBREVIATIONS:
         out = pattern.sub(replacement, out)
+    out = INITIALISM_RE.sub(_initialism, out)
     out = CITATION_RE.sub(_citation_phrase, out)
+    for pattern, replacement in MARKS:
+        out = pattern.sub(replacement, out)
     out = CURRENCY_RE.sub(_currency, out)
     out = PERCENT_RE.sub(lambda m: f"{_number_phrase(m.group(1))} percent", out)
     out = DECIMAL_RE.sub(lambda m: f"{_int_to_words(int(m.group(1)))} point {_digits_to_words(m.group(2))}", out)

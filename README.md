@@ -51,13 +51,14 @@ flowchart LR
   subgraph read["Read time — in the visitor's browser (src/)"]
     direction TB
     H["boot.js  ~1 KB<br/>the only code a non-listener loads"] -- click --> I[reader.js]
-    I --> J["consent → model download<br/>~380 MB, once, into Cache Storage"]
+    I --> J["consent → model download<br/>~155 MB, once, into Cache Storage"]
     I --> K[fetch speech.json]
-    J --> L["engine.worker.js<br/>Supertonic on ONNX Runtime wasm"]
-    K --> L
-    L --> M["player.mjs<br/>audio + sentence highlight"]
+    J --> P["phonon.worker.js<br/>English: Phonon 31M on ONNX Runtime wasm, streamed"]
+    K --> P
+    P --> M["player.mjs<br/>audio + sentence highlight"]
     I -. language chosen .-> N["translate.worker.js<br/>Opus-MT, per sentence"]
-    N --> L
+    N --> L["engine.worker.js<br/>translations: Supertonic, ~380 MB, loaded only then"]
+    L --> M
   end
   G --> H
 ```
@@ -70,6 +71,7 @@ What each edge carries:
 | `speech.json` → reader | fetched relative to the page URL, so it is always `<page>/speech.json` | `src/reader.mjs` `loadSpeechManifest()` |
 | reader → engine worker | one sentence of Speech Text at a time, four to eight ahead of playback | `src/player.mjs` |
 | `manifest.json` → model download | name, path, size and sha256 of each model file; the download is verified against it | `scripts/write_model_manifest.py` |
+| `phonon/manifest.json` → English voice download | the same, for Phonon 31M, plus the pinned Hub revision | `scripts/fetch-phonon.py` |
 
 The pipeline never runs in the browser and the browser never runs the pipeline. If a
 sentence sounds wrong, the fix is in `pipeline/` and the page is rebuilt; nothing in
@@ -81,8 +83,8 @@ This is the handoff checklist. Everything below is what the staging mirror does 
 generalised. Budget about a day for a first deployment, most of it waiting on model
 conversion and the first book build.
 
-The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in seven files
-under `src/`, in `pipeline/tts_manifest.py`, in `vite.config.js` and in two scripts
+The asset root `/_assets/tts/` is **an absolute path, hard-coded** — in files
+under `src/` and `pipeline/`, in `vite.config.js` and in several scripts
 (`grep -rl _assets/tts src pipeline scripts vite.config.js` lists them). Serve it at
 that path, or change every one of them in a single commit.
 
@@ -94,19 +96,23 @@ python -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
 npm run build                    # → dist/_assets/tts/
 ```
 
-Fetch the [Supertonic](https://github.com/supertone-inc/supertonic) weights into
-`bench/assets/` (`onnx/`, `voice_styles/`, `ort/`; they are not in this repository — see
-*Model weights* below), then lay out the served directory:
+Stage the English voice with `python3 scripts/fetch-phonon.py <dir>/phonon`: it fetches
+[Phonon 31M](https://huggingface.co/onnx-community/phonon-31m-en-ONNX) at a pinned revision,
+checks every file against a pinned size and sha256, and writes `phonon/manifest.json`.
+Fetch the [Supertonic](https://github.com/supertone-inc/supertonic) weights, which speak
+the translations, into `bench/assets/` (`onnx/`, `voice_styles/`, `ort/`; neither model is
+in this repository — see *Model weights* below), then lay out the served directory:
 
 ```
 /_assets/tts/
 ├── boot.js  reader.js  engine.worker.js  models.js  qa.js  reader.css   from dist/
-├── translate.worker.js  transformers.web.js                             from dist/
+├── phonon.worker.js  translate.worker.js  transformers.web.js           from dist/
+├── phonon/                  English voice (~155 MB): scripts/fetch-phonon.py <this dir>/phonon
 ├── manifest.json            scripts/write_model_manifest.py <this dir>
-├── onnx/                    Supertonic weights (~380 MB)
+├── onnx/                    Supertonic weights (~380 MB), for translations
 ├── voice_styles/            one JSON per voice
 ├── ort/                     onnxruntime-web 1.17 wasm, for the TTS engine
-├── ort-mt/                  onnxruntime-web wasm for the translator — a DIFFERENT version
+├── ort-mt/                  onnxruntime-web wasm for Phonon and the translator — a DIFFERENT version
 └── mt/                      optional: one directory per language pair + pairs.json
 ```
 
@@ -195,8 +201,10 @@ header @ttsscope Content-Security-Policy "default-src 'self'; script-src 'self' 
 # 4. Models are content-addressed → immutable. The CODE is not: reader.js is
 #    imported on click, which a hard refresh does not bypass, so an immutable
 #    reader.js keeps a returning visitor on the old bundle for a year.
-@ttsmodels path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/*
-@ttscode { path /_assets/tts/*  not path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* }
+#    Phonon's weights and voices are too; its manifest, config and tokenizer
+#    are small and revalidate with the code.
+@ttsmodels path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/*
+@ttscode { path /_assets/tts/*  not path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* }
 header @ttsmodels Cache-Control "public, max-age=31536000, immutable"
 header @ttscode   Cache-Control "public, max-age=0, must-revalidate"
 ```
@@ -261,16 +269,23 @@ building a buffer. Peak memory during synthesis is about 1.7 GB.
 
 ## Model weights are not included
 
-The voice is [Supertonic](https://github.com/supertone-inc/supertonic). Its weights are
-roughly 380 MB and are **not** in this repository; fetch them from that project into
-`bench/assets/` before running `npm run stage`.
+English is spoken by **Phonon by Gradium, Apache 2.0**:
+[`onnx-community/phonon-31m-en-ONNX`](https://huggingface.co/onnx-community/phonon-31m-en-ONNX),
+an export of `gradium/phonon-31m-en`, with the Preston and Hadley voices. Its weights
+(about 155 MB) are **not** in this repository; `scripts/fetch-phonon.py` fetches them at a
+pinned revision into `bench/assets/` (gitignored) when `npm run stage` runs.
+
+The translations are spoken by [Supertonic](https://github.com/supertone-inc/supertonic).
+Its weights are roughly 380 MB and are **not** in this repository either; fetch them from
+that project into `bench/assets/` before running `npm run stage`. A reader who only ever
+listens in English never downloads them.
 
 This project's own code is **MIT**, see `LICENSE`. That covers everything in `src/`,
 `pipeline/`, `scripts/` and `tests/`.
 
-It does **not** cover the voice. `src/vendor/helper.js` is vendored from
+It does **not** cover the voices. `src/vendor/helper.js` is vendored from
 `supertone-inc/supertonic` and carries an intact licence header naming its origin; that
-sample code is MIT. The **model weights are OpenRAIL-M**, which carries behavioural-use
+sample code is MIT. Supertonic's **model weights are OpenRAIL-M**, which carries behavioural-use
 restrictions that propagate to anyone who receives them, and they are not distributed
 here — you fetch them yourself. Whether those terms suit a given distribution is a legal
 question, not a code one, and it is not settled by this repository being MIT.

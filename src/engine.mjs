@@ -11,6 +11,18 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
   const spawn = createWorker ?? (() => new Worker(workerUrl, { type: 'module' }));
   const worker = spawn();
   const pending = new Map();
+  // Each synthesis goes to the worker under its own key, not the sentence id.
+  // The player cancels a sentence and asks for it again at once on a seek, and
+  // the worker can still send the cancelled render's chunks or audio after
+  // that; keyed by sentence id, they would reach the new request.
+  const requests = new Map(); // sentence id → key of its live request
+  let serial = 0;
+  const settle = (key) => {
+    const entry = pending.get(key);
+    pending.delete(key);
+    if (entry && requests.get(entry.id) === key) requests.delete(entry.id);
+    return entry;
+  };
   let readyResolve;
   let readyReject;
   let onProgress = () => {};
@@ -31,11 +43,20 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         pending.get('lang')?.resolve(undefined);
         pending.delete('lang');
         break;
+      case 'chunk':
+        // Streamed audio for a sentence still rendering (Phonon only). Dropped
+        // once its request is cancelled, like a late 'audio'.
+        pending.get(data.id)?.onChunk?.(data.samples, data.sampleRate);
+        break;
+      case 'reset':
+        pending.get(data.id)?.onReset?.();
+        break;
       case 'audio': {
         const entry = pending.get(data.id);
         if (!entry) return; // cancelled; drop the late result
-        pending.delete(data.id);
-        entry.resolve({ id: data.id, samples: data.samples, sampleRate: data.sampleRate });
+        // Supertonic has no length guard and reports no outcome: its audio is ok.
+        settle(data.id);
+        entry.resolve({ id: entry.id, samples: data.samples, sampleRate: data.sampleRate, outcome: data.outcome ?? 'ok' });
         break;
       }
       case 'error': {
@@ -43,7 +64,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         error.code = data.code;
         if (data.id && pending.has(data.id)) {
           pending.get(data.id).reject(error);
-          pending.delete(data.id);
+          settle(data.id);
         } else {
           readyReject?.(error);
         }
@@ -57,6 +78,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     readyReject?.(error);
     for (const entry of pending.values()) entry.reject(error);
     pending.clear();
+    requests.clear();
   };
 
   return {
@@ -67,19 +89,26 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
       return ready;
     },
 
-    synthesize(id, text) {
+    // `onChunk(samples, sampleRate)` asks for the sentence to be streamed: called
+    // with each piece of audio that may be played now. `onReset()` means every
+    // chunk so far must be dropped (the length guard withdrew them). The final
+    // whole sentence still resolves, with the guard's `outcome`. A worker that
+    // cannot stream (Supertonic) ignores the flag and only resolves.
+    synthesize(id, text, { onChunk, onReset } = {}) {
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        worker.postMessage({ type: 'synth', id, text });
+        serial += 1;
+        const key = `${id}#${serial}`;
+        requests.set(id, key);
+        pending.set(key, { id, resolve, reject, onChunk, onReset });
+        worker.postMessage({ type: 'synth', id: key, text, stream: Boolean(onChunk) });
       });
     },
 
     cancel(id) {
-      const entry = pending.get(id);
-      if (!entry) return;
-      pending.delete(id);
-      entry.reject(new SpeechCancelledError(id));
-      worker.postMessage({ type: 'cancel', id });
+      const key = requests.get(id);
+      if (key === undefined) return;
+      settle(key).reject(new SpeechCancelledError(id));
+      worker.postMessage({ type: 'cancel', id: key });
     },
 
     setVoice(voice) {
@@ -113,6 +142,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     terminate() {
       for (const entry of pending.values()) entry.reject(new SpeechCancelledError('terminated'));
       pending.clear();
+      requests.clear();
       worker.terminate();
     },
   };

@@ -106,11 +106,13 @@ test.describe('client-side translation', () => {
 
       // On a cold cache, before the reader commits to anything: the menu already
       // says what picking each language will cost. That is the whole difference
-      // between an informed choice and a surprise.
+      // between an informed choice and a surprise. Since LT-214 English plays on
+      // Phonon, so the first translation also brings Supertonic's 380 MB voice:
+      // 115 + 380 for Spanish, 109 + 380 for French.
       await expect(select.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (115 MB download)');
+        .toHaveText('español — machine translation (495 MB download)');
       await expect(select.locator('option[value="fr"]'))
-        .toHaveText('français — machine translation (109 MB download)');
+        .toHaveText('français — machine translation (489 MB download)');
     });
 
   // EVERY OTHER HOSTED LANGUAGE, one test each. The Spanish test below is the
@@ -256,9 +258,15 @@ test.describe('client-side translation', () => {
         };
       });
 
+      // LT-214: English is Phonon; a translation is Supertonic, whose weights
+      // are fetched only once one is picked.
+      const supertonic = [];
+      page.on('request', (r) => { if (r.url().includes('/_assets/tts/onnx/')) supertonic.push(r.url()); });
+
       await page.goto(PAGE);
       await enterAndWait(page);
       await expect(page.locator('[data-act="lang"]')).toBeVisible({ timeout: 120_000 });
+      expect(supertonic, 'English loaded the translation voice').toEqual([]);
 
       const firstSentence = page.locator('.tts-sentence').first();
       const englishBefore = await firstSentence.textContent();
@@ -290,6 +298,7 @@ test.describe('client-side translation', () => {
       // Nothing failed on the way.
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
       await expect(page.locator('[data-act="lang"]')).toHaveValue('es');
+      expect(supertonic.length, 'Spanish did not load the translation voice').toBeGreaterThan(0);
 
       // The page is never rewritten. Only the audio changes -- highlighting runs
       // off the English manifest and must keep matching the visible text.
@@ -421,10 +430,14 @@ test.describe('client-side translation', () => {
       await expect(page.locator('.tts-status')).toHaveText('');
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
 
-      // The menu said "115 MB download" before, and it is no longer true. It is
+      // The menu said "495 MB download" before, and it is no longer true. It is
       // repainted rather than rebuilt, so the reader's selection survives.
       await expect(page.locator('option[value="es"]'))
         .toHaveText('español — machine translation (downloaded)');
+      // The translation voice is stored now, so every other language costs only
+      // its own model (LT-214).
+      await expect(page.locator('option[value="fr"]'))
+        .toHaveText('français — machine translation (109 MB download)');
 
       // And back to Spanish asks NOTHING: the model is already stored, so the
       // gate is about downloading, not about translating. Being asked to consent
@@ -460,7 +473,8 @@ test.describe('client-side translation', () => {
       // because its output is cc-by-nc-4.0 and cannot ship inside an MIT product.
       const dialog = page.locator('.tts-dialog');
       await expect(dialog.locator('h2')).toHaveText('Listen in español');
-      await expect(dialog).toContainText(/\b1\d\d MB\b/);
+      // The model and the translation voice, since neither is stored yet (LT-214).
+      await expect(dialog).toContainText(/\b4\d\d MB\b/);
       await expect(dialog).toContainText('apache-2.0');
       await expect(dialog).toContainText(/delete/i);
 
@@ -468,7 +482,7 @@ test.describe('client-side translation', () => {
 
       // Still marked as a download, because it still is one.
       await expect(page.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (115 MB download)');
+        .toHaveText('español — machine translation (495 MB download)');
 
       // Nothing downloaded, and no cache entry -- not even an empty one. Asking
       // whether the models are present must not create the cache, which is why

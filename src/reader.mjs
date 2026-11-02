@@ -1,6 +1,7 @@
 import { createEngine } from './engine.mjs';
+import { createListenEngine } from './listen-engine.mjs';
 import { createPlayer } from './player.mjs';
-import { mountSentences, unmountSentences, setCurrent } from './highlight.mjs';
+import { mountSentences, unmountSentences, setCurrent, markSkipped } from './highlight.mjs';
 import { openOverlay, closeOverlay, ensureStylesheet } from './overlay.mjs';
 import { mountControls } from './controls.mjs';
 import {
@@ -8,13 +9,20 @@ import {
   chooseWhenSlow,
 } from './consent.mjs';
 import { savePosition, loadPosition } from './position.mjs';
-import { modelsPresent, deleteModels, checkQuota, checkQuotaFor, MT_CACHE_NAME } from './models.mjs';
+import {
+  modelsPresent, deleteModels, checkQuota, checkQuotaFor, MT_CACHE_NAME, PHONON_CACHE_NAME,
+} from './models.mjs';
 import { createTranslator, hostedPairs, MT_ROOT } from './translator.mjs';
 import { createTranslationQueue, MIN_RATE } from './translate-queue.mjs';
 import { referenceSentenceIds } from './qa.mjs';
 import { substituteMathSpeech } from './math-speech.mjs';
 
+// Supertonic: the translation voice, downloaded only when a translation is
+// first picked (LT-214).
 const MANIFEST_URL = '/_assets/tts/manifest.json';
+// Phonon: the English voice, the one every reader downloads.
+const PHONON_MANIFEST_URL = '/_assets/tts/phonon/manifest.json';
+const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
 // Endonyms: the reader who wants Spanish reads Spanish. Kept here rather than in
 // the manifest so a page built before a language existed still labels it.
@@ -33,6 +41,14 @@ async function loadSpeechManifest() {
   const res = await fetch(new URL('speech.json', location.href).pathname);
   if (!res.ok) throw new Error('This page has no reading list.');
   return res.json();
+}
+
+/** One language's entry in the menu. Its size includes the translation voice
+ * until that is stored, and it says "downloaded" only once nothing is left to
+ * fetch: the language's model AND the voice (LT-214). `voiceBytes` is null when
+ * the voice could not be sized: it is left out, and never reads as stored. */
+export function languageOption({ code, bytes }, modelStored, voiceBytes) {
+  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + (voiceBytes ?? 0), stored: modelStored && voiceBytes === 0 };
 }
 
 /**
@@ -151,8 +167,8 @@ export async function enterReaderMode() {
   // only inside enterReaderMode, which only a click reaches.
   ensureStylesheet();
 
-  if (!(await modelsPresent(MANIFEST_URL))) {
-    const { required, sufficient } = await checkQuota(MANIFEST_URL);
+  if (!(await modelsPresent(PHONON_MANIFEST_URL, PHONON_CACHE_NAME))) {
+    const { required, sufficient } = await checkQuota(PHONON_MANIFEST_URL);
     if (!(await requestConsent({ requiredBytes: required, quotaSufficient: sufficient }))) return;
     await navigator.storage?.persist?.();
   }
@@ -192,13 +208,19 @@ export async function enterReaderMode() {
     return;
   }
 
-  const engine = createEngine({ manifestUrl: MANIFEST_URL });
+  // English on Phonon; Supertonic is created only when a translation is picked.
+  const engine = createListenEngine({
+    english: createEngine({ workerUrl: PHONON_WORKER_URL, manifestUrl: PHONON_MANIFEST_URL }),
+    createOther: () => createEngine({ manifestUrl: MANIFEST_URL }),
+  });
   const progress = showProgress();
   let provider = 'wasm';
   try {
+    // No lang: the page is always read in English first. pipeline/tts_manifest.py
+    // never passes one, so every manifest says 'en'; a non-English source book
+    // would need its own engine route before it could ship.
     ({ provider } = await engine.init({
       voice: 'M1',
-      lang: manifest.lang ?? 'en',
       onProgress: (p) => progress.update(p),
     }));
   } catch (error) {
@@ -235,6 +257,19 @@ export async function enterReaderMode() {
   const stored = await Promise.all(pairs.map((p) =>
     modelsPresent(mtManifestUrl(p.pair), MT_CACHE_NAME)));
 
+  /** The translation voice's download, 0 once it is stored. Every language's
+   * size includes it until then, in the menu and in the dialog alike. Asked only
+   * when this deployment hosts a translation: it fetches Supertonic's manifest
+   * (a few KB), never its weights. */
+  async function translationVoiceBytes() {
+    if (await modelsPresent(MANIFEST_URL)) return 0;
+    return (await checkQuota(MANIFEST_URL)).required;
+  }
+  // Only the menu needs this now, so a manifest that will not load must not stop
+  // an English reader: the size is unknown (null) until consent asks again.
+  let voiceBytes = pairs.length ? await translationVoiceBytes().catch(() => null) : 0;
+  const modelStored = new Set(pairs.filter((p, i) => stored[i]).map((p) => p.code));
+
   let translator = null;
   let controls;
   let queue = null;
@@ -250,7 +285,7 @@ export async function enterReaderMode() {
    * Ask before downloading a language, and only when there is something to
    * download. Resolves false if the reader says no.
    *
-   * A SECOND gate on purpose. Accepting 383 MB for a voice is not accepting
+   * A SECOND gate on purpose. Accepting 155 MB for a voice is not accepting
    * another 121 MB for Spanish: different model, different licence, and quite
    * possibly a different day. The size and licence come from pairs.json, which is
    * why they are recorded there -- naming a size means knowing it BEFORE
@@ -259,14 +294,19 @@ export async function enterReaderMode() {
   async function consentToDownload(hosted) {
     // modelsPresent must not create the cache just by asking (models.mjs's
     // invariant, tested): a reader who declines leaves nothing behind.
-    if (await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
+    voiceBytes = await translationVoiceBytes();
+    if (!voiceBytes && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
 
-    const { sufficient } = await checkQuotaFor(hosted.bytes);
+    // The translation model's size is stated even in the rare case it is stored
+    // and only the voice is missing (a reader who deleted the voice): it then
+    // over-states, never under-states, what is fetched.
+    const { sufficient } = await checkQuotaFor(hosted.bytes + voiceBytes);
     const accepted = await requestTranslationConsent({
       language: LANGUAGE_LABELS[hosted.code],
       requiredBytes: hosted.bytes,
       quotaSufficient: sufficient,
       licence: hosted.licence ?? 'a permissive licence',
+      voiceBytes,
     });
     if (accepted) await navigator.storage?.persist?.();
     return accepted;
@@ -308,11 +348,31 @@ export async function enterReaderMode() {
     // The menu said "115 MB download" a moment ago and it is no longer true.
     // Repainted rather than rebuilt: the reader is looking at this select right
     // now, and rebuilding it would drop their selection.
-    controls.setLanguageStored(hosted.code, true);
+    modelStored.add(hosted.code);
+    controls.setLanguageStored(hosted.code, !voiceBytes);
     // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
     if (download.cancelled()) return null;
+
+    // The voice that speaks translations (Supertonic), loaded the first time
+    // one is picked and kept for the rest of the visit.
+    if (!engine.prepared()) {
+      const voiceLoad = showProgress({ title: 'Preparing the translation voice' });
+      try {
+        await engine.prepare(lang, { onProgress: (p) => voiceLoad.update(p) });
+      } finally {
+        voiceLoad.close();
+      }
+      if (voiceBytes) {
+        voiceBytes = 0;
+        for (const p of pairs) {
+          controls.setLanguageBytes(p.code, p.bytes);
+          if (modelStored.has(p.code)) controls.setLanguageStored(p.code, true);
+        }
+      }
+      if (voiceLoad.cancelled()) return null;
+    }
 
     const report = (p) => controls.setState({
       playing: false,
@@ -442,6 +502,8 @@ export async function enterReaderMode() {
       queue?.wake();
     },
     onStateChange: (state) => controls?.setState(state),
+    // Phonon's length guard skipped it rather than play nonsense (LT-214).
+    onSentenceSkipped: (id) => markSkipped(elements, id),
   });
 
   controls = mountControls(document.body, {
@@ -468,9 +530,8 @@ export async function enterReaderMode() {
     // script today, which is exactly the kind of assumption that stops being
     // true quietly.
     languages: pairs
-      .map((p, i) => ({ ...p, stored: stored[i] }))
       .filter((p) => p.code in LANGUAGE_LABELS)
-      .map((p) => ({ code: p.code, label: LANGUAGE_LABELS[p.code], bytes: p.bytes, stored: p.stored })),
+      .map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
     onLang: async (lang) => {
       try {
         // Whatever was being translated is for a language the reader has just
@@ -575,4 +636,4 @@ export function exitReaderMode() {
   session = null;
 }
 
-export { deleteModels, confirmDelete, MT_CACHE_NAME };
+export { deleteModels, confirmDelete, MT_CACHE_NAME, PHONON_CACHE_NAME };

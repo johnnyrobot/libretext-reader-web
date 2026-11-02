@@ -48,13 +48,17 @@ def squash(text):
 
 
 def main():
-    items = json.loads((OUT / "sentences.json").read_text())
+    default_items = json.loads((OUT / "sentences.json").read_text())
     engines = sys.argv[1:] or sorted(p.parent.name for p in OUT.glob("*/timings.json"))
     utmos = torch.hub.load("tarepan/SpeechMOS:v1.2.0", "utmos22_strong", trust_repo=True)
     summary = json.loads((OUT / "scores.json").read_text()) if (OUT / "scores.json").exists() else {}
     for engine in engines:
         timings = json.loads((OUT / engine / "timings.json").read_text())
         field = timings.get("field", "speech")
+        # The set this engine rendered (render_path_a.mjs writes it); older
+        # folders have none and rendered the default set.
+        own = OUT / engine / "sentences.json"
+        items = json.loads(own.read_text()) if own.exists() else default_items
         rows = []
         for it in items:
             wav = OUT / engine / f"{it['id']}.wav"

@@ -5,7 +5,8 @@
 // because a module worker cannot use an import map for the web build's bare
 // specifiers. This is NOT the shipped engine (src/engine.worker.mjs, ORT 1.17.3).
 //
-// Messages in:  {type:'init', device:'webgpu'|'wasm', dtype:'fp32'|'q4'|'q4f16', voice:'default'}
+// Messages in:  {type:'init', device:'webgpu'|'wasm', dtype:'fp32'|'q4'|'q4f16', voice:'default',
+//                temperature?, durationDelta?}   (LT-214 calibration; defaults are the model card's)
 //               {type:'synth', id, text}
 // Messages out: {type:'ready', provider, load_s, threads}
 //               {type:'first', id}                       first 80 ms frame exists
@@ -22,7 +23,7 @@ env.localModelPath = '/bench/assets/phonon/';
 env.backends.onnx.wasm.wasmPaths = '/node_modules/@huggingface/transformers/node_modules/onnxruntime-web/dist/';
 if (self.crossOriginIsolated) env.backends.onnx.wasm.numThreads = Math.min(8, navigator.hardwareConcurrency);
 
-let cfg, tokenizer, flow, mimi, voiceState, device;
+let cfg, tokenizer, flow, mimi, voiceState, device, temperature, durationDelta = 0;
 
 const f32 = (dims, data) => new Tensor('float32', data ?? new Float32Array(dims.reduce((a, b) => a * b, 1)), dims);
 const i64 = (values, dims) => new Tensor('int64', BigInt64Array.from(values, BigInt), dims);
@@ -33,7 +34,7 @@ const nextState = (outputs) => Object.fromEntries(Object.entries(outputs)
   .map(([name, value]) => [name.replace('present.', 'past_key_values.').replace('present_', 'past_'), value]));
 const release = (...states) => states.forEach((s) => Object.values(s).forEach((t) => t?.location === 'gpu-buffer' && t.dispose()));
 const runFlow = (past, { text = [], voiceLatents = f32([1, cfg.voice_dim, 0]), latent = f32([1, 0, cfg.latent_dim]), noise = f32([1, cfg.latent_dim]) }) =>
-  flow({ text_ids: i64(text, [1, text.length]), voice_latents: voiceLatents, latent, noise, num_speakers: i64([1], [1]), duration_delta: f32([1]), ...past });
+  flow({ text_ids: i64(text, [1, text.length]), voice_latents: voiceLatents, latent, noise, num_speakers: i64([1], [1]), duration_delta: f32([1], Float32Array.of(durationDelta)), ...past });
 
 const prep = (s) => {
   let t = s.trim().replace(/\s+/g, ' ');
@@ -62,7 +63,7 @@ function chunks(text) {
   return packed;
 }
 
-async function* speak(sentence, temperature = cfg.temperature) {
+async function* speak(sentence) {
   const text = prep(sentence);
   const ids = tokenizer.encode(text, { add_special_tokens: false });
   let state = nextState(await runFlow(voiceState, { text: ids }));
@@ -90,11 +91,13 @@ async function* speak(sentence, temperature = cfg.temperature) {
   }
 }
 
-async function init({ device: d, dtype, voice = 'default' }) {
+async function init({ device: d, dtype, voice = 'default', temperature: t, durationDelta: dd = 0 }) {
   const t0 = performance.now();
   device = d;
   const config = await AutoConfig.from_pretrained(REPO);
   cfg = config.phonon;
+  temperature = t ?? cfg.temperature;
+  durationDelta = dd;
   const onGpu = (names) => (device === 'webgpu' ? { session_options: { preferredOutputLocation: Object.fromEntries(names.map((n) => [n, 'gpu-buffer'])) } } : {});
   const caches = ({ num_layers }) => Array.from({ length: num_layers }, (_, i) => [`present.${i}.key`, `present.${i}.value`]).flat();
   const convStates = Object.keys(cfg.mimi_decoder.conv_states).map((n) => n.replace('past_', 'present_'));

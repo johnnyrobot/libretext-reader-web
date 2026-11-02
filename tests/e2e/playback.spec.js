@@ -15,7 +15,7 @@ test.describe('Reader Mode end to end', () => {
   test('consent names the size and the licence before a byte is fetched', async ({ page }) => {
     const modelRequests = [];
     page.on('request', (r) => {
-      if (r.url().includes('/_assets/tts/onnx/')) modelRequests.push(r.url());
+      if (/\/_assets\/tts\/(phonon\/)?onnx\//.test(r.url())) modelRequests.push(r.url());
     });
 
     await page.goto(IN_SCOPE);
@@ -26,7 +26,11 @@ test.describe('Reader Mode end to end', () => {
     await expect(card.locator('h2')).toHaveText('Listen to this page');
     await expect(card).toContainText('MB');
     await expect(card).toContainText('Nothing you read or hear is sent anywhere');
-    await expect(card.locator('a[href*="LICENSE"]')).toContainText('OpenRAIL-M');
+    // LT-214: English is Phonon, Apache 2.0. Supertonic's OpenRAIL-M is named
+    // only when a translation would download it.
+    await expect(card.locator('a[href*="phonon-31m-en"]')).toHaveText('Phonon by Gradium, Apache 2.0');
+    await expect(card).not.toContainText('Supertonic');
+    await expect(card).not.toContainText('OpenRAIL-M');
 
     // Invariant 3: nothing downloads before an explicit click.
     expect(modelRequests).toEqual([]);
@@ -34,7 +38,9 @@ test.describe('Reader Mode end to end', () => {
     // And declining leaves nothing behind.
     await page.locator('[data-act="decline"]').click();
     expect(await page.evaluate(() => !!document.documentElement.dataset.ttsReader)).toBe(false);
-    expect(await page.evaluate(() => caches.keys())).not.toContain('libretexts-tts-v1');
+    const kept = await page.evaluate(() => caches.keys());
+    expect(kept).not.toContain('libretexts-tts-v1');
+    expect(kept).not.toContain('libretexts-tts-phonon-v1');
   });
 
   test('synthesises real audio and advances the highlight in order', async ({ page }) => {
@@ -42,25 +48,31 @@ test.describe('Reader Mode end to end', () => {
 
     // Gate 2: audio came out, with real length. A worker that starts, hangs and
     // returns zeros looks identical to a healthy one without the peak check.
+    // English is Phonon (LT-214), streamed: frames arrive before the sentence ends.
     const audio = await page.evaluate(async () => {
-      const worker = new Worker('/_assets/tts/engine.worker.js', { type: 'module' });
+      const worker = new Worker('/_assets/tts/phonon.worker.js', { type: 'module' });
+      let chunks = 0;
       return await new Promise((resolve, reject) => {
         worker.onmessage = ({ data }) => {
           if (data.type === 'ready') {
-            worker.postMessage({ type: 'synth', id: 's0', text: 'Conflict between groups is common.' });
+            worker.postMessage({ type: 'synth', id: 's0', text: 'Conflict between groups is common.', stream: true });
+          } else if (data.type === 'chunk') {
+            chunks += 1;
           } else if (data.type === 'audio') {
             let peak = 0;
             for (let i = 0; i < data.samples.length; i += 13) peak = Math.max(peak, Math.abs(data.samples[i]));
-            resolve({ samples: data.samples.length, rate: data.sampleRate, peak });
+            resolve({ samples: data.samples.length, rate: data.sampleRate, peak, chunks, outcome: data.outcome });
           } else if (data.type === 'error') reject(new Error(data.message));
         };
         worker.onerror = (e) => reject(new Error(e.message));
-        worker.postMessage({ type: 'init', voice: 'M1', lang: 'en', manifestUrl: '/_assets/tts/manifest.json' });
+        worker.postMessage({ type: 'init', voice: 'M1', lang: 'en', manifestUrl: '/_assets/tts/phonon/manifest.json' });
       });
     });
-    expect(audio.rate).toBe(44100);
-    expect(audio.samples).toBeGreaterThan(44100);   // over a second of speech
+    expect(audio.rate).toBe(24000);
+    expect(audio.samples).toBeGreaterThan(24000);   // over a second of speech
     expect(audio.peak).toBeGreaterThan(0.01);       // not silence
+    expect(audio.chunks).toBeGreaterThan(1);
+    expect(audio.outcome).toBe('ok');
 
     await expect(page.locator('[data-act="provider"]')).not.toBeEmpty();
     expect(await page.locator('.tts-sentence').count()).toBeGreaterThan(50);
@@ -80,6 +92,39 @@ test.describe('Reader Mode end to end', () => {
     const order = await page.evaluate(() =>
       [...document.querySelectorAll('.tts-sentence')].map((el) => el.dataset.ttsId));
     expect(order.indexOf(second)).toBe(order.indexOf(first) + 1);
+  });
+
+  test('English plays on Phonon, streamed, and never downloads Supertonic', async ({ page }) => {
+    // LT-214: an English-only listener fetches Phonon's 155 MB and nothing of
+    // Supertonic's weights, which load only for a translation track.
+    const supertonic = [];
+    let phononBytes = 0;
+    page.on('request', (r) => { if (r.url().includes('/_assets/tts/onnx/')) supertonic.push(r.url()); });
+    page.on('response', async (r) => {
+      if (r.url().includes('/_assets/tts/phonon/') && !r.url().endsWith('manifest.json')) {
+        phononBytes += Number(r.headers()['content-length'] ?? 0);
+      }
+    });
+
+    await enterAndWait(page);
+    await page.locator('[data-act="toggle"]').click();
+    await page.locator('.tts-current').waitFor();
+    const first = await page.locator('.tts-current').getAttribute('data-tts-id');
+    await page.waitForFunction(
+      (prev) => document.querySelector('.tts-current')?.dataset.ttsId !== prev, first);
+
+    const firstSound = await page.evaluate(() =>
+      performance.getEntriesByName('tts:first-sound').map((m) => m.duration));
+    const { files } = await (await page.request.get('/_assets/tts/phonon/manifest.json')).json();
+    const manifestBytes = files.reduce((sum, f) => sum + f.bytes, 0);
+    console.log(`LT-214 e2e: first sound ${firstSound.map((d) => d.toFixed(0)).join(', ')} ms; ` +
+      `Phonon downloaded ${phononBytes} bytes (manifest ${manifestBytes})`);
+
+    expect(firstSound).toHaveLength(1);
+    expect(firstSound[0]).toBeLessThan(5000);
+    expect(phononBytes).toBe(manifestBytes);
+    expect(supertonic).toEqual([]);
+    expect(await page.locator('.tts-skipped').count()).toBe(0);
   });
 
   test('clicking a sentence seeks to it', async ({ page }) => {
@@ -143,5 +188,19 @@ test.describe('Reader Mode end to end', () => {
     expect(await page.evaluate(() => !!document.documentElement.dataset.ttsReader)).toBe(false);
     expect(await page.locator('#main-content .tts-current').count()).toBe(0);
     await expect(page.locator('#tts-enter')).toBeVisible();
+  });
+
+  // Supertonic's manifest only sizes the translation voice for the language
+  // menu. An English reader must not depend on it (LT-214, CodeRabbit).
+  test('English still plays when the translation voice cannot be sized', async ({ page }) => {
+    await page.route('**/_assets/tts/manifest.json', (route) => route.abort());
+    await enterAndWait(page);
+    await expect(page.locator('[data-act="provider"]')).not.toBeEmpty({ timeout: 120_000 });
+
+    await page.locator('[data-act="toggle"]').click();
+    await page.locator('.tts-current').waitFor();
+    const first = await page.locator('.tts-current').getAttribute('data-tts-id');
+    await page.waitForFunction(
+      (prev) => document.querySelector('.tts-current')?.dataset.ttsId !== prev, first);
   });
 });
