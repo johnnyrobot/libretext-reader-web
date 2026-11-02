@@ -31,6 +31,12 @@ import { test, expect } from '@playwright/test';
 // fast, and that a seek into untranslated ground is served in the target
 // language rather than in English.
 
+// LT-217: these runs spoke translations with Supertonic, which is gone with no
+// fallback. Until LT-216 wires the fr/de/es/pt Phonon voice the reader offers no
+// translation, so every test here would fail for that reason alone. Skipped, not
+// deleted: LT-217's Chrome run per language starts from them.
+test.skip(true, 'no translation voice until LT-216 (LT-217 removed Supertonic)');
+
 const PAGE = '/social_psychology/13:_Competition_and_Cooperation_in_Our_Social_Worlds/'
   + '13.01:_Conflict_Cooperation_Morality_and_Fairness/';
 const PAIRS = '/_assets/tts/mt/pairs.json';
@@ -125,9 +131,9 @@ test.describe('client-side translation', () => {
   //      or missing `forward_token`, a mispackaged export, or a tokenizer that
   //      silently falls back all produce fluent output in some language.
   //   2. `pipeline/lang_normalize.py`'s port is WIRED for that code. The pair is
-  //      "en-nl" and the normaliser is keyed on "nl", and a mistake there is
-  //      silent: untouched text is still perfectly good Dutch. It just says
-  //      "twee punt nul" as "2.0".
+  //      "en-de" and the normaliser is keyed on "de", and a mistake there is
+  //      silent: untouched text is still perfectly good German. It just says
+  //      "zwei Komma null" as "2,0".
   //
   // Markers are function words that cannot appear in the English source, so
   // "different from English" (which a mangled sentence also satisfies) is not

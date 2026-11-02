@@ -7,7 +7,8 @@ Downloads the files `src/phonon.worker.mjs` loads from
 onnx-community/phonon-31m-en-ONNX at one pinned revision, into a cache under
 bench/assets/ (gitignored: the weights are never committed), checks each
 against the size and sha256 pinned below, copies them to the target and writes
-its `manifest.json` in the shape scripts/write_model_manifest.py writes, plus
+its `manifest.json` in the `{version, files:[{name,path,bytes,sha256}]}` shape
+src/models.mjs reads, plus
 the source block scripts/convert-mt-models.py adds.
 
 Every pin is checked twice: on the cached copy, so a truncated or tampered

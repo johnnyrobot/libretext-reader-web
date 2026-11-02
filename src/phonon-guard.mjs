@@ -12,7 +12,7 @@
  *
  * What happens then is LT-214's rule, in order: retry once; render
  * the sentence split at punctuation; skip it with a visible mark. Never play
- * nonsense, and never fall back to Supertonic for English.
+ * nonsense, and never fall back to another engine (LT-217: there is none).
  *
  * Streaming and the guard pull against each other: a frame that has been played
  * cannot be taken back. So frames are streamed only while the attempt is still

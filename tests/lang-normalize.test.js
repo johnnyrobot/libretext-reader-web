@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import parity from './fixtures/normalize-parity.json';
 import {
-  NORMALIZERS, normalizeEsForSpeech, normalizeFrForSpeech, normalizeItForSpeech,
-  normalizeNlForSpeech, normalizeHuForSpeech, normalizeDaForSpeech,
-  normalizeSvForSpeech, normalizeDeForSpeech, normalizeCsForSpeech,
+  NORMALIZERS, normalizeEsForSpeech, normalizeFrForSpeech, normalizeDeForSpeech,
+  normalizePtForSpeech,
 } from '../src/lang-normalize.mjs';
 
 /**
@@ -17,7 +16,7 @@ import {
  * only difference that is unambiguously a defect rather than a variation.
  *
  * Every expectation is Spanish-as-SPOKEN, not Spanish-as-written: the output
- * goes to Supertonic, so `1999` must arrive as words.
+ * goes to a voice, so `1999` must arrive as words.
  *
  * The port is the point. `pipeline/lang_normalize.py` is the specification, and
  * a divergence is silent — a number read wrong sounds like a number, and only
@@ -253,11 +252,7 @@ describe('parity with pipeline/lang_normalize.py', () => {
   // case to the Spanish pass would fail for a reason that has nothing to do with
   // parity.
   const run = {
-    es: normalizeEsForSpeech, fr: normalizeFrForSpeech,
-    it: normalizeItForSpeech, nl: normalizeNlForSpeech,
-    hu: normalizeHuForSpeech, da: normalizeDaForSpeech,
-    sv: normalizeSvForSpeech, de: normalizeDeForSpeech,
-    cs: normalizeCsForSpeech,
+    es: normalizeEsForSpeech, fr: normalizeFrForSpeech, de: normalizeDeForSpeech, pt: normalizePtForSpeech,
   };
   it.each(parity.map((c, i) => [i, c]))('case %i (%o)', (_i, { lang, source, expected }) => {
     expect(run[lang](source)).toBe(expected);
@@ -399,506 +394,6 @@ describe('French: the conventions that differ from Spanish', () => {
 });
 
 
-// ---------------------------------------------------------------------------
-// Italian. Ported from pipeline/tests/test_lang_normalize.py, case for case.
-// ---------------------------------------------------------------------------
-
-describe('Italian inverts BOTH marks relative to English', () => {
-  it('reads a three-digit dot group as a thousands separator', () => {
-    expect(normalizeItForSpeech('40.000 partecipanti')).toBe('quarantamila partecipanti');
-    expect(normalizeItForSpeech('1.200 casi')).toBe('milleduecento casi');
-  });
-
-  // MEASURED: across the 9,423 shipped Italian sentences the 1-2 digit dot form
-  // occurs 335 times against 20 real thousands groups — 17x more often. Reading
-  // a dot as thousands unconditionally turns "Figura 7.5" into
-  // "figura settemilacinque", a wrong VALUE, 335 times over to fix 20.
-  it('reads a one or two digit dot group as a section number, not a thousand', () => {
-    expect(normalizeItForSpeech('Figura 7.5 mostra')).toBe('Figura sette punto cinque mostra');
-    expect(normalizeItForSpeech('Tabella 12.2 elenca')).toBe('Tabella dodici punto due elenca');
-    expect(normalizeItForSpeech('CC BY 2.0.')).toBe('CC BY due punto zero.');
-  });
-
-  it('reads a comma between digits as a decimal', () => {
-    expect(normalizeItForSpeech('la soglia p 0,05')).toBe('la soglia p zero virgola zero cinque');
-  });
-});
-
-describe('Italian cardinals — the elisions a port gets wrong', () => {
-  it.each([
-    ['20 casi', 'venti casi'],
-    // The tens elide their final vowel before uno and otto.
-    ['21 casi', 'ventuno casi'],
-    ['22 casi', 'ventidue casi'],
-    // "tre" takes an accent as the final element of a compound.
-    ['23 casi', 'ventitré casi'],
-    ['28 casi', 'ventotto casi'],
-    ['31 casi', 'trentuno casi'],
-    ['33 casi', 'trentatré casi'],
-    ['68 casi', 'sessantotto casi'],
-    ['91 casi', 'novantuno casi'],
-    // cento is invariable, and elides before otto/ottanta.
-    ['100 casi', 'cento casi'],
-    ['101 casi', 'centouno casi'],
-    ['108 casi', 'centotto casi'],
-    ['180 casi', 'centottanta casi'],
-    ['200 casi', 'duecento casi'],
-    // mille singular, -mila plural, fused into one word.
-    ['1.000 casi', 'mille casi'],
-    ['2.000 casi', 'duemila casi'],
-    ['21.000 casi', 'ventunomila casi'],
-    ['1.000.000 casi', 'un milione casi'],
-    ['2.000.000 casi', 'due milioni casi'],
-  ])('%s -> %s', (source, expected) => {
-    expect(normalizeItForSpeech(source)).toBe(expected);
-  });
-
-  it.each([
-    ['nel 1961.', 'nel millenovecentosessantuno.'],
-    ['nel 1900.', 'nel millenovecento.'],
-    ['nel 1993.', 'nel millenovecentonovantatré.'],
-    ['nel 2000.', 'nel duemila.'],
-    ['nel 2010.', 'nel duemiladieci.'],
-  ])('year %s -> %s', (source, expected) => {
-    expect(normalizeItForSpeech(source)).toBe(expected);
-  });
-});
-
-describe('Italian currency and percentages', () => {
-  it.each([
-    ['costa $ 1.200 in totale.', 'costa milleduecento dollari in totale.'],
-    ['costa $ 1 in totale.', 'costa un dollaro in totale.'],
-    ['costa $ 15,50.', 'costa quindici dollari e cinquanta centesimi.'],
-  ])('%s -> %s', (source, expected) => {
-    expect(normalizeItForSpeech(source)).toBe(expected);
-  });
-
-  // MEASURED on the shipped track: "$ 8,3 trilioni" was reading as "otto dollari
-  // e trenta centesimi trilioni" — $8.30 rather than $8.3 trillion, a wrong
-  // VALUE. One occurrence in 9,423 sentences; the rule is earned by the severity
-  // of the failure, not its frequency.
-  it('does not read a scaled currency amount as dollars and cents', () => {
-    expect(normalizeItForSpeech('ha cancellato $ 8,3 trilioni di ricchezza.'))
-      .toBe('ha cancellato otto virgola tre trilioni di dollari di ricchezza.');
-    expect(normalizeItForSpeech('circa $ 3 miliardi persi.'))
-      .toBe('circa tre miliardi di dollari persi.');
-  });
-
-  // MEASURED: the en-it checkpoint emits NO space before the sign, 82 times out
-  // of 82. The spaced form is accepted anyway, because it costs nothing.
-  it.each([
-    ['il 68% dei partecipanti', 'il sessantotto per cento dei partecipanti'],
-    ['il 68 % dei partecipanti', 'il sessantotto per cento dei partecipanti'],
-    ['lo 0,5% dei casi', 'lo zero virgola cinque per cento dei casi'],
-  ])('%s -> %s', (source, expected) => {
-    expect(normalizeItForSpeech(source)).toBe(expected);
-  });
-});
-
-describe('Italian leaves alone what it was measured not to break', () => {
-  // MEASURED, like French and unlike Spanish: `et al.` survives the en-it
-  // checkpoint intact 100 times out of 100, and it IS correct Italian academic
-  // prose. Porting the Spanish rule here would be cargo-culting.
-  it('leaves et al. alone', () => {
-    expect(normalizeItForSpeech('Jost et al. hanno trovato')).toBe('Jost et al. hanno trovato');
-  });
-
-  it('protects placeholders and reads long ungrouped runs as identifiers', () => {
-    expect(normalizeItForSpeech('Vedi [[URL0]] nel 1999.'))
-      .toBe('Vedi [[URL0]] nel millenovecentonovantanove.');
-    expect(normalizeItForSpeech('pagine 4064412.'))
-      .toBe('pagine quattro zero sei quattro quattro uno due.');
-  });
-
-  it('leaves text with no numbers unchanged', () => {
-    const text = 'La cooperazione tra gruppi riduce il pregiudizio.';
-    expect(normalizeItForSpeech(text)).toBe(text);
-  });
-});
-
-
-/**
- * Dutch — the FOURTH language, and the fourth distinct convention in four tries.
- *
- * The en-nl checkpoint was MEASURED before any of these were written, and it
- * takes ITALIAN's dot thousands while keeping ENGLISH's dot decimal:
- *
- *   8,000     → "8.000"          DOT thousands, 14 of 15
- *   $50       → "$50"            sign LEADING, tight
- *   $400 bil  → "$ 400 miljard"  sign LEADING, spaced — both forms occur
- *   $8.3 tril → "$8,3 triljoen"  decimal COMMA inside a scaled amount
- *   Figure 1.3→ "Figuur 1.3"     decimal DOT preserved
- *   20%       → "20%"            NO space before the sign, 58 of 58
- *   et al.    → "et al."         preserved 59 of 60, so NO rule
- *
- * One mark doing two jobs in the same sentence is new here: es/fr/it each gave
- * the dot exactly one meaning. GROUP SIZE is the only thing that separates a
- * thousand from a section number, and it has to be exactly three digits.
- */
-describe('Dutch cardinals — unit before ten, and the trema on the joint', () => {
-  const nl = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeNlForSpeech(source)).toBe(expected);
-  });
-
-  nl([
-    ['0 gevallen', 'nul gevallen'],
-    // A standalone 1 is the NUMERAL, spelled "één". Bare "een" is the
-    // indefinite article, so "1 geval" → "een geval" would say "a case".
-    ['1 geval', 'één geval'],
-    ['12 gevallen', 'twaalf gevallen'],
-    ['20 gevallen', 'twintig gevallen'],
-    // The unit comes FIRST and joins with "en" — nothing in es/fr/it does this.
-    ['21 gevallen', 'eenentwintig gevallen'],
-    // A unit ending in -e takes a trema on the joint, or "tweeen" reads as one
-    // long vowel.
-    ['22 gevallen', 'tweeëntwintig gevallen'],
-    ['23 gevallen', 'drieëntwintig gevallen'],
-    ['33 gevallen', 'drieëndertig gevallen'],
-    ['68 gevallen', 'achtenzestig gevallen'],
-    ['99 gevallen', 'negenennegentig gevallen'],
-    ['100 gevallen', 'honderd gevallen'],
-    ['156 gevallen', 'honderdzesenvijftig gevallen'],
-    ['512 gevallen', 'vijfhonderdtwaalf gevallen'],
-    ['1.000 gevallen', 'duizend gevallen'],
-    ['2.500 gevallen', 'tweeduizend vijfhonderd gevallen'],
-    ['8.000 gevallen', 'achtduizend gevallen'],
-    ['40.320 gevallen', 'veertigduizend driehonderdtwintig gevallen'],
-    ['100.000 gevallen', 'honderdduizend gevallen'],
-    ['1.000.000 gevallen', 'één miljoen gevallen'],
-  ]);
-});
-
-describe('Dutch reads a year BY HUNDREDS below 2000, as English does', () => {
-  // es, fr and it all read 1961 as a plain cardinal. Porting that rule here
-  // gives "duizend negenhonderdeenenzestig", a date nobody says.
-  const nl = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeNlForSpeech(source)).toBe(expected);
-  });
-
-  nl([
-    ['in 1961.', 'in negentienhonderdeenenzestig.'],
-    ['in 1900.', 'in negentienhonderd.'],
-    ['in 1993.', 'in negentienhonderddrieënnegentig.'],
-    ['in 1520.', 'in vijftienhonderdtwintig.'],
-    ['in 2000.', 'in tweeduizend.'],
-    ['in 2010.', 'in tweeduizend tien.'],
-    ['in 2042.', 'in tweeduizend tweeënveertig.'],
-  ]);
-});
-
-describe('Dutch: one dot, two jobs, separated only by group size', () => {
-  it('reads a three-digit dot group as thousands', () => {
-    expect(normalizeNlForSpeech('40.000 deelnemers')).toBe('veertigduizend deelnemers');
-  });
-
-  it('reads a one- or two-digit dot group as a section number', () => {
-    expect(normalizeNlForSpeech('Figuur 7.5 toont')).toBe('Figuur zeven punt vijf toont');
-    expect(normalizeNlForSpeech('Tabel 12.2 somt')).toBe('Tabel twaalf punt twee somt');
-    expect(normalizeNlForSpeech('CC BY 2.0.')).toBe('CC BY twee punt nul.');
-  });
-
-  it('reads a comma between digits as a decimal', () => {
-    expect(normalizeNlForSpeech('de drempel p 0,05')).toBe('de drempel p nul komma nul vijf');
-  });
-});
-
-describe('Dutch currency and percentages', () => {
-  const nl = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeNlForSpeech(source)).toBe(expected);
-  });
-
-  nl([
-    // Dutch keeps a measure word SINGULAR after a numeral — "vijftig dollar",
-    // never "vijftig dollars". Every Romance language here pluralises.
-    ['kost $50 in totaal.', 'kost vijftig dollar in totaal.'],
-    ['kost $ 400 in totaal.', 'kost vierhonderd dollar in totaal.'],
-    ['kost $30.000 per jaar.', 'kost dertigduizend dollar per jaar.'],
-    ['kost $1,00.', 'kost één dollar.'],
-    ['kost $15,50.', 'kost vijftien dollar en vijftig cent.'],
-    ['20% van de jongeren', 'twintig procent van de jongeren'],
-    ['20 % van de jongeren', 'twintig procent van de jongeren'],
-    ['0,5% van de gevallen', 'nul komma vijf procent van de gevallen'],
-  ]);
-
-  it('drops a zero dollars part and reads only the cents', () => {
-    // Found by running the finished pass over the whole 9,430-sentence track,
-    // not by any of the cases above. "$0,25" was "nul dollar en vijfentwintig
-    // cent"; the price is "vijfentwintig cent".
-    expect(normalizeNlForSpeech('vermeld als $0,25 elk')).toBe('vermeld als vijfentwintig cent elk');
-  });
-
-  it('does not read a scaled amount as dollars and cents', () => {
-    // The Italian defect, checked for rather than assumed absent: "$8,3
-    // triljoen" read as cents is $8.30 for $8.3 trillion, a wrong VALUE.
-    expect(normalizeNlForSpeech('wiste $8,3 triljoen aan rijkdom.'))
-      .toBe('wiste acht komma drie triljoen dollar aan rijkdom.');
-    expect(normalizeNlForSpeech('meer dan $ 400 miljard.'))
-      .toBe('meer dan vierhonderd miljard dollar.');
-  });
-});
-
-describe('Dutch leaves alone what it was measured not to break', () => {
-  it('leaves et al. alone', () => {
-    // Measured: intact 59 of 60, and correct Dutch academic prose.
-    expect(normalizeNlForSpeech('Jost et al. vonden')).toBe('Jost et al. vonden');
-  });
-
-  it('leaves placeholders alone and spells identifiers digit by digit', () => {
-    expect(normalizeNlForSpeech('Zie [[URL0]] in 1999.'))
-      .toBe('Zie [[URL0]] in negentienhonderdnegenennegentig.');
-    expect(normalizeNlForSpeech('pagina 4064412.'))
-      .toBe('pagina vier nul zes vier vier een twee.');
-  });
-
-  it('leaves text with no numbers unchanged', () => {
-    const text = 'Samenwerking tussen groepen vermindert vooroordelen.';
-    expect(normalizeNlForSpeech(text)).toBe(text);
-  });
-});
-
-
-/**
- * Hungarian — the FIFTH language and the first AGGLUTINATIVE one, which is a
- * different KIND of problem rather than a harder version of the previous four.
- *
- * The en-hu checkpoint was MEASURED before any of these were written:
- *
- *   8,000     → "8000"          NO separator at four digits
- *   20,000    → "20 000"        SPACE separator from five
- *   $50       → "50 dollárért"  sign already gone: WORD + case suffix
- *   $8.3 tril → "8,3 trillió dollárt"   decimal COMMA
- *   Figure 1.3→ "1.3 ábra"      decimal DOT preserved
- *   20%       → "20%-a"         percent sign carrying a HYPHENATED SUFFIX
- *   2042      → "2042-ig"       year carrying a HYPHENATED SUFFIX
- *
- * The hyphen is the new mechanism: spelling the number out deletes it and fuses
- * the case ending onto the word. A pass that ignores it leaves "húsz százalék
- * -a", a dangling morpheme the voice reads as a word.
- */
-describe('Hungarian cardinals — tizen-/huszon- and the 2000 rule', () => {
-  const hu = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeHuForSpeech(source)).toBe(expected);
-  });
-
-  hu([
-    ['0 eset', 'nulla eset'],
-    ['7 eset', 'hét eset'],
-    ['10 eset', 'tíz eset'],
-    // 11-19 and 21-29 do NOT reuse the bare tens word — tíz becomes tizen-,
-    // húsz becomes huszon-. From 30 up it is regular.
-    ['11 eset', 'tizenegy eset'],
-    ['19 eset', 'tizenkilenc eset'],
-    ['20 eset', 'húsz eset'],
-    ['21 eset', 'huszonegy eset'],
-    ['30 eset', 'harminc eset'],
-    ['68 eset', 'hatvannyolc eset'],
-    ['100 eset', 'száz eset'],
-    ['300 eset', 'háromszáz eset'],
-    // THE 2000 RULE: one word up to 2000, hyphenated thousands group above it.
-    // The threshold is the VALUE, so 1999 and 2001 differ despite both being
-    // four digits.
-    ['1000 eset', 'ezer eset'],
-    ['1999 eset', 'ezerkilencszázkilencvenkilenc eset'],
-    ['2000 eset', 'kétezer eset'],
-    ['2001 eset', 'kétezer-egy eset'],
-    ['2500 eset', 'kétezer-ötszáz eset'],
-    // MEASURED: four digits solid, a SPACE from five. Both must read the same.
-    ['8000 eset', 'nyolcezer eset'],
-    ['20 000 eset', 'húszezer eset'],
-    ['40 320 eset', 'negyvenezer-háromszázhúsz eset'],
-    ['100 000 eset', 'százezer eset'],
-    ['1 000 000 eset', 'egymillió eset'],
-  ]);
-});
-
-describe('Hungarian carries a hyphenated case suffix onto the spelled number', () => {
-  const hu = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeHuForSpeech(source)).toBe(expected);
-  });
-
-  hu([
-    ['a serdülők 20%-a', 'a serdülők húsz százaléka'],
-    ['a rablások 90%-át', 'a rablások kilencven százalékát'],
-    ['csak 1%-ot tett ki', 'csak egy százalékot tett ki'],
-    ['várhatóan 2042-ig', 'várhatóan kétezer-negyvenkettőig'],
-    ['2050-re az USA', 'kétezer-ötvenre az USA'],
-    ['1990-ben történt', 'ezerkilencszázkilencvenben történt'],
-    ['a 2010-es évek', 'a kétezer-tízes évek'],
-    ['20% felett', 'húsz százalék felett'],
-  ]);
-
-  it('reads a leaked English thousands comma as a thousand, not a decimal', () => {
-    // Found on the whole track: the checkpoint leaks one English comma in 9,430
-    // sentences. Read as a decimal, "40,320" is forty-point-three-two for forty
-    // thousand three hundred twenty — a wrong VALUE.
-    expect(normalizeHuForSpeech('(ami 40,320), de')).toBe('(ami negyvenezer-háromszázhúsz), de');
-    // A genuine 1-2 digit decimal must still be a decimal.
-    expect(normalizeHuForSpeech('a küszöb p 0,05')).toBe('a küszöb p nulla egész nulla öt');
-  });
-
-  it('carries a suffix that lands on a currency amount', () => {
-    // "$30-os" was claimed by the currency pass, which spelled the number and
-    // stranded "-os" — two of this module's own passes orphaning a morpheme.
-    expect(normalizeHuForSpeech('egy $30-os díjért')).toBe('egy harminc dolláros díjért');
-  });
-
-  it('does not read a hyphen between two numbers as a suffix', () => {
-    // The suffix rule requires a LETTER after the hyphen, which is what
-    // separates "2042-ig" from a page range.
-    expect(normalizeHuForSpeech('406-412 oldal')).toBe('négyszázhat-négyszáztizenkét oldal');
-  });
-});
-
-describe('Hungarian kettő/két — the one form this module chooses', () => {
-  const hu = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeHuForSpeech(source)).toBe(expected);
-  });
-
-  hu([
-    ['2 csoport vizsgálata', 'két csoport vizsgálata'],
-    ['2 és 3 között', 'kettő és három között'],
-    ['22 résztvevő', 'huszonkét résztvevő'],
-    ['22 és 23', 'huszonkettő és huszonhárom'],
-    ['512 eset', 'ötszáztizenkét eset'],
-  ]);
-});
-
-describe('Hungarian currency, decimals and section numbers', () => {
-  const hu = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeHuForSpeech(source)).toBe(expected);
-  });
-
-  hu([
-    // MEASURED: the checkpoint has usually already turned "$50" into
-    // "50 dollárért", so the sign survives rarely.
-    ['kapott $4 kezdeni', 'kapott négy dollár kezdeni'],
-    ['$2 volt', 'két dollár volt'],
-    ['8,3 trillió dollárt', 'nyolc egész három trillió dollárt'],
-    ['a küszöb p 0,05', 'a küszöb p nulla egész nulla öt'],
-    // A dot is preserved by this checkpoint and stays a section number or a
-    // version — "pont", never a thousands group.
-    ['1.3 ábra', 'egy pont három ábra'],
-    ['CC BY-NC 2.0.', 'CC BY-NC kettő pont nulla.'],
-  ]);
-});
-
-describe('Hungarian leaves alone what it was measured not to break', () => {
-  it('leaves et al. alone', () => {
-    expect(normalizeHuForSpeech('Jost et al. megállapította')).toBe('Jost et al. megállapította');
-  });
-
-  it('leaves placeholders alone and spells identifiers digit by digit', () => {
-    expect(normalizeHuForSpeech('Lásd [[URL0]] 1999-ben.'))
-      .toBe('Lásd [[URL0]] ezerkilencszázkilencvenkilencben.');
-    expect(normalizeHuForSpeech('oldal 4064412.'))
-      .toBe('oldal négy nulla hat négy négy egy kettő.');
-  });
-
-  it('leaves text with no numbers unchanged', () => {
-    const text = 'A csoportok közötti együttműködés csökkenti az előítéletet.';
-    expect(normalizeHuForSpeech(text)).toBe(text);
-  });
-});
-
-
-/**
- * Danish — the SIXTH language, and the one whose number FORMATS match Dutch's
- * exactly while its WORDS do not. Measured before any of these were written:
- *
- *   8,000     → "8.000"          DOT thousands
- *   $50       → "50 dollars"     often already a WORD, and PLURAL
- *   $8.3 tril → "$8,3 billioner" decimal COMMA, and the LONG scale
- *   Figure 1.3→ "figur 1.3"      decimal DOT preserved
- *   20%       → "20%"            NO space, 58 of 58
- *   et al.    → "et al."         preserved 100 of 100
- *   20th c.   → "det 20. århundrede"   ORDINAL as digits plus a PERIOD
- */
-describe('Danish cardinals — vigesimal tens, and where "og" goes', () => {
-  const da = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeDaForSpeech(source)).toBe(expected);
-  });
-
-  da([
-    ['0 sager', 'nul sager'],
-    ['1 sag', 'en sag'],
-    ['19 sager', 'nitten sager'],
-    // Unit BEFORE the ten joined by "og", as Dutch does but with no trema.
-    ['21 sager', 'enogtyve sager'],
-    ['31 sager', 'enogtredive sager'],
-    // THE VIGESIMAL TENS — scores, not derivable from the unit words at all.
-    ['50 sager', 'halvtreds sager'],
-    ['55 sager', 'femoghalvtreds sager'],
-    ['60 sager', 'tres sager'],
-    ['68 sager', 'otteogtres sager'],
-    ['70 sager', 'halvfjerds sager'],
-    ['80 sager', 'firs sager'],
-    ['99 sager', 'nioghalvfems sager'],
-    // "og" joins a SUB-HUNDRED tail to whatever precedes it, and only that.
-    ['100 sager', 'hundrede sager'],
-    ['101 sager', 'hundrede og en sager'],
-    ['512 sager', 'fem hundrede og tolv sager'],
-    ['1.000 sager', 'tusind sager'],
-    ['2.500 sager', 'to tusind fem hundrede sager'],
-    ['2.042 sager', 'to tusind og toogfyrre sager'],
-    ['40.320 sager', 'fyrre tusind tre hundrede og tyve sager'],
-    ['100.000 sager', 'hundrede tusind sager'],
-    ['1.000.000 sager', 'en million sager'],
-    ['i 1961.', 'i nitten hundrede og enogtres.'],
-    ['i 1900.', 'i nitten hundrede.'],
-    ['i 2010.', 'i to tusind og ti.'],
-  ]);
-});
-
-describe('Danish reads a digit plus a period as an ordinal', () => {
-  const da = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeDaForSpeech(source)).toBe(expected);
-  });
-
-  da([
-    ['det 20. århundrede oplevede', 'det tyvende århundrede oplevede'],
-    ['I det 21. århundrede er', 'I det enogtyvende århundrede er'],
-    ['hvert 10. sekund.', 'hvert tiende sekund.'],
-    ['på 42. gade i New York', 'på toogfyrretyvende gade i New York'],
-    ['Den 26. marts 1997 blev', 'Den seksogtyvende marts nitten hundrede og syvoghalvfems blev'],
-  ]);
-
-  it('does not read a sentence-final number as an ordinal', () => {
-    // The guard is the following word's CASE, and it was measured: 13 forms
-    // followed by a lowercase word, every one a real ordinal, and ZERO followed
-    // by an uppercase one.
-    expect(normalizeDaForSpeech('Svaret var 20. Det næste spørgsmål.'))
-      .toBe('Svaret var tyve. Det næste spørgsmål.');
-  });
-});
-
-describe('Danish currency, percentages and the dot', () => {
-  const da = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeDaForSpeech(source)).toBe(expected);
-  });
-
-  da([
-    // PLURAL after a numeral, which inverts Dutch.
-    ['koster $50 i alt.', 'koster halvtreds dollars i alt.'],
-    ['koster $30.000 om året.', 'koster tredive tusind dollars om året.'],
-    ['koster $1,00.', 'koster en dollar.'],
-    ['koster $15,50.', 'koster femten dollars og halvtreds cent.'],
-    ['koster $0,25 hver.', 'koster femogtyve cent hver.'],
-    ['slettet $8,3 billioner i rigdom.', 'slettet otte komma tre billioner dollars i rigdom.'],
-    ['20% af de unge', 'tyve procent af de unge'],
-    ['0,5% af sagerne', 'nul komma fem procent af sagerne'],
-    // 19 real thousands groups against 316 short dot forms, measured.
-    ['40.000 deltagere', 'fyrre tusind deltagere'],
-    ['figur 7.5 viser', 'figur syv punktum fem viser'],
-    ['CC BY 2.0.', 'CC BY to punktum nul.'],
-  ]);
-
-  it('leaves et al. alone and spells identifiers digit by digit', () => {
-    expect(normalizeDaForSpeech('Jost et al. fandt')).toBe('Jost et al. fandt');
-    expect(normalizeDaForSpeech('side 4064412.')).toBe('side fire nul seks fire fire en to.');
-  });
-});
-
-
 /**
  * A decimal written without its leading zero. NOT per-language: every
  * registered normaliser read `.30` as THIRTY before this — a wrong VALUE, in
@@ -921,102 +416,6 @@ describe('a decimal without its leading zero', () => {
     const n = NORMALIZERS[code];
     expect(n('se Fig.2 nedan')).not.toContain('0.2');
     expect(n('figur 1.3 visar')).not.toContain('10.3');
-  });
-});
-
-/**
- * Swedish — the SEVENTH language, and the one that broke "Scandinavian, so it
- * will be Danish". Measured before any of these were written:
- *
- *   8,000     → "8.000" AND "20 000"   BOTH separators, in the same book
- *   $50       → "50 dollar"            INVARIABLE, where Danish pluralises
- *   20%       → "20 %" AND "35%"       BOTH spacings, 37 against 31
- *   et al.    → "et al." (71) AND "m.fl." (29)
- *   1900s     → "1900-talet"           HYPHEN suffix, as Hungarian does
- */
-describe('Swedish cardinals — the tens go FIRST, with no joiner', () => {
-  const sv = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeSvForSpeech(source)).toBe(expected);
-  });
-
-  sv([
-    ['0 fall', 'noll fall'],
-    ['1 fall', 'ett fall'],
-    ['19 fall', 'nitton fall'],
-    ['20 fall', 'tjugo fall'],
-    // Dutch, Danish and German all put the UNIT first. Swedish drops the one
-    // structural habit those three share, so a port from Danish is wrong on
-    // every number between 21 and 99.
-    ['21 fall', 'tjugoett fall'],
-    ['35 fall', 'trettiofem fall'],
-    ['68 fall', 'sextioåtta fall'],
-    ['99 fall', 'nittionio fall'],
-    ['100 fall', 'hundra fall'],
-    ['512 fall', 'femhundratolv fall'],
-    // Swedish writes a whole number as ONE word.
-    ['2500 fall', 'tvåtusenfemhundra fall'],
-    ['8000 fall', 'åttatusen fall'],
-    ['100 000 fall', 'hundratusen fall'],
-    ['40 320 fall', 'fyrtiotusentrehundratjugo fall'],
-    ['1.000.000 fall', 'en miljon fall'],
-    ['år 1961.', 'år nittonhundrasextioett.'],
-    ['år 2010.', 'år tvåtusentio.'],
-  ]);
-});
-
-describe('Swedish reads both separators and both percent spacings', () => {
-  const sv = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeSvForSpeech(source)).toBe(expected);
-  });
-
-  sv([
-    // No earlier checkpoint was inconsistent like this: a dot group 12 times
-    // and a space group 7 in the same book.
-    ['över 8.000 mord', 'över åttatusen mord'],
-    ['över 20 000 deltagare', 'över tjugotusen deltagare'],
-    // 311 short dot forms against those 12 real thousands groups.
-    ['figur 1.3 visar', 'figur ett punkt tre visar'],
-    ['CC BY 2.0.', 'CC BY två punkt noll.'],
-    // 37 spaced against 31 tight, and 12 already written as the word.
-    ['20 % av ungdomarna', 'tjugo procent av ungdomarna'],
-    ['35% av lagets', 'trettiofem procent av lagets'],
-    ['99 procent av rånen', 'nittionio procent av rånen'],
-  ]);
-});
-
-describe('Swedish currency, suffixes and abbreviations', () => {
-  const sv = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeSvForSpeech(source)).toBe(expected);
-  });
-
-  sv([
-    // INVARIABLE, as in Dutch and unlike Danish — the other Scandinavian
-    // language here. The checkpoint writes "dollar" 13 times, "dollars" never.
-    ['för $50.', 'för femtio dollar.'],
-    ['$ 30.000 per år', 'trettiotusen dollar per år'],
-    ['8,3 biljoner dollar i', 'åtta komma tre biljoner dollar i'],
-    ['kostar $15,50.', 'kostar femton dollar och femtio cent.'],
-    // 35 hyphen suffixes — Hungarian's mechanism in a Germanic language. Inside
-    // a decade the number is read as a YEAR.
-    ['under 1900-talet utvidgades', 'under nittonhundratalet utvidgades'],
-    ['Under 2000-talet har', 'Under tvåtusentalet har'],
-    ['på 1960-talet', 'på nittonhundrasextiotalet'],
-    ['5-åriga barn', 'femåriga barn'],
-    ['i 40-årsåldern', 'i fyrtioårsåldern'],
-  ]);
-
-  it('expands m.fl. but leaves et al. alone', () => {
-    // `et al.` survives 71 times and reads as words; `m.fl.` appears 29 times
-    // and reads as letters. Same standard the Spanish et al. rule was held to.
-    expect(normalizeSvForSpeech('Schwarz m.fl., 1991'))
-      .toBe('Schwarz med flera, nittonhundranittioett');
-    expect(normalizeSvForSpeech('McGregor et al. visade')).toBe('McGregor et al. visade');
-  });
-
-  it('leaves placeholders alone and spells identifiers digit by digit', () => {
-    expect(normalizeSvForSpeech('Se [[URL0]] år 1999.'))
-      .toBe('Se [[URL0]] år nittonhundranittionio.');
-    expect(normalizeSvForSpeech('sida 4064412.')).toBe('sida fyra noll sex fyra fyra ett två.');
   });
 });
 
@@ -1162,174 +561,78 @@ describe('German — the two defects the whole-track audit caught', () => {
   });
 });
 
+
 /**
- * Czech — the NINTH language, the SIXTH distinct convention, and the first that
- * is neither Germanic nor Romance. Measured with bench/formats/measure.py and
- * counted over all 9,430 translated sentences with bench/formats/count.py;
- * shapes in bench/formats/cs.json.
+ * Portuguese (LT-217), Brazilian, because the en-pt export writes Brazilian —
+ * "colônias", "US$". Shapes measured on 146 corpus sentences translated one at a
+ * time by Douglasrambo/opus-mt-tc-big-en-pt-onnx; there is no deployed pt track.
+ * The same cases as pipeline/tests/test_lang_normalize.py.
  *
- *   8,000     → "8 000"       SPACE thousands            17 occurrences
- *   dot groups  none at all                               0 occurrences
- *   1.3 / 2.0 → unchanged      every dot is a section    301 occurrences
- *   3% / 54%  → attached, ALWAYS; spaced percent:         0 occurrences
- *   8,3       → "osm celých tři"  comma decimal, INFLECTED joiner
- *   50,000    → leaked English comma, a WRONG VALUE        3 occurrences
- *   $50       → the checkpoint already writes "50 dolarů"; 3 signs survive
- *   20. stol. → ORDINAL DOT — recorded, not handled       29 lines
+ *   1,200     → "1.200"        DOT thousands
+ *   $1,250    → "1,250 dólares" a leaked English COMMA group
+ *   0.5 / 37.5% → "0,5", "37,5%"  decimal COMMA
+ *   1.3 / 3.14 → unchanged       short dot KEPT, as in German
+ *   $3 million → "US$ 3 milhões"
  */
-describe('Czech cardinals — separate words, ten first', () => {
-  const cs = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeCsForSpeech(source)).toBe(expected);
+describe('Portuguese', () => {
+  const pt = (name, rows) => cases(name, rows, normalizePtForSpeech);
+
+  it('is registered', () => {
+    expect(NORMALIZERS.pt).toBe(normalizePtForSpeech);
   });
 
-  cs([
-    ['0 případů', 'nula případů'],
-    ['3 případy', 'tři případy'],
-    ['11 případů', 'jedenáct případů'],
-    ['19 případů', 'devatenáct případů'],
-    ['20 případů', 'dvacet případů'],
-    // Czech's fused unit-first form ("jedenadvacet") is archaic, so this is
-    // neither German's "einundzwanzig" nor Swedish's solid "tjugoett".
-    ['21 případů', 'dvacet jedna případů'],
-    ['22 případů', 'dvacet dva případů'],
-    ['99 případů', 'devadesát devět případů'],
-    ['100 případů', 'sto případů'],
-    ['101 případů', 'sto jedna případů'],
-    // 200 is a surviving DUAL — "dvě stě", not the "sta" of 300 and 400, not
-    // the genitive "set" of 500 upward. Three forms of one word.
-    ['200 případů', 'dvě stě případů'],
-    ['300 případů', 'tři sta případů'],
-    ['500 případů', 'pět set případů'],
-    ['512 případů', 'pět set dvanáct případů'],
-    // "tisíc" runs the same paradigm: bare at 1, "tisíce" at 2-4, back to
-    // "tisíc" (genitive plural, spelled like the singular) from 5.
-    ['1000 případů', 'tisíc případů'],
-    ['2 500 členů', 'dva tisíce pět set členů'],
-    ['8 000 vražd', 'osm tisíc vražd'],
-    ['40 320', 'čtyřicet tisíc tři sta dvacet'],
-    ['1 000 000 lidí', 'milion lidí'],
-    // The PLAIN CARDINAL, not the by-hundreds reading Dutch, Danish, Swedish
-    // and German all take. Family did not predict this, as it never has here.
-    ['v roce 1961.', 'v roce tisíc devět set šedesát jedna.'],
-    ['března 1997', 'března tisíc devět set devadesát sedm'],
-    ['v roce 2010.', 'v roce dva tisíce deset.'],
-  ]);
-});
-
-describe('Czech separators, the counted noun and the inflected decimal', () => {
-  const cs = (rows) => it.each(rows)('%s → %s', (source, expected) => {
-    expect(normalizeCsForSpeech(source)).toBe(expected);
-  });
-
-  cs([
-    // 17 space groups and ZERO dot groups, so the exactly-three-digits test
-    // Italian, Dutch, Danish and German all needed is load-bearing for nothing.
-    ['přes 8 000 vražd', 'přes osm tisíc vražd'],
-    ['(což je 40 320)', '(což je čtyřicet tisíc tři sta dvacet)'],
-    ['Obrázek 1.3 Mozková kůra', 'Obrázek jedna tečka tři Mozková kůra'],
-    ['CC BY-NC 2.0.', 'CC BY-NC dva tečka nula.'],
-    // The counted-noun paradigm, and the checkpoint's own output is the
-    // evidence: en-cs writes `$4` as "4 dolary" and `$50` as "50 dolarů".
-    ['1% skupiny', 'jedno procento skupiny'],
-    ['2% případů', 'dvě procenta případů'],
-    ['20% dospívajících', 'dvacet procent dospívajících'],
-    ['100% jisté', 'sto procent jisté'],
-    ['platba ($20) za lež', 'platba (dvacet dolarů) za lež'],
-    ['platbu ($1) za lež', 'platbu (jeden dolar) za lež'],
-    ['dostala $4 na začátek', 'dostala čtyři dolary na začátek'],
-    // The joiner is not the name of the mark but a COUNTED ADJECTIVE agreeing
-    // with the number in front of it — three forms where every earlier
-    // language had one invariable word.
-    ['prahu 1,5', 'prahu jedna celá pět'],
-    ['mrhayata 2,0', 'mrhayata dvě celé nula'],
-    ['vymazal 8,3 bilionu', 'vymazal osm celých tři bilionu'],
-    // LONG scale: a Czech "bilion" is 10^12 and an English "billion" 10^9.
-    ['asi 100 miliard neuronů', 'asi sto miliard neuronů'],
-    ['více než 7 milionů lidí', 'více než sedm milionů lidí'],
+  pt('cardinals', [
+    ['0 casos', 'zero casos'],
+    ['14 casos', 'catorze casos'],
+    ['16 casos', 'dezesseis casos'],
+    ['19 casos', 'dezenove casos'],
+    ['21 casos', 'vinte e um casos'],
+    ['100 casos', 'cem casos'],
+    ['101 casos', 'cento e um casos'],
+    ['500 casos', 'quinhentos casos'],
+    ['999 casos', 'novecentos e noventa e nove casos'],
+    ['1000 casos', 'mil casos'],
+    ['1200 casos', 'mil e duzentos casos'],
+    ['1250 casos', 'mil duzentos e cinquenta casos'],
+    ['2019 casos', 'dois mil e dezenove casos'],
   ]);
 
-  it('drops gender once the noun is genitive plural', () => {
-    // Found by the whole-track run, not by a test written from the measured
-    // shapes: `82%` read as "osmdesát dvě procent". A numeral agrees with its
-    // noun only where the noun is nominative — 1, and 2-4. From 5 up, and for
-    // every compound, the noun drops to the genitive plural and the numeral
-    // reverts to its base form.
-    expect(normalizeCsForSpeech('82% dostalo')).toBe('osmdesát dva procent dostalo');
-    expect(normalizeCsForSpeech('22% lidí')).toBe('dvacet dva procent lidí');
-    expect(normalizeCsForSpeech('42, 9')).toBe('čtyřicet dva celých devět');
-  });
+  pt('years', [
+    ['Em 1776, 13 colônias declararam independência.',
+      'Em mil setecentos e setenta e seis, treze colônias declararam independência.'],
+    ['na década de 1990.', 'na década de mil novecentos e noventa.'],
+  ]);
 
-  it('rewrites a leaked English thousands comma rather than reading it', () => {
-    // Three commas the checkpoint failed to localise, all three wrong VALUES
-    // as decimals. `5 000,000` is the interesting one: a 5,000,000 whose first
-    // group was localised and whose second was not, so rewriting the comma to
-    // a space makes the halves agree and the grouped rule reads it correctly.
-    expect(normalizeCsForSpeech('více než 50,000 lidí')).toBe('více než padesát tisíc lidí');
-    expect(normalizeCsForSpeech('chování 1,424 chodců'))
-      .toBe('chování tisíc čtyři sta dvacet čtyři chodců');
-    expect(normalizeCsForSpeech('je 1 k 5 000,000, více')).toBe('je jedna k pět milionů, více');
-  });
+  pt('separators', [
+    ['dos 1.200 alunos', 'dos mil e duzentos alunos'],
+    ['Pesa 0,5 kg', 'Pesa zero vírgula cinco kg'],
+    ['custava 1,250 reais', 'custava mil duzentos e cinquenta reais'],
+    ['Tabela 1.3 Exemplos', 'Tabela um ponto três Exemplos'],
+    ['de 3.14 para', 'de três ponto um quatro para'],
+    ['1.000.000 casos', 'um milhão casos'],
+    ['1246120 e', 'um dois quatro seis um dois zero e'],
+  ]);
 
-  it('reads a whole-line spaced decimal but never a list', () => {
-    // Ten table cells whose entire text is a decimal the checkpoint localised
-    // AND spaced (`57.1` → `57, 1`). The whole-line anchor is the guard: the
-    // same shape inside a sentence is a list of brain regions or of years, and
-    // an earlier version of the comma rule turned the first into a decimal.
-    expect(normalizeCsForSpeech('57, 1')).toBe('padesát sedm celých jedna');
-    expect(normalizeCsForSpeech('(28, 5%)')).toBe('(dvacet osm celých pět procenta)');
-    expect(normalizeCsForSpeech('oblasti 1, 2, 4 a 5')).toBe('oblasti jedna, dva, čtyři a pět');
-    expect(normalizeCsForSpeech('Rosenthal, 1990, 1992).'))
-      .toBe('Rosenthal, tisíc devět set devadesát, tisíc devět set devadesát dva).');
-  });
+  pt('currency', [
+    ['O bilhete custava 12,50 dólares.', 'O bilhete custava doze dólares e cinquenta centavos.'],
+    ['o livro custava 1,250 dólares.', 'o livro custava mil duzentos e cinquenta dólares.'],
+    ['custou 1 dólar', 'custou um dólar'],
+    ['custou US$ 12,50.', 'custou doze dólares e cinquenta centavos.'],
+    ['custou US $ 1.200.', 'custou mil e duzentos dólares.'],
+    ['custou $0,50.', 'custou cinquenta centavos.'],
+    ['custou $1.', 'custou um dólar.'],
+    ['45% de US$ 3 milhões', 'quarenta e cinco por cento de três milhões de dólares'],
+    ['US$ 2,5 bilhões', 'dois vírgula cinco bilhões de dólares'],
+    ['US$ 1.000.000', 'um milhão de dólares'],
+  ]);
 
-  it('leaves et al., placeholders and identifiers alone', () => {
-    // et al. survives 95 times and already reads as words, the measured reason
-    // French, Italian and German were denied a rule too.
-    expect(normalizeCsForSpeech('z Berman et al. (2009).'))
-      .toBe('z Berman et al. (dva tisíce devět).');
-    expect(normalizeCsForSpeech('Viz [[URL0]] v roce 1999.'))
-      .toBe('Viz [[URL0]] v roce tisíc devět set devadesát devět.');
-    expect(normalizeCsForSpeech('Strana 4064412.'))
-      .toBe('Strana čtyři nula šest čtyři čtyři jedna dva.');
-  });
+  pt('percent', [
+    ['Cerca de 37,5% dos alunos', 'Cerca de trinta e sete vírgula cinco por cento dos alunos'],
+    ['apenas 15% a 20%', 'apenas quinze por cento a vinte por cento'],
+    ['só 1 % deles', 'só um por cento deles'],
+  ]);
 
-  it('reads an ordinal as a cardinal, which is a RECORDED gap', () => {
-    // Not fixed, and Czech is the strongest case for that call yet: the
-    // ordinal must decline to agree with its noun in whatever case that noun
-    // stands in — "dvacátého století" genitive, "dvacátým prvním prosincem"
-    // instrumental. Danish took this rule because a Danish ordinal has ONE
-    // form; German was denied it because the dot is ambiguous. Czech has both
-    // problems at once. This asserts the current reading so that building the
-    // declension system would be a visible change.
-    expect(normalizeCsForSpeech('V druhé části 20. století'))
-      .toBe('V druhé části dvacet. století');
-    expect(normalizeCsForSpeech('26. března 1997 byli'))
-      .toBe('dvacet šest. března tisíc devět set devadesát sedm byli');
-  });
-
-  it('leaves a numeral glued to a Czech adjective, and every identifier, alone', () => {
-    // RECORDED, NOT FIXED: 4 occurrences of `10sekundové` / `29letý` reach the
-    // voice as raw digits, below German's 23 glued decades. The fix is also a
-    // different shape — German appends "er" to the cardinal and gets a real
-    // word, while Czech needs the numeral's COMBINING stem
-    // ("desetisekundové"), a second numeral system rather than a suffix. The
-    // hyphenated forms are already read, because a hyphen is a word boundary.
-    expect(normalizeCsForSpeech('tři 10sekundové videoklipy')).toBe('tři 10sekundové videoklipy');
-    expect(normalizeCsForSpeech('12-gauge brokovnice')).toBe('dvanáct-gauge brokovnice');
-    for (const text of ['videohry (Wolfenstein 3D)', 'šířka: 497px', '6SN7 Reflexní',
-      'Fenix_21 DSC01314', 'LindaDee2006']) {
-      expect(normalizeCsForSpeech(text)).toBe(text);
-    }
-  });
-
-  it('restores a decimal that lost its leading zero', () => {
-    // The English convention every checkpoint passes through, and the defect
-    // that was live in six languages until the Swedish measurement found it.
-    // Asserted as the EQUIVALENCE rather than a word list, so it is
-    // automatically right for language ten.
-    expect(normalizeCsForSpeech('r = .30 a asi .7'))
-      .toBe(normalizeCsForSpeech('r = 0.30 a asi 0.7'));
-    expect(normalizeCsForSpeech('a .38-kalibr revolver'))
-      .toBe('a nula tečka tři osm-kalibr revolver');
-  });
+  pt('et al.', [
+    ['(Kirsch et al., 2005)', '(Kirsch e outros, dois mil e cinco)'],
+  ]);
 });

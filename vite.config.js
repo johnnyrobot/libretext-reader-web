@@ -101,7 +101,6 @@ export default defineConfig({
       preserveEntrySignatures: 'strict',
       input: {
         reader: 'src/reader.mjs',
-        'engine.worker': 'src/engine.worker.mjs',
         'phonon.worker': 'src/phonon.worker.mjs',
         'translate.worker': 'src/translate.worker.mjs',
       },

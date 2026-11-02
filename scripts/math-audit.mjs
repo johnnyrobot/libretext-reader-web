@@ -14,7 +14,7 @@
  * rendered by the SAME engine and voice the reader uses -- not a stand-in.
  * Open it, read the middle column, click through the right one.
  *
- * Audio is rendered by driving the deployed translate/engine worker in a real
+ * Audio is rendered by driving the deployed translate/Phonon worker in a real
  * browser, the way scripts/render-sample.mjs does, so what you hear is what a
  * reader hears.
  */
@@ -85,12 +85,12 @@ if (WANT_AUDIO) {
   const browser = await chromium.launch({ args: ['--enable-features=SharedArrayBuffer'] });
   const page = await browser.newPage();
   await page.goto(URL_, { waitUntil: 'load' });
-  console.log(`rendering ${rows.length} clips in voice ${VOICE} (first one loads the 380 MB model)`);
+  console.log(`rendering ${rows.length} clips in voice ${VOICE} (first one loads the 155 MB model)`);
 
   // One worker for the whole run, driven exactly as scripts/render-sample.mjs
   // drives it -- same engine, same voice, same code path as a reader's.
   const clips = await page.evaluate(async ({ items, voice }) => {
-    const worker = new Worker('/_assets/tts/engine.worker.js', { type: 'module' });
+    const worker = new Worker('/_assets/tts/phonon.worker.js', { type: 'module' });
     const ready = new Promise((resolve, reject) => {
       worker.addEventListener('message', function onReady({ data }) {
         if (data.type === 'ready') { worker.removeEventListener('message', onReady); resolve(); }
@@ -98,7 +98,7 @@ if (WANT_AUDIO) {
       });
       worker.onerror = (e) => reject(new Error(e.message));
     });
-    worker.postMessage({ type: 'init', voice, lang: 'en', manifestUrl: '/_assets/tts/manifest.json' });
+    worker.postMessage({ type: 'init', voice, lang: 'en', manifestUrl: '/_assets/tts/phonon/manifest.json' });
     await ready;
 
     const out = [];

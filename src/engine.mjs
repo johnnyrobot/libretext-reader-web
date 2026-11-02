@@ -1,13 +1,14 @@
 // The deployed filename, not the source filename. Vite builds
-// src/engine.worker.mjs to engine.worker.js; pointing at the .mjs name
+// src/phonon.worker.mjs to phonon.worker.js; pointing at the .mjs name
 // 404s and the failure surfaces only as a worker error event.
-const DEFAULT_WORKER_URL = '/_assets/tts/engine.worker.js';
+const DEFAULT_WORKER_URL = '/_assets/tts/phonon.worker.js';
+const DEFAULT_MANIFEST_URL = '/_assets/tts/phonon/manifest.json';
 
 export class SpeechCancelledError extends Error {
   constructor(id) { super(`synthesis cancelled: ${id}`); this.name = 'SpeechCancelledError'; }
 }
 
-export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, manifestUrl = '/_assets/tts/manifest.json' } = {}) {
+export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, manifestUrl = DEFAULT_MANIFEST_URL } = {}) {
   const spawn = createWorker ?? (() => new Worker(workerUrl, { type: 'module' }));
   const worker = spawn();
   const pending = new Map();
@@ -44,8 +45,8 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
         pending.delete('lang');
         break;
       case 'chunk':
-        // Streamed audio for a sentence still rendering (Phonon only). Dropped
-        // once its request is cancelled, like a late 'audio'.
+        // Streamed audio for a sentence still rendering. Dropped once its
+        // request is cancelled, like a late 'audio'.
         pending.get(data.id)?.onChunk?.(data.samples, data.sampleRate);
         break;
       case 'reset':
@@ -54,7 +55,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
       case 'audio': {
         const entry = pending.get(data.id);
         if (!entry) return; // cancelled; drop the late result
-        // Supertonic has no length guard and reports no outcome: its audio is ok.
+        // A worker without a length guard reports no outcome: its audio is ok.
         settle(data.id);
         entry.resolve({ id: entry.id, samples: data.samples, sampleRate: data.sampleRate, outcome: data.outcome ?? 'ok' });
         break;
@@ -93,7 +94,7 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     // with each piece of audio that may be played now. `onReset()` means every
     // chunk so far must be dropped (the length guard withdrew them). The final
     // whole sentence still resolves, with the guard's `outcome`. A worker that
-    // cannot stream (Supertonic) ignores the flag and only resolves.
+    // cannot stream ignores the flag and only resolves.
     synthesize(id, text, { onChunk, onReset } = {}) {
       return new Promise((resolve, reject) => {
         serial += 1;

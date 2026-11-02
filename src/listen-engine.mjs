@@ -1,11 +1,11 @@
 /**
- * The one engine the reader talks to: English on Phonon, translations on
- * Supertonic (LT-214).
+ * The one engine the reader talks to: English on Phonon 31M, translations on
+ * the translation voice (LT-217).
  *
- * Phonon speaks English only, and the nine translation tracks stay on
- * Supertonic. Supertonic is a ~380 MB download, so it is not created until a
+ * The translation voice is a separate download, so it is not created until a
  * reader picks a translation -- `prepare()` -- and a reader who only ever
- * listens in English never fetches a byte of it.
+ * listens in English never fetches a byte of it. Which Phonon checkpoint it is
+ * for fr, de, es and pt is LT-216's to decide; this module only routes.
  *
  * Same interface as createEngine, plus `prepare`. `setLang` switches which
  * engine `synthesize` reaches SYNCHRONOUSLY, before its promise settles:
@@ -15,7 +15,7 @@
 export function createListenEngine({ english, createOther }) {
   let active = english;
   let voice = 'M1';
-  let other = null;        // Supertonic, once created
+  let other = null;        // the translation voice, once created
   let otherReady = null;   // its init promise, shared by concurrent prepares
   let otherLoaded = false;
 

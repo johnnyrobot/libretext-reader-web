@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { changeVoice, changeLanguage, recoverToEnglish, languageOption } from '../src/reader.mjs';
+import { changeVoice, changeLanguage, recoverToEnglish, languageOption, offeredPairs } from '../src/reader.mjs';
 
 /* Changing voice must invalidate cached audio IMMEDIATELY, not after the engine
  * round-trip.
@@ -134,7 +134,7 @@ describe('recoverToEnglish', () => {
   });
 });
 
-// LT-214: a translation needs its model AND the Supertonic voice. The menu said
+// LT-214: a translation needs its model AND the translation voice. The menu said
 // "downloaded" for a stored model while the voice was still to fetch.
 describe('languageOption', () => {
   const es = { code: 'es', bytes: 115_000_000 };
@@ -155,5 +155,27 @@ describe('languageOption', () => {
   // what it knows and never claims the language is ready; consent asks again.
   it('an unknown voice size is left out and never reads as downloaded', () => {
     expect(languageOption(es, true, null)).toMatchObject({ bytes: 115_000_000, stored: false });
+  });
+});
+
+// LT-217: Listen mode speaks en, fr, de, es and pt, and a language is offered
+// only when something can speak it. Supertonic is gone with no fallback, so
+// until the fr/de/es/pt voice lands (LT-216) the menu offers nothing.
+describe('offeredPairs', () => {
+  const hosted = ['es', 'fr', 'it', 'nl', 'hu', 'da', 'sv', 'de', 'cs', 'pt']
+    .map((code) => ({ code, pair: `en-${code}`, bytes: 1 }));
+  const voice = { workerUrl: '/w.js', manifestUrl: '/m.json', cacheName: 'c' };
+
+  it('offers nothing while there is no translation voice', () => {
+    expect(offeredPairs(hosted, null)).toEqual([]);
+  });
+
+  it('offers only French, German, Spanish and Portuguese', () => {
+    expect(offeredPairs(hosted, voice).map((p) => p.code)).toEqual(['es', 'fr', 'de', 'pt']);
+  });
+
+  it('labels each offered language in its own name', () => {
+    expect(offeredPairs(hosted, voice).map((p) => languageOption(p, false, 0).label))
+      .toEqual(['español', 'français', 'Deutsch', 'português']);
   });
 });

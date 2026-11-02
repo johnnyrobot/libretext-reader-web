@@ -3,7 +3,8 @@
 mirror instead of the Hugging Face CDN.
 
 Named "convert" to match its sibling scripts/convert-models.py, but nothing is
-converted here: Xenova publishes the ONNX exports transformers.js expects, and
+converted here: Xenova (and, for Portuguese, one pinned third-party export)
+publishes the ONNX exports transformers.js expects, and
 re-exporting them locally would only risk producing something subtly different
 from what the runtime is tested against. This script fetches, licence-checks,
 pins, verifies and stages them.
@@ -12,9 +13,8 @@ Two reasons the browser must not fetch these from the CDN directly:
   * the mirror's pages set a CSP that blocks the cross-origin request outright;
   * a CDN fetch tells a third party which book a reader just opened.
 
-Output is `<out>/<pair>/manifest.json` in exactly the shape
-scripts/write_model_manifest.py writes -- `{version, files:[{name,path,bytes,
-sha256}]}` -- because src/models.mjs already reads that shape, verifies sha256
+Output is `<out>/<pair>/manifest.json` in exactly the shape the Phonon manifest
+uses -- `{version, files:[{name,path,bytes,sha256}]}` -- because src/models.mjs already reads that shape, verifies sha256
 before use, streams progress, and re-downloads a truncated file. The extra
 provenance keys alongside it are ignored by that reader.
 """
@@ -37,6 +37,9 @@ ACCEPTABLE_LICENCES = {"apache-2.0", "cc-by-4.0", "mit"}
 class Pair:
     repo: str  # the ONNX export transformers.js loads
     base: str  # the PyTorch checkpoint it was quantized from
+    # FILES keys this export does not publish. Named per pair, never skipped on a
+    # failed download, so a file missing from any other export still stops the run.
+    absent: frozenset[str] = frozenset()
 
 
 PAIRS = {
@@ -47,67 +50,9 @@ PAIRS = {
     # that pipeline/lang_normalize.py's Spanish pass already established.
     #
     # Note what is NOT here: opus-mt-tc-big-en-fr exists and is the better
-    # checkpoint, but there is no ONNX export of it, exactly as with Spanish.
+    # checkpoint, but Xenova has no ONNX export of it, exactly as with Spanish.
     # The browser gets the smaller model or nothing.
     "en-fr": Pair(repo="Xenova/opus-mt-en-fr", base="Helsinki-NLP/opus-mt-en-fr"),
-    # Third pair, 2026-08-26. Italian was chosen by MEASUREMENT rather than
-    # argument: all 14 remaining reachable languages were screened on the QA
-    # gate's own 472-sentence sample (bench/sweep/sweep.py), and Italian gates
-    # at 1.4831% -- deployed Spanish's rate to six decimals -- with the best
-    # median of the fourteen.
-    #
-    # The same "smaller model or nothing" caveat as es and fr applies, and it was
-    # CHECKED here rather than assumed. The gate ran opus-mt-tc-big-en-it; the
-    # browser runs this export, quantized from the SMALL checkpoint. Qualifying
-    # one checkpoint and shipping another is a real gap, so the small one was
-    # screened on the identical sample before this line was added:
-    #
-    #     tc-big  1.4831%  prose 0.42%  median 0.8317  ships
-    #     small   1.4831%  prose 0.42%  median 0.8095  ships   <- what ships
-    #
-    # Same seven failures, same count. The smaller model costs 0.022 of median
-    # and nothing at the gate.
-    "en-it": Pair(repo="Xenova/opus-mt-en-it", base="Helsinki-NLP/opus-mt-en-it"),
-    # Fourth and fifth pairs, 2026-08-27. Both were re-screened on the DEPLOYED
-    # post-splitter corpus rather than reusing the 2026-08-25 sweep numbers,
-    # which were measured before the splitter fix moved 626 sentences.
-    #
-    # Dutch is the strongest language this project has measured: 0.42% (2 of
-    # 472), median 0.8333, against deployed Spanish's 0.6356%. It has no
-    # checkpoint gap at all -- pipeline/languages.py registers opus-mt-en-nl,
-    # which IS the checkpoint this export was quantized from, so the gate ran
-    # the model the browser runs.
-    "en-nl": Pair(repo="Xenova/opus-mt-en-nl", base="Helsinki-NLP/opus-mt-en-nl"),
-    # Hungarian DOES have that gap, and unlike Italian's the two models differ.
-    # hu is registered against opus-mt-tc-big-en-hu and no ONNX export of any
-    # tc-big checkpoint exists, so the browser runs the SMALL one. Screened on
-    # the identical 472-sentence sample:
-    #
-    #     tc-big  1.06%  prose 0.42%  median 0.7568  ships
-    #     small   1.91%  prose 0.85%  median 0.7500  ships   <- what ships
-    #
-    # 9 failures against the cap's 9.44, so it passes on the model that ships
-    # and the margin is one sentence. Recorded because a later reader comparing
-    # 1.91% to Dutch's 0.42% should see that the gap is the checkpoint, not the
-    # language: on tc-big Hungarian is a 1.06% language.
-    #
-    # FINNISH WAS IN THIS BATCH AND IS NOT HERE. Same gap, other side of the
-    # line: fi gates at 1.27% on tc-big and 2.12% (10 of 472) on the small
-    # export the browser would load, over the 2.00% cap. No threshold was
-    # changed and no export of the better checkpoint exists to reach for.
-    "en-hu": Pair(repo="Xenova/opus-mt-en-hu", base="Helsinki-NLP/opus-mt-en-hu"),
-    # Sixth pair, 2026-08-27, chosen by the owner as Finnish's replacement.
-    # Danish has NO checkpoint gap: pipeline/languages.py registers
-    # opus-mt-en-da, which is the checkpoint this export was quantized from
-    # (config verified identical: vocab 58930, d_model 512, 6x8), so its
-    # 1.27% (6 of 472, median 0.8333) is the number for the model that ships.
-    "en-da": Pair(repo="Xenova/opus-mt-en-da", base="Helsinki-NLP/opus-mt-en-da"),
-    # Seventh pair, 2026-08-27. Swedish gates at 1.27% (6 of 472), median
-    # 0.8108, on the post-splitter corpus, and it cannot have a checkpoint gap
-    # at all: opus-mt-tc-big-en-sv DOES NOT EXIST, so the registered forward and
-    # this export's base are necessarily the same model (config verified:
-    # vocab 56434, d_model 512, 6x8).
-    "en-sv": Pair(repo="Xenova/opus-mt-en-sv", base="Helsinki-NLP/opus-mt-en-sv"),
     # Eighth pair, 2026-08-27, and the best numbers of any language screened for
     # this project: 1.27% (6 of 472), prose 0.21%, median 0.8090 on the
     # post-splitter corpus. The prose rate ties Swedish's for the lowest ever
@@ -122,28 +67,31 @@ PAIRS = {
     # The four candidates screened alongside it all failed decisively and are
     # recorded so nobody re-runs them: id 2.75%, ru 3.39%, ar 5.72%, uk 7.63%.
     "en-de": Pair(repo="Xenova/opus-mt-en-de", base="Helsinki-NLP/opus-mt-en-de"),
-    # Ninth pair, 2026-08-28, and the LAST language that clears the gate: after
-    # this the well is dry until a better ONNX export appears. Czech gates at
-    # 1.48% (7 of 472), median 0.7500, on the post-splitter corpus.
+    # Fourth pair, LT-217 (2026-11-01). Portuguese is the one language here not
+    # exported by Xenova: Douglasrambo/opus-mt-tc-big-en-pt-onnx is a third-party
+    # export, pinned by revision and hash like the rest, of the cc-by-4.0
+    # Helsinki-NLP checkpoint. No checkpoint gap: pipeline/languages.py registers
+    # opus-mt-tc-big-en-pt, which IS this export's base. Xenova/opus-mt-en-ROMANCE
+    # was measured first and returned garbage.
     #
-    # No checkpoint gap: pipeline/languages.py registers opus-mt-en-cs, which IS
-    # the checkpoint this export was quantized from -- verified rather than
-    # assumed, since that gap is exactly what put Finnish and Romanian out. The
-    # export's config declares `_name_or_path: Helsinki-NLP/opus-mt-en-cs` and
-    # matches it on vocab 62509, d_model 512 and 6x8 layers.
+    # Measured on 146 corpus sentences: batched with padding it generates past the
+    # sentence (21 lines ended in "))))))" or "......"); one sentence at a time it
+    # produced none, so src/translate.worker.mjs never batches pt. No ">>pob<<" or
+    # ">>por<<" target prefix, matching the pipeline: all three runs read as
+    # Brazilian Portuguese, and the Speech Text corpus was built from this one.
     #
-    # Every other reachable language has now been screened on this corpus and
-    # failed on the model that would ship: fi 2.12%, ro 2.54%, id 2.75%,
-    # ru 3.39%, ar 5.72%, uk 7.63%, vi 13.14%, ja 51.27%. Recorded so nobody
-    # re-runs them without a new export to justify it.
-    "en-cs": Pair(repo="Xenova/opus-mt-en-cs", base="Helsinki-NLP/opus-mt-en-cs"),
+    # It publishes no vocab.json. Nothing reads one: transformers.js builds the
+    # Marian tokenizer from tokenizer.json, and the Node runs above loaded it so.
+    "en-pt": Pair(repo="Douglasrambo/opus-mt-tc-big-en-pt-onnx",
+                  base="Helsinki-NLP/opus-mt-tc-big-en-pt",
+                  absent=frozenset({"vocab"})),
 }
 
 # name -> path within the repo, kept as the path inside the staged pair too.
 #
 # The `name` keys are the contract with whatever loads the buffers back out of
-# src/models.mjs, exactly as write_model_manifest.py's names are the contract
-# with src/vendor/helper.js. The repo-relative layout is preserved rather than
+# src/models.mjs, exactly as scripts/fetch-phonon.py's names are the contract
+# with src/phonon.worker.mjs. The repo-relative layout is preserved rather than
 # flattened so a transformers.js-style path loader can be pointed at the staged
 # directory later without restaging anything.
 FILES = [
@@ -228,6 +176,8 @@ def stage(name: str, pair: Pair, out_root: Path) -> Path:
 
     files = []
     for key, relative in FILES:
+        if key in pair.absent:
+            continue
         # Pinned to the revision the licence was checked against, so a repo that
         # moves under us produces a different manifest rather than files whose
         # provenance line no longer describes them.

@@ -133,11 +133,11 @@ describe('the voice gate (English on Phonon, LT-214)', () => {
   });
 });
 
-describe('the translation gate when the translation voice is not downloaded yet (LT-214)', () => {
-  it('adds the voice to the size and names its licence', async () => {
-    // Translations are spoken by Supertonic, which an English-only reader has
-    // never downloaded. Its 383 MB and its use-restricted licence are part of
-    // what they are agreeing to here.
+describe('the translation gate when the translation voice is not downloaded yet (LT-217)', () => {
+  it('adds the voice to the size and credits Phonon under CC BY-NC 4.0', async () => {
+    // Translations are spoken by a Phonon checkpoint an English-only reader has
+    // never downloaded. Its size and its noncommercial licence are part of what
+    // they are agreeing to here. Supertonic is gone (LT-217).
     const answer = requestTranslationConsent({
       language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
       voiceBytes: 401_604_608,
@@ -145,8 +145,11 @@ describe('the translation gate when the translation voice is not downloaded yet 
     const text = dialog().textContent.replace(/\s+/g, ' ');
     expect(text).toContain('498 MB');     // 115 MB + 383 MB, rounded once
     expect(text).toContain('383 MB');
-    expect(text).toContain('Supertonic 3 by Supertone');
-    expect(text).toContain('OpenRAIL-M');
+    expect(text).toContain('Phonon by Gradium, CC BY-NC 4.0');
+    expect(text).not.toContain('Supertonic');
+    expect(text).not.toContain('OpenRAIL-M');
+    const link = dialog().querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]');
+    expect(link).not.toBeNull();
     click('decline');
     await answer;
   });
@@ -155,6 +158,7 @@ describe('the translation gate when the translation voice is not downloaded yet 
     const answer = requestTranslationConsent({
       language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
     });
+    expect(dialog().textContent).not.toContain('CC BY-NC');
     expect(dialog().textContent).not.toContain('Supertonic');
     click('decline');
     await answer;

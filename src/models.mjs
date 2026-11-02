@@ -1,13 +1,14 @@
-export const CACHE_NAME = 'libretexts-tts-v1';
+// English speech (Phonon, LT-214), the voice every reader downloads.
+export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
 
 // Translation models live in their OWN cache, not alongside the voice. A reader
-// who wants their 121 MB of Spanish back must not have to throw away the ~380 MB
-// voice to get it, and vice versa -- deleteModels() deletes a whole cache.
+// who wants their 121 MB of Spanish back must not have to throw away the voice
+// to get it, and vice versa -- deleteModels() deletes a whole cache.
 export const MT_CACHE_NAME = 'libretexts-mt-v1';
 
-// English speech (Phonon, LT-214) in its own cache too, for the same reason: a
-// reader can drop the translation voice without losing the English one.
-export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
+// Caches nothing reads any more. 'libretexts-tts-v1' held Supertonic, ~380 MB,
+// which Listen mode stopped using in LT-217.
+const RETIRED_CACHES = ['libretexts-tts-v1'];
 
 async function sha256Hex(buffer) {
   const digest = await crypto.subtle.digest('SHA-256', buffer);
@@ -49,7 +50,7 @@ async function downloadWithProgress(url, expectedBytes, onChunk) {
   return out.buffer;
 }
 
-export async function ensureModels(manifestUrl, onProgress = () => {}, cacheName = CACHE_NAME) {
+export async function ensureModels(manifestUrl, onProgress = () => {}, cacheName = PHONON_CACHE_NAME) {
   const manifest = await readManifest(manifestUrl);
   const cache = await caches.open(cacheName);
   const out = {};
@@ -86,7 +87,7 @@ export async function ensureModels(manifestUrl, onProgress = () => {}, cacheName
   return out;
 }
 
-export async function modelsPresent(manifestUrl, cacheName = CACHE_NAME) {
+export async function modelsPresent(manifestUrl, cacheName = PHONON_CACHE_NAME) {
   // caches.open() CREATES the cache. Asking whether the models are there must
   // not leave a named cache entry behind for a reader who then declines the
   // download -- a hard invariant, and the consent dialog's promise that a
@@ -102,8 +103,14 @@ export async function modelsPresent(manifestUrl, cacheName = CACHE_NAME) {
   return true;
 }
 
-export async function deleteModels(cacheName = CACHE_NAME) {
+export async function deleteModels(cacheName = PHONON_CACHE_NAME) {
   await caches.delete(cacheName);
+}
+
+/** Give back the space a retired voice still takes. Deleting a cache that does
+ * not exist creates nothing, so a reader who never had one is not touched. */
+export async function removeRetiredCaches() {
+  await Promise.all(RETIRED_CACHES.map((name) => caches.delete(name)));
 }
 
 export async function checkQuota(manifestUrl) {

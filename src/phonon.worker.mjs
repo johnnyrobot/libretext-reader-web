@@ -1,11 +1,9 @@
 /**
  * English speech with Phonon 31M (onnx-community/phonon-31m-en, Apache 2.0), in
- * the reader's browser. LT-214 moved English Listen mode here from Supertonic;
- * the nine translation tracks stay on `engine.worker.mjs`, which a reader who
- * only ever listens in English never downloads.
+ * the reader's browser (LT-214). Since LT-217 Phonon is Listen mode's only
+ * engine; the fr, de, es and pt voice is LT-216's to wire.
  *
- * Protocol, the same shape as `engine.worker.mjs` so `engine.mjs` drives both,
- * with two additions for streaming:
+ * Protocol, the one `engine.mjs` drives, with two additions for streaming:
  *
  *   -> { type: 'init', voice, lang, manifestUrl }
  *   <- { type: 'progress', file, loaded, total, phase }
@@ -31,8 +29,8 @@
 import { ensureModels, PHONON_CACHE_NAME } from './models.mjs';
 import { renderGuarded } from './phonon-guard.mjs';
 
-// The ORT 1.26 binaries transformers.js bundles, staged once for the translator
-// (see translate.worker.mjs for why they must not be engine.worker.mjs's 1.17).
+// The ORT 1.26 binaries transformers.js bundles, staged once and shared with
+// the translator (see translate.worker.mjs for why they come from it).
 const ORT_WASM_PATH = '/_assets/tts/ort-mt/';
 const MAX_THREADS = 8;
 
@@ -44,7 +42,7 @@ export const VOICES = Object.freeze({ M1: 'qIxlZ7Ei8KvWlyQH', F1: 'bXwrkHhURL1VF
 
 // Sampling settings calibrated on the LT-213 bench set (bench/phonon/FINDINGS.md,
 // "LT-214 calibration"). DURATION_DELTA slows Phonon from ~16.2 to ~14.3
-// characters a second, Supertonic's default rate (14.1); it is also what made
+// characters a second, the rate Listen mode spoke at before LT-214 (14.1); it is also what made
 // s18 read cleanly. TEMPERATURE 0.1 tied 0.3 and 0.2 within run-to-run noise
 // and had the lowest mean WER; 0.05 was worst and once cut s16 short.
 export const TEMPERATURE = 0.1;
@@ -270,8 +268,9 @@ export function createHandler({ post, load = loadPhonon }) {
         });
 
       case 'setLang':
-        // English only: the reader routes every other language to Supertonic
-        // before it gets here, so anything else is a routing bug, said loudly.
+        // English only: the reader routes every other language to the
+        // translation voice before it gets here, so anything else is a routing
+        // bug, said loudly.
         if (data.lang === 'en') post({ type: 'langSet', lang: 'en' });
         else post({ type: 'error', id: 'lang', code: 'UNSUPPORTED_LANG', message: `Phonon speaks English only, not ${data.lang}` });
         return;

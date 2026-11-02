@@ -42,7 +42,7 @@ def translate_sentences(texts: dict[str, str], translate: Translator,
     # Task 16: the target language's spoken-form pass. Sentences arrive here as
     # RAW English (sentence.display, not sentence.speech -- see _sentences_of),
     # so the translated line comes back carrying raw digits, `$` and `%`, and
-    # Supertonic will read every one of them wrong. A code with no normaliser
+    # the voice will read every one of them wrong. A code with no normaliser
     # yet, or no code at all, gets identity and behaves exactly as this function
     # did before Task 16 existed.
     normalize = NORMALIZERS.get(code, _identity) if code else _identity

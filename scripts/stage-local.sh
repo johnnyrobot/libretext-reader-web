@@ -29,13 +29,11 @@ npx vite build >/dev/null
 
 echo "==> staging assets into $TTS"
 rm -rf "$STAGE"
-mkdir -p "$TTS/onnx" "$TTS/voice_styles" "$TTS/ort" "$BOOK/$PAGE_DIR"
+mkdir -p "$TTS" "$BOOK/$PAGE_DIR"
 cp dist/_assets/tts/* "$TTS/"
-cp bench/assets/onnx/* "$TTS/onnx/"
-cp bench/assets/voice_styles/*.json "$TTS/voice_styles/"
-cp bench/assets/ort/* "$TTS/ort/"
 
-# Phonon 31M, the English voice (LT-214). Fetched from the Hub at a pinned
+# Phonon 31M, the English voice (LT-214), and since LT-217 the only engine:
+# Supertonic is gone, with no fallback. Fetched from the Hub at a pinned
 # revision and checked against pinned hashes; the weights are never committed.
 # Required, unlike the translation models below: English is the default track.
 echo "==> staging Phonon (English voice)"
@@ -45,8 +43,7 @@ python3 "$ROOT/scripts/fetch-phonon.py" "$TTS/phonon"
 # same way and for the same reason the translate step below is: it is a ~115 MB
 # fetch per pair, and staging must stay runnable on a machine that has never run
 # it. Their manifest.json is written by that script, not here -- it records the
-# source repo, revision and licence alongside the hashes, which write_model_
-# manifest.py has no notion of.
+# source repo, revision and licence alongside the hashes.
 if [ -d "$ROOT/bench/assets/mt" ]; then
   echo "==> staging translation models"
   mkdir -p "$TTS/mt"
@@ -58,22 +55,19 @@ else
   echo "==> no translation models to stage (run scripts/convert-mt-models.py)"
 fi
 
-echo "==> staging ORT for the translation worker"
-# A SECOND ONNX Runtime, deliberately, in its own directory. The TTS engine pins
-# onnxruntime-web 1.17.3 and its wasm lives in $TTS/ort; transformers.js bundles
-# 1.26.0-dev and will not run against 1.17 binaries. Pointing both workers at one
-# directory loads the wrong runtime's wasm into the other's JS -- a version
-# mismatch that surfaces as an unreadable abort inside the wasm module, not as
-# "wrong file".
+echo "==> staging ORT for Phonon and the translation worker"
+# The ONNX Runtime wasm transformers.js bundles (1.26.0-dev), which both workers
+# load from $TTS/ort-mt. Another version's binaries in that directory load the
+# wrong runtime's wasm into this one's JS -- a version mismatch that surfaces as
+# an unreadable abort inside the wasm module, not as "wrong file".
 #
 # Resolved through transformers.js rather than hardcoded, so the staged binaries
 # always match the runtime npm actually installed -- npm may hoist that copy to
 # the top level or nest it depending on what else is in the tree, and a stale
 # hand-copied build is exactly the drift this avoids. bench/assets/ort-1.27 is a
 # spike leftover that matches NOTHING currently installed; do not use it.
-# Picked by VERSION rather than by location: npm nests this copy today because
-# the top-level onnxruntime-web is the TTS engine's 1.17.3, but a future tree
-# could hoist it, and silently staging 1.17 binaries for a 1.26 runtime is the
+# Picked by VERSION rather than by location: npm may nest or hoist this copy,
+# and silently staging another version's binaries for this runtime is the
 # failure this whole block exists to prevent. No match is a hard stop.
 ORT_MT_SRC="$(node -e '
 const path = require("path");
@@ -95,8 +89,8 @@ mkdir -p "$TTS/ort-mt"
 cp "${ORT_MT_SRC%% *}"/ort-wasm-simd-threaded.* "$TTS/ort-mt/"
 echo "  onnxruntime-web ${ORT_MT_SRC##* } -> $TTS/ort-mt ($(du -sh "$TTS/ort-mt" | cut -f1))"
 
-echo "==> writing model manifest"
-.venv/bin/python scripts/write_model_manifest.py "$TTS"
+echo "==> checking no Supertonic file was staged (LT-217)"
+node "$ROOT/scripts/check-no-supertonic.mjs" "$TTS"
 
 echo "==> fetching a real page"
 curl -sSL --fail -o "$BOOK/$PAGE_DIR/index.html" "$PAGE_URL"

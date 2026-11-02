@@ -41,7 +41,7 @@ console.log(`rendering ${sentences.length} sentences in voice ${VOICE}:`);
 for (const s of sentences) console.log(`  ${s.id}  ${s.display.replace(/\s+/g, ' ').slice(0, 78)}`);
 
 const { samples, sampleRate } = await page.evaluate(async ({ items, voice }) => {
-  const worker = new Worker('/_assets/tts/engine.worker.js', { type: 'module' });
+  const worker = new Worker('/_assets/tts/phonon.worker.js', { type: 'module' });
   const ready = new Promise((resolve, reject) => {
     worker.addEventListener('message', function onReady({ data }) {
       if (data.type === 'ready') { worker.removeEventListener('message', onReady); resolve(); }
@@ -49,7 +49,7 @@ const { samples, sampleRate } = await page.evaluate(async ({ items, voice }) => 
     });
     worker.onerror = (e) => reject(new Error(e.message));
   });
-  worker.postMessage({ type: 'init', voice, lang: 'en', manifestUrl: '/_assets/tts/manifest.json' });
+  worker.postMessage({ type: 'init', voice, lang: 'en', manifestUrl: '/_assets/tts/phonon/manifest.json' });
   await ready;
 
   const chunks = [];

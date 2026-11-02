@@ -57,7 +57,7 @@ flowchart LR
     K --> P
     P --> M["player.mjs<br/>audio + sentence highlight"]
     I -. language chosen .-> N["translate.worker.js<br/>Opus-MT, per sentence"]
-    N --> L["engine.worker.js<br/>translations: Supertonic, ~380 MB, loaded only then"]
+    N --> L["the translation voice<br/>Phonon, CC BY-NC 4.0, loaded only then (LT-216)"]
     L --> M
   end
   G --> H
@@ -69,9 +69,8 @@ What each edge carries:
 |---|---|---|
 | page → `speech.json` | every sentence as Display Text + Speech Text, with character offsets into the page's own text so highlighting can find it | `pipeline/tts_manifest.py` `build_manifest()` |
 | `speech.json` → reader | fetched relative to the page URL, so it is always `<page>/speech.json` | `src/reader.mjs` `loadSpeechManifest()` |
-| reader → engine worker | one sentence of Speech Text at a time, four to eight ahead of playback | `src/player.mjs` |
-| `manifest.json` → model download | name, path, size and sha256 of each model file; the download is verified against it | `scripts/write_model_manifest.py` |
-| `phonon/manifest.json` → English voice download | the same, for Phonon 31M, plus the pinned Hub revision | `scripts/fetch-phonon.py` |
+| reader → speech worker | one sentence of Speech Text at a time, four to eight ahead of playback | `src/player.mjs` |
+| `phonon/manifest.json` → English voice download | name, path, size and sha256 of each model file, plus the pinned Hub revision; the download is verified against it | `scripts/fetch-phonon.py` |
 
 The pipeline never runs in the browser and the browser never runs the pipeline. If a
 sentence sounds wrong, the fix is in `pipeline/` and the page is rebuilt; nothing in
@@ -99,32 +98,32 @@ npm run build                    # → dist/_assets/tts/
 Stage the English voice with `python3 scripts/fetch-phonon.py <dir>/phonon`: it fetches
 [Phonon 31M](https://huggingface.co/onnx-community/phonon-31m-en-ONNX) at a pinned revision,
 checks every file against a pinned size and sha256, and writes `phonon/manifest.json`.
-Fetch the [Supertonic](https://github.com/supertone-inc/supertonic) weights, which speak
-the translations, into `bench/assets/` (`onnx/`, `voice_styles/`, `ort/`; neither model is
-in this repository — see *Model weights* below), then lay out the served directory:
+The weights are not in this repository (see *Model weights* below). Then lay out the
+served directory:
 
 ```
 /_assets/tts/
-├── boot.js  reader.js  engine.worker.js  models.js  qa.js  reader.css   from dist/
+├── boot.js  reader.js  models.js  qa.js  reader.css  preload-helper.js  from dist/
 ├── phonon.worker.js  translate.worker.js  transformers.web.js           from dist/
 ├── phonon/                  English voice (~155 MB): scripts/fetch-phonon.py <this dir>/phonon
-├── manifest.json            scripts/write_model_manifest.py <this dir>
-├── onnx/                    Supertonic weights (~380 MB), for translations
-├── voice_styles/            one JSON per voice
-├── ort/                     onnxruntime-web 1.17 wasm, for the TTS engine
-├── ort-mt/                  onnxruntime-web wasm for Phonon and the translator — a DIFFERENT version
+├── ort-mt/                  onnxruntime-web wasm, for Phonon and the translator
 └── mt/                      optional: one directory per language pair + pairs.json
 ```
 
 `scripts/stage-local.sh` does exactly this into `.stage/` and is the reference for the
-copy order, including how it picks the right `ort-mt/` binaries out of `node_modules`.
-The two ONNX Runtimes are not interchangeable: the TTS engine pins 1.17 and
-transformers.js bundles a later one, and loading either's wasm into the other's JS
-aborts inside the module with no readable error.
+copy order, including how it picks the right `ort-mt/` binaries out of `node_modules`:
+they must be the version transformers.js bundles, because another version's wasm
+aborts inside its JS with no readable error. It ends by running
+`node scripts/check-no-supertonic.mjs` on the staged directory, which fails if any file
+Supertonic used (its worker, root `manifest.json`, `onnx/`, `voice_styles/`, `ort/`) or
+any code pointing at one is still there; CI runs the same check on the build. Listen mode
+runs Phonon only (LT-217), so a mirror that served Supertonic should delete those paths
+when it deploys this.
 
 Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (multi-GB
 download, ~120 MB served per pair) and copy its output to `mt/`. Without `mt/` the
-language menu simply does not appear.
+language menu simply does not appear, and it does not appear either until the fr, de, es
+and pt Phonon voice is wired (LT-216): no other engine speaks a translation.
 
 ### 2. Give each page the hook
 
@@ -201,10 +200,10 @@ header @ttsscope Content-Security-Policy "default-src 'self'; script-src 'self' 
 # 4. Models are content-addressed → immutable. The CODE is not: reader.js is
 #    imported on click, which a hard refresh does not bypass, so an immutable
 #    reader.js keeps a returning visitor on the old bundle for a year.
-#    Phonon's weights and voices are too; its manifest, config and tokenizer
-#    are small and revalidate with the code.
-@ttsmodels path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/*
-@ttscode { path /_assets/tts/*  not path /_assets/tts/onnx/* /_assets/tts/ort/* /_assets/tts/voice_styles/* /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* }
+#    Phonon's weights and voices are immutable; its manifest, config and
+#    tokenizer are small and revalidate with the code.
+@ttsmodels path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/*
+@ttscode { path /_assets/tts/*  not path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* }
 header @ttsmodels Cache-Control "public, max-age=31536000, immutable"
 header @ttscode   Cache-Control "public, max-age=0, must-revalidate"
 ```
@@ -275,20 +274,23 @@ an export of `gradium/phonon-31m-en`, with the Preston and Hadley voices. Its we
 (about 155 MB) are **not** in this repository; `scripts/fetch-phonon.py` fetches them at a
 pinned revision into `bench/assets/` (gitignored) when `npm run stage` runs.
 
-The translations are spoken by [Supertonic](https://github.com/supertone-inc/supertonic).
-Its weights are roughly 380 MB and are **not** in this repository either; fetch them from
-that project into `bench/assets/` before running `npm run stage`. A reader who only ever
-listens in English never downloads them.
+French, German, Spanish and Portuguese are to be spoken by **Phonon by Gradium,
+CC BY-NC 4.0**, a 40M checkpoint run in the browser; which one, and how, is LT-216. Those
+weights are fetched at stage time like the English ones and never committed. A reader who
+only ever listens in English never downloads them. They go public only once Gradium has
+confirmed in writing that this use is noncommercial; Listen mode stays free, with no
+paywall, ads or member-only access.
 
 This project's own code is **MIT**, see `LICENSE`. That covers everything in `src/`,
 `pipeline/`, `scripts/` and `tests/`.
 
-It does **not** cover the voices. `src/vendor/helper.js` is vendored from
-`supertone-inc/supertonic` and carries an intact licence header naming its origin; that
-sample code is MIT. Supertonic's **model weights are OpenRAIL-M**, which carries behavioural-use
-restrictions that propagate to anyone who receives them, and they are not distributed
-here — you fetch them yourself. Whether those terms suit a given distribution is a legal
-question, not a code one, and it is not settled by this repository being MIT.
+It does **not** cover the voices. The CC BY-NC 4.0 weights are **not MIT**: the
+noncommercial terms travel with them to anyone who receives them, and they are not
+distributed here — staging fetches them. Whether those terms suit a given distribution is
+a legal question, not a code one, and it is not settled by this repository being MIT.
+
+Supertonic, which spoke the translations until LT-217, is gone from Listen mode entirely,
+with no fallback in any language.
 
 Equation speech is produced at build time by [Speech Rule Engine](https://github.com/Speech-Rule-Engine/speech-rule-engine)
 and [MathJax](https://github.com/mathjax/MathJax-src) (`mathjax-full`), both **Apache-2.0**.
@@ -367,16 +369,18 @@ Working and deployed, not finished.
 
 - **Four books** are live on a staging mirror: `social_psychology`, `math_elem_teachers`,
   `chem_4b` and `human_relations`.
-- **Nine language pairs** ship (cs, da, de, es, fr, hu, it, nl, sv). Twenty-nine were
-  screened; the rest failed a measured quality gate, so that list is closed.
+- **English** is spoken by Phonon 31M. **French, German, Spanish and Portuguese** are the
+  translation languages (LT-217); until their Phonon voice is wired (LT-216) Listen mode
+  is English only. Czech, Danish, Hungarian, Italian, Dutch and Swedish were dropped with
+  Supertonic.
 - **Equations and chemistry are spoken**, not skipped.
 - Both test suites run in CI on every push and pull request.
 
 Known limits, all documented rather than hidden:
 
 - Not validated on low-end hardware. The RTF budget assumes roughly an M1-class core.
-- The voice model's terms are unresolved for any public distribution of the weights.
-- Speech Rule Engine has **no locale for Czech, Dutch or Hungarian** and falls back to
-  English *silently*, so three of the nine shipping languages splice English equations into
-  translated prose with no signal. This is the largest known correctness gap.
+- The translation voice is CC BY-NC 4.0; it is not served publicly until Gradium confirms
+  the use is noncommercial.
+- Portuguese has not been through the translation quality gate yet; it was not among the
+  languages `bench/sweep/` screened. It ships only once it passes.
 - `docs/SPEAKING_MATHEMATICS.md` §8 lists the remaining phrasing defects.

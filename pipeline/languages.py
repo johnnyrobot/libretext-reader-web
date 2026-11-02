@@ -1,4 +1,8 @@
-"""The languages listen mode ships, and the checkpoints that produce them.
+"""The languages the translation pipeline knows, and the checkpoints that produce them.
+
+Listen mode itself ships fewer: since LT-217 only es, fr, de and pt, the
+languages Phonon can speak (scripts/convert-mt-models.py PAIRS). The rest stay
+registered here because the offline pipeline and its tests still screen them.
 
 Model names are recorded, never constructed. `opus-mt-en-<code>` does not exist for
 pt, pl, ko, tr, lt, lv, ja, hr or sl -- those live under `opus-mt-tc-big-en-<code>`

@@ -279,7 +279,7 @@ describe('engine.mjs', () => {
       expect(cancel.id).toBe(synth.id);
     });
 
-    it('a sentence from the Supertonic worker resolves with outcome ok', async () => {
+    it('a sentence from a worker with no length guard resolves with outcome ok', async () => {
       const { engine } = engineWithFakeWorker();
       await engine.init({ voice: 'M1', lang: 'en' });
       await expect(engine.synthesize('b1s0', 'Text.')).resolves.toMatchObject({ outcome: 'ok' });

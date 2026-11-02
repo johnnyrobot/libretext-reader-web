@@ -2,7 +2,7 @@
  * Demo driver for the LibreTexts TTS Reader.
  *
  * Two modes, because a demo has one problem this feature creates for itself:
- * the first run downloads 380 MB, and nobody wants to watch that.
+ * the first run downloads 155 MB, and nobody wants to watch that.
  *
  *   node scripts/demo.mjs warm    populate Cache Storage in a persistent
  *                                 profile, so the recorded run starts instantly
@@ -60,7 +60,7 @@ async function enter(page, { onProgress = true } = {}) {
   if (outcome === 'consent') {
     const accept = page.locator('[data-act="accept"]');
     if (await accept.count()) {
-      console.log('consent shown — accepting; the 380 MB download starts now');
+      console.log('consent shown — accepting; the 155 MB download starts now');
       await beat(2500);                   // let the privacy text be readable
       await accept.click();
     }

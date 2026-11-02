@@ -172,7 +172,7 @@ describe('controls.mjs', () => {
 
   it('repaints a language\'s size once the translation voice is downloaded (LT-214)', () => {
     // Until a first translation is picked, each one's download includes the
-    // Supertonic voice that speaks it; after that, only its own model.
+    // translation voice that speaks it; after that, only its own model.
     const controls = mountControls(document.body, { ...handlers(), languages: LANGS() });
     controls.setLanguageBytes('es', 121_097_315 + 401_604_608);
     expect(document.querySelector('option[value="es"]').textContent)

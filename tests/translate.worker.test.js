@@ -151,6 +151,22 @@ describe('translateBatch', () => {
     expect(runs.reduce((a, b) => a + b, 0)).toBe(20);
   });
 
+  it('translates Portuguese one sentence at a time', async () => {
+    // LT-217: the en-pt export (Douglasrambo/opus-mt-tc-big-en-pt-onnx) runs on
+    // past the sentence when it is batched with padding -- 21 of 146 lines
+    // ended in "))))))" or "......" in batches of 8, none one at a time, and the
+    // Xenova en-de and en-es exports batch cleanly. So Portuguese never batches.
+    const runs = [];
+    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
+    // No digits: the Portuguese Speech Text pass would rewrite them.
+    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.', 'Sentence d.', 'Sentence e.'];
+
+    const out = await translateBatch(spy, lines, () => {}, 'pt');
+
+    expect(out).toEqual(lines.map((l) => SPANISH + l));
+    expect(runs).toEqual([1, 1, 1, 1, 1]);
+  });
+
   it('reports how far through the page it is, chunk by chunk', async () => {
     const seen = [];
     const lines = Array.from({ length: 20 }, (_, i) => `Sentence ${i}.`);

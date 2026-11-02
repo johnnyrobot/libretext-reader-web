@@ -10,30 +10,34 @@ import {
 } from './consent.mjs';
 import { savePosition, loadPosition } from './position.mjs';
 import {
-  modelsPresent, deleteModels, checkQuota, checkQuotaFor, MT_CACHE_NAME, PHONON_CACHE_NAME,
+  modelsPresent, deleteModels, checkQuota, checkQuotaFor, removeRetiredCaches,
+  MT_CACHE_NAME, PHONON_CACHE_NAME,
 } from './models.mjs';
 import { createTranslator, hostedPairs, MT_ROOT } from './translator.mjs';
 import { createTranslationQueue, MIN_RATE } from './translate-queue.mjs';
 import { referenceSentenceIds } from './qa.mjs';
 import { substituteMathSpeech } from './math-speech.mjs';
 
-// Supertonic: the translation voice, downloaded only when a translation is
-// first picked (LT-214).
-const MANIFEST_URL = '/_assets/tts/manifest.json';
-// Phonon: the English voice, the one every reader downloads.
+// Phonon 31M: the English voice, the one every reader downloads.
 const PHONON_MANIFEST_URL = '/_assets/tts/phonon/manifest.json';
 const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
-// Endonyms: the reader who wants Spanish reads Spanish. Kept here rather than in
-// the manifest so a page built before a language existed still labels it.
-const LANGUAGE_LABELS = {
-  ar: 'العربية', bg: 'български', cs: 'čeština', da: 'dansk', de: 'Deutsch',
-  el: 'Ελληνικά', es: 'español', et: 'eesti', fi: 'suomi', fr: 'français',
-  hr: 'hrvatski', hu: 'magyar', id: 'Bahasa Indonesia', it: 'italiano',
-  ja: '日本語', ko: '한국어', lt: 'lietuvių', lv: 'latviešu', nl: 'Nederlands',
-  pl: 'polski', pt: 'português', ro: 'română', ru: 'русский', sk: 'slovenčina',
-  sl: 'slovenščina', sv: 'svenska', tr: 'Türkçe', uk: 'українська', vi: 'Tiếng Việt',
-};
+// The voice that speaks translations: Phonon, CC BY-NC 4.0, downloaded only when
+// a translation is first picked. `{ workerUrl, manifestUrl, cacheName }` once
+// LT-216 has picked its route for fr, de, es and pt. Until then there is none,
+// so Listen mode is English only: Supertonic is gone, with no fallback (LT-217).
+const TRANSLATION_VOICE = null;
+
+// Endonyms: the reader who wants Spanish reads Spanish. Also the allowlist of
+// what Listen mode speaks besides English (LT-217): a hosted pair for any other
+// language is never offered.
+const LANGUAGE_LABELS = { es: 'español', fr: 'français', de: 'Deutsch', pt: 'português' };
+
+/** The hosted translations a reader is offered: those in LANGUAGE_LABELS, and
+ * none at all while there is no voice to speak them. */
+export function offeredPairs(pairs, translationVoice) {
+  return translationVoice ? pairs.filter((p) => p.code in LANGUAGE_LABELS) : [];
+}
 
 let session = null;
 
@@ -167,6 +171,9 @@ export async function enterReaderMode() {
   // only inside enterReaderMode, which only a click reaches.
   ensureStylesheet();
 
+  // A reader from before LT-217 may still hold Supertonic's ~380 MB.
+  removeRetiredCaches().catch(() => {});
+
   if (!(await modelsPresent(PHONON_MANIFEST_URL, PHONON_CACHE_NAME))) {
     const { required, sufficient } = await checkQuota(PHONON_MANIFEST_URL);
     if (!(await requestConsent({ requiredBytes: required, quotaSufficient: sufficient }))) return;
@@ -208,10 +215,11 @@ export async function enterReaderMode() {
     return;
   }
 
-  // English on Phonon; Supertonic is created only when a translation is picked.
+  // English on Phonon 31M; the translation voice is created only when a
+  // translation is picked.
   const engine = createListenEngine({
     english: createEngine({ workerUrl: PHONON_WORKER_URL, manifestUrl: PHONON_MANIFEST_URL }),
-    createOther: () => createEngine({ manifestUrl: MANIFEST_URL }),
+    createOther: () => createEngine(TRANSLATION_VOICE),
   });
   const progress = showProgress();
   let provider = 'wasm';
@@ -244,7 +252,7 @@ export async function enterReaderMode() {
   // Which languages this DEPLOYMENT can translate into, not which tracks this
   // PAGE has: with translation client-side there are no tracks on disk, so
   // manifest.languages describes something that no longer exists.
-  const pairs = await hostedPairs();
+  const pairs = offeredPairs(TRANSLATION_VOICE ? await hostedPairs() : [], TRANSLATION_VOICE);
 
   const mtManifestUrl = (pair) => `${MT_ROOT}${pair}/manifest.json`;
 
@@ -259,11 +267,12 @@ export async function enterReaderMode() {
 
   /** The translation voice's download, 0 once it is stored. Every language's
    * size includes it until then, in the menu and in the dialog alike. Asked only
-   * when this deployment hosts a translation: it fetches Supertonic's manifest
-   * (a few KB), never its weights. */
+   * when a translation is offered: it fetches the voice's manifest (a few KB),
+   * never its weights. */
   async function translationVoiceBytes() {
-    if (await modelsPresent(MANIFEST_URL)) return 0;
-    return (await checkQuota(MANIFEST_URL)).required;
+    const { manifestUrl, cacheName } = TRANSLATION_VOICE;
+    if (await modelsPresent(manifestUrl, cacheName)) return 0;
+    return (await checkQuota(manifestUrl)).required;
   }
   // Only the menu needs this now, so a manifest that will not load must not stop
   // an English reader: the size is unknown (null) until consent asks again.
@@ -355,8 +364,8 @@ export async function enterReaderMode() {
     // cached -- cancel means "not now", not "undo the consent I just gave".
     if (download.cancelled()) return null;
 
-    // The voice that speaks translations (Supertonic), loaded the first time
-    // one is picked and kept for the rest of the visit.
+    // The voice that speaks translations, loaded the first time one is picked
+    // and kept for the rest of the visit.
     if (!engine.prepared()) {
       const voiceLoad = showProgress({ title: 'Preparing the translation voice' });
       try {
@@ -522,16 +531,11 @@ export async function enterReaderMode() {
     onVoice: (voice) => changeVoice(player, engine, voice),
     onRate: (rate) => player.setRate(rate),
     onExit: () => exitReaderMode(),
-    // The SOURCE changed in step 4; the filter did not, and must not. It is
-    // still untrusted data reaching controls.mjs's unescaped bar.innerHTML, and
-    // an unknown code is still a menu entry that makes helper.js throw "Invalid
-    // language" on every synth after the switch. LANGUAGE_LABELS is the 29-code
-    // allowlist that closes both at once -- pairs.json is written by our own
-    // script today, which is exactly the kind of assumption that stops being
-    // true quietly.
-    languages: pairs
-      .filter((p) => p.code in LANGUAGE_LABELS)
-      .map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
+    // `pairs` is already offeredPairs(): only codes in LANGUAGE_LABELS reach
+    // controls.mjs's unescaped bar.innerHTML, and only languages a voice can
+    // speak reach the menu. pairs.json is written by our own script today,
+    // which is exactly the kind of assumption that stops being true quietly.
+    languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
     onLang: async (lang) => {
       try {
         // Whatever was being translated is for a language the reader has just

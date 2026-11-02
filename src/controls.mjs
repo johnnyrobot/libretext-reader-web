@@ -2,9 +2,9 @@
 
 import { formatBytes } from './consent.mjs';
 
-// Supertonic ships ten speaking styles. Two are offered: a ten-item menu of
-// opaque codes is a worse choice than one clear pair, and each extra voice is
-// another ~291 KB style file to fetch.
+// Two voices per language, from gradium/phonon-voices (LT-217): the worker
+// maps M1 and F1 to the voice it speaks with. One clear pair is a better choice
+// than a long menu of names nobody has heard.
 const VOICES = [['M1', 'Male'], ['F1', 'Female']];
 const RATES = [0.75, 1, 1.25, 1.5];
 

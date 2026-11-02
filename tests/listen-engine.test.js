@@ -24,7 +24,7 @@ function setup() {
   const log = [];
   const english = fakeEngine('phonon', log);
   const others = [];
-  const createOther = vi.fn(() => { const e = fakeEngine('supertonic', log); others.push(e); return e; });
+  const createOther = vi.fn(() => { const e = fakeEngine('translation', log); others.push(e); return e; });
   const engine = createListenEngine({ english, createOther });
   return { log, english, others, createOther, engine };
 }
@@ -44,7 +44,7 @@ describe('createListenEngine (LT-214)', () => {
     english.ready();
     await expect(ready).resolves.toEqual({ provider: 'wasm' });
     expect(log).toEqual(['phonon:init:en:F1']);
-    // An English-only reader never downloads Supertonic.
+    // An English-only reader never downloads the translation voice.
     expect(createOther).not.toHaveBeenCalled();
   });
 
@@ -54,7 +54,7 @@ describe('createListenEngine (LT-214)', () => {
     expect(log).toContain('phonon:synth:s1');
   });
 
-  it('prepare() creates and loads Supertonic once, with the current voice', async () => {
+  it('prepare() creates and loads the translation voice once, with the current voice', async () => {
     const { engine, createOther, others, log } = await started();
     await engine.setVoice('F1');
     const onProgress = () => {};
@@ -64,16 +64,16 @@ describe('createListenEngine (LT-214)', () => {
     await Promise.all([first, second]);
     expect(createOther).toHaveBeenCalledTimes(1);
     expect(others[0].init).toHaveBeenCalledWith({ voice: 'F1', lang: 'es', onProgress });
-    expect(log.filter((line) => line.startsWith('supertonic:init'))).toHaveLength(1);
+    expect(log.filter((line) => line.startsWith('translation:init'))).toHaveLength(1);
   });
 
-  it('a voice chosen while Supertonic loads is applied once it has', async () => {
+  it('a voice chosen while the translation voice loads is applied once it has', async () => {
     const { engine, others, log } = await started();
     const prepared = engine.prepare('es', {});
     await engine.setVoice('F1');
     others[0].ready();
     await prepared;
-    expect(log).toContain('supertonic:voice:F1');
+    expect(log).toContain('translation:voice:F1');
   });
 
   it('says whether the translation voice is loaded, so the reader shows a wait only when there is one', async () => {
@@ -99,7 +99,7 @@ describe('createListenEngine (LT-214)', () => {
     expect(createOther).toHaveBeenCalledTimes(2);
   });
 
-  it('setLang to a translation routes synthesis to Supertonic from the same tick', async () => {
+  it('setLang to a translation routes synthesis to the translation voice from the same tick', async () => {
     const { engine, others, log } = await started();
     const prepared = engine.prepare('es', {});
     others[0].ready();
@@ -110,8 +110,8 @@ describe('createListenEngine (LT-214)', () => {
     // returns; it must not reach Phonon under a Spanish text.
     engine.synthesize('s2', 'Hola.', {});
     await switched;
-    expect(log).toContain('supertonic:lang:es');
-    expect(log).toContain('supertonic:synth:s2');
+    expect(log).toContain('translation:lang:es');
+    expect(log).toContain('translation:synth:s2');
     expect(log).not.toContain('phonon:synth:s2');
   });
 
@@ -140,7 +140,7 @@ describe('createListenEngine (LT-214)', () => {
     await prepared;
     engine.cancel('s5');
     expect(log).toContain('phonon:cancel:s5');
-    expect(log).toContain('supertonic:cancel:s5');
+    expect(log).toContain('translation:cancel:s5');
   });
 
   it('setVoice reaches every loaded engine', async () => {
@@ -150,10 +150,10 @@ describe('createListenEngine (LT-214)', () => {
     await prepared;
     await engine.setVoice('F1');
     expect(log).toContain('phonon:voice:F1');
-    expect(log).toContain('supertonic:voice:F1');
+    expect(log).toContain('translation:voice:F1');
   });
 
-  it('terminate stops both, including a Supertonic still loading', async () => {
+  it('terminate stops both, including a translation voice still loading', async () => {
     const { engine, english, others } = await started();
     engine.prepare('es', {}).catch(() => {});
     engine.terminate();

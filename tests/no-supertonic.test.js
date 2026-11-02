@@ -1,0 +1,57 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { supertonicFiles } from '../scripts/check-no-supertonic.mjs';
+
+// LT-217: Supertonic leaves Listen mode completely. The check runs on the build
+// output and on the staged /_assets/tts/ layout, so it is tested on both shapes.
+describe('supertonicFiles', () => {
+  let root;
+  const put = (path, body = '') => {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), body);
+  };
+
+  beforeEach(() => { root = mkdtempSync(join(tmpdir(), 'lt217-check-')); });
+  afterEach(() => { rmSync(root, { recursive: true, force: true }); });
+
+  it('passes the Phonon-only layout', () => {
+    put('reader.js', "const w = '/_assets/tts/phonon.worker.js';");
+    put('phonon.worker.js');
+    put('translate.worker.js');
+    put('boot.js');
+    put('reader.css');
+    put('phonon/manifest.json', '{"files":[]}');
+    put('phonon/onnx/flow_lm_main.onnx');
+    put('phonon/voices/qIxlZ7Ei8KvWlyQH.bin');
+    put('ort-mt/ort-wasm-simd-threaded.wasm');
+    put('mt/en-pt/manifest.json', '{"files":[]}');
+    put('mt/pairs.json', '{"pairs":[]}');
+    expect(supertonicFiles(root)).toEqual([]);
+  });
+
+  it('names every Supertonic file the old layout carried', () => {
+    put('engine.worker.js');
+    put('manifest.json', '{"files":[]}');
+    put('onnx/vocoder.onnx');
+    put('onnx/unicode_indexer.json');
+    put('voice_styles/M1.json');
+    put('ort/ort-wasm-simd.wasm');
+    expect(supertonicFiles(root)).toEqual([
+      'engine.worker.js',
+      'manifest.json',
+      'onnx/unicode_indexer.json',
+      'onnx/vocoder.onnx',
+      'ort/ort-wasm-simd.wasm',
+      'voice_styles/M1.json',
+    ]);
+  });
+
+  it('names built code that still points at a Supertonic asset', () => {
+    put('reader.js', "fetch('/_assets/tts/manifest.json')");
+    put('chunk.js', "new Worker('/_assets/tts/engine.worker.js')");
+    put('other.js', "fetch(`/_assets/tts/voice_styles/${v}.json`)");
+    expect(supertonicFiles(root)).toEqual(['chunk.js', 'other.js', 'reader.js']);
+  });
+});
