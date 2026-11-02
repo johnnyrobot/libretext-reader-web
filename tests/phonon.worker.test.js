@@ -44,16 +44,17 @@ describe('phonon.worker.mjs', () => {
     expect(of('ready')).toEqual([{ type: 'ready', provider: 'wasm' }]);
   });
 
-  it('maps the menu voices onto two Phonon voices, male and female', async () => {
+  it('hands the model the menu voice it is asked for, M1 when none is named', async () => {
     const model = fakeModel();
     const { handle, of } = handlerWith(model);
     await handle({ type: 'init', voice: 'F1', lang: 'en', manifestUrl: '/m.json' });
-    expect(model.voice).toBe(VOICES.F1);
+    expect(model.voice).toBe('F1');
     await handle({ type: 'setVoice', voice: 'M1' });
     await flush();
-    expect(model.voice).toBe(VOICES.M1);
+    expect(model.voice).toBe('M1');
     expect(of('voiceSet')).toHaveLength(1);
-    expect(VOICES.M1).not.toBe(VOICES.F1);
+    await handle({ type: 'init', lang: 'fr', manifestUrl: '/m.json' });
+    expect(model.voice).toBe('M1');
   });
 
   it('speaks the language it was loaded for, and refuses any other (LT-217)', async () => {
@@ -171,12 +172,26 @@ describe('phonon.worker.mjs', () => {
     expect(posted[0].id).toBeUndefined();
   });
 
-  it('speaks a translation model\'s one voice whichever menu voice is chosen (LT-216)', () => {
-    const own = new ArrayBuffer(8);
-    const english = { [`voices/${VOICES.M1}.bin`]: new ArrayBuffer(4), [`voices/${VOICES.F1}.bin`]: new ArrayBuffer(4) };
-    expect(voiceBuffer({ 'voices/default.bin': own }, VOICES.F1)).toBe(own);
-    expect(voiceBuffer(english, VOICES.F1)).toBe(english[`voices/${VOICES.F1}.bin`]);
-    expect(() => voiceBuffer({}, VOICES.M1)).toThrow(VOICES.M1);
+  it('reads English\'s two menu voices from their Phonon voice files, Preston and Hadley', () => {
+    const preston = new ArrayBuffer(4);
+    const hadley = new ArrayBuffer(4);
+    const english = { 'voices/qIxlZ7Ei8KvWlyQH.bin': preston, 'voices/bXwrkHhURL1VFJdG.bin': hadley };
+    expect(voiceBuffer(english, 'M1')).toBe(preston);
+    expect(voiceBuffer(english, 'F1')).toBe(hadley);
+  });
+
+  it('reads a translation\'s menu voices from the file staged for each (LT-222)', () => {
+    const male = new ArrayBuffer(4);
+    const female = new ArrayBuffer(4);
+    const french = { 'voices/M1.bin': male, 'voices/F1.bin': female };
+    expect(voiceBuffer(french, 'M1')).toBe(male);
+    expect(voiceBuffer(french, 'F1')).toBe(female);
+  });
+
+  it('refuses a voice it has no file for, rather than speak another under its name (LT-222)', () => {
+    // A stage from before LT-222 has one voice, default.bin: Female must not quietly say it.
+    expect(() => voiceBuffer({ 'voices/default.bin': new ArrayBuffer(4) }, 'F1')).toThrow(/F1/);
+    expect(() => voiceBuffer({}, 'M1')).toThrow(/M1/);
   });
 
   // Measured on Phonon es (LT-216): a call ending "en nuestros pensamientos,"

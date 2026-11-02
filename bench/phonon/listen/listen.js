@@ -4,10 +4,11 @@
 // reader.
 //
 // It also keeps what it measured on `window.lt216`, which
-// bench/phonon/lt216/measure.mjs reads.
+// bench/phonon/lt216/measure.mjs reads. measure.mjs --voice asks for a voice
+// by its file name (LT-222), M1 when it names none.
 
 const WORKER = '/_assets/tts/phonon.worker.js';
-const NC = 'Phonon by Gradium, CC BY-NC 4.0. Demo use only.';
+const NC = 'Phonon by Gradium, CC BY-NC 4.0. Voices: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
 
 // The opening sentence of Social Psychology, chapter 1, as the Chief's
 // reference clips (rendered by Ollama, 2026-11-01 17:58 PT) speak it.
@@ -32,7 +33,7 @@ let nextId = 0;
 let stopCurrent = null;      // ends the run being spoken, for the Stop button
 const lt216 = (window.lt216 = { runs: [], last: null });
 
-function startEngine(lang) {
+function startEngine(lang, voice) {
   if (engines.has(lang)) return engines.get(lang);
   const worker = new Worker(WORKER, { type: 'module' });
   const started = performance.now();
@@ -46,14 +47,14 @@ function startEngine(lang) {
       } else if (data.type === 'ready') {
         worker.removeEventListener('message', onInit);
         const bytes = [...progress.values()].reduce((sum, [, total]) => sum + total, 0);
-        resolve({ worker, loadMs: performance.now() - started, bytes });
+        resolve({ worker, loadMs: performance.now() - started, bytes, voice });
       } else if (data.type === 'error' && !data.id) {
         worker.removeEventListener('message', onInit);
         reject(new Error(data.message));
       }
     });
   });
-  worker.postMessage({ type: 'init', voice: 'M1', lang, manifestUrl: LANGS[lang].manifest });
+  worker.postMessage({ type: 'init', voice, lang, manifestUrl: LANGS[lang].manifest });
   engines.set(lang, ready);
   ready.catch(() => engines.delete(lang));
   return ready;
@@ -80,14 +81,34 @@ function playChunk(samples, sampleRate) {
   audio.sources.push(source);
 }
 
+/** Switch `engine` to `voice`, once the worker says it has. */
+function useVoice(engine, voice) {
+  if (engine.voice === voice) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    engine.worker.addEventListener('message', function onVoice({ data }) {
+      if (data.type === 'voiceSet' && data.voice === voice) {
+        engine.worker.removeEventListener('message', onVoice);
+        engine.voice = voice;
+        resolve();
+      } else if (data.type === 'error' && data.id === 'voice') {
+        engine.worker.removeEventListener('message', onVoice);
+        reject(new Error(data.message));
+      }
+    });
+    engine.worker.postMessage({ type: 'setVoice', voice });
+  });
+}
+
 /** Speak `text` in `lang`, streaming it to the speakers; resolves with what was measured. */
-export async function speak(lang, text, { mute = false } = {}) {
+export async function speak(lang, text, { mute = false, voice = 'M1' } = {}) {
   const coldStart = !engines.has(lang);
   // Stop while the model is still loading: nothing is rendering yet, so just don't start.
   let stoppedLoading = false;
   stopCurrent = () => { stoppedLoading = true; stopCurrent = null; };
-  const { worker, loadMs, bytes } = await startEngine(lang);
+  const engine = await startEngine(lang, voice);
+  const { worker, loadMs, bytes } = engine;
   if (stoppedLoading) return { lang, text, outcome: 'stopped' };
+  await useVoice(engine, voice);
   stopAudio();
   const id = `lt216-${nextId++}`;
   const sent = performance.now();

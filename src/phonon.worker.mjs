@@ -37,18 +37,21 @@ const MAX_THREADS = 8;
 
 export const SAMPLE_RATE = 24000;
 
-// The reader's voice menu is M1/F1 whichever engine speaks. Both are Apache 2.0
-// voices from gradium/phonon-voices (revision 0ee17205): Preston and Hadley.
+// The reader's voice menu is M1/F1 (Male/Female) in every language. English's
+// are Apache 2.0 voices from gradium/phonon-voices (revision 0ee17205), Preston
+// and Hadley, staged under their own IDs by scripts/fetch-phonon.py.
 export const VOICES = Object.freeze({ M1: 'qIxlZ7Ei8KvWlyQH', F1: 'bXwrkHhURL1VFJdG' });
 
 /**
- * The voice file for a menu voice. A translation model staged by
- * scripts/stage-phonon-lang.py (LT-216) carries one voice, its release's
- * default, which it speaks whichever of M1/F1 is chosen.
+ * The voice file for a menu voice. English's are VOICES' files; a translation
+ * staged by scripts/stage-phonon-lang.py (LT-222) has one file per menu voice,
+ * `voices/M1.bin` and `voices/F1.bin`. A voice with no file is an error: a
+ * stage from before LT-222 has only `voices/default.bin`, and Female must not
+ * quietly speak in the one voice it has.
  */
-export function voiceBuffer(buffers, voiceId) {
-  const buffer = buffers[`voices/${voiceId}.bin`] ?? buffers['voices/default.bin'];
-  if (!buffer) throw new Error(`no voices/${voiceId}.bin and no voices/default.bin`);
+export function voiceBuffer(buffers, voice) {
+  const buffer = (Object.hasOwn(VOICES, voice) && buffers[`voices/${VOICES[voice]}.bin`]) || buffers[`voices/${voice}.bin`];
+  if (!buffer) throw new Error(`no voice file for ${voice}`);
   return buffer;
 }
 
@@ -206,8 +209,8 @@ async function loadPhonon({ manifestUrl, onProgress }) {
   }
 
   return {
-    async setVoice(voiceId) {
-      const data = new Float32Array(voiceBuffer(buffers, voiceId).slice(0));
+    async setVoice(voice) {
+      const data = new Float32Array(voiceBuffer(buffers, voice).slice(0));
       voiceState = nextState(await runFlow(emptyCache(cfg.flow_lm), {
         voiceLatents: f32([1, cfg.voice_dim, data.length / cfg.voice_dim], data),
       }));
@@ -268,7 +271,7 @@ export function createHandler({ post, load = loadPhonon }) {
             onProgress: (p) => post({ type: 'progress', file: p.file, loaded: p.loaded, total: p.total, phase: p.phase }),
           });
           model = await loading;
-          await model.setVoice(VOICES[data.voice] ?? VOICES.M1);
+          await model.setVoice(data.voice ?? 'M1');
           post({ type: 'ready', provider: 'wasm' });
         } catch (error) {
           post({ type: 'error', code: 'INIT_FAILED', message: String(error?.message ?? error) });
@@ -286,7 +289,7 @@ export function createHandler({ post, load = loadPhonon }) {
       case 'setVoice':
         return enqueue(async () => {
           try {
-            await (await ready()).setVoice(VOICES[data.voice] ?? VOICES.M1);
+            await (await ready()).setVoice(data.voice ?? 'M1');
             post({ type: 'voiceSet', voice: data.voice });
           } catch (error) {
             post({ type: 'error', id: 'voice', code: 'ENGINE_ERROR', message: String(error?.message ?? error) });

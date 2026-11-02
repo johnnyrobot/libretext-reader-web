@@ -782,6 +782,115 @@ shows first sound, RTF and download size, and saves a WAV.
 - Gradium's confirmation that the demo use is noncommercial, which Johnny is
   asking for himself.
 
+## LT-222: a Male and a Female voice in every language
+
+Each translation now has the reader's two menu voices, staged by
+`scripts/stage-phonon-lang.py` as `voices/M1.bin` and `voices/F1.bin`. Every
+shipped default (the one voice `phonon:<lang>` carries, approved in LT-217)
+measured male, so it keeps the Male slot, and Female is a voice from the
+language's catalogue:
+
+| Language | Male (M1) | Female (F1) |
+|---|---|---|
+| fr | shipped default, 117 Hz, WER 0.013, UTMOS 4.00 | Lilou, 213 Hz, WER 0.013, UTMOS 3.72 |
+| de | shipped default, 118 Hz, WER 0.006, UTMOS 4.20 | Annika, 214 Hz, WER 0.006, UTMOS 4.06 |
+| es | shipped default, 112 Hz, WER 0.003, UTMOS 3.94 | Ximena, 215 Hz, WER 0.000, UTMOS 4.00 |
+| pt | shipped default, 120 Hz, WER 0.000, UTMOS 4.09 | Isadora, 221 Hz, WER 0.003, UTMOS 3.98 |
+
+The catalogue is Gradium's phonon-voices (da6c9ec0, Apache 2.0), as carried by
+the `phonon:40m-<lang>` Ollama copy of each language, pinned by its ID the same
+way as the model. Only its voice tensors are read; no Hugging Face. The voices
+are credited "Voices: Phonon by Gradium, phonon-voices, Apache 2.0" next to the
+model's CC BY-NC credit, and are never committed.
+
+### How they were chosen
+
+Everything ran through the real worker on the listening page:
+`bench/phonon/lt222/stage.py` stages a bench copy with every catalogue voice
+under a plain file name (Hélène → Helene), and `measure.mjs --voice` asks for
+one. Chrome 156 headless on this M2 Max, as in LT-216.
+
+1. **Gender, by pitch.** `bench/phonon/lt222/voice.py` takes the median F0
+   over every voiced frame (librosa pyin, 60–400 Hz). Below 150 Hz reads as
+   male, above 180 Hz as female, 150–180 Hz as ambiguous. The four defaults,
+   over the whole set, are 112–120 Hz, so no language needed both slots from
+   the catalogue.
+2. **Pre-screen.** Every catalogue voice spoke p00, the long paragraph. Of the
+   voices named and measured female, the three with the highest UTMOS went on.
+   Every female name measured above 180 Hz. Some male names did not measure
+   male: de Leon, Mika and Mirko (156–159 Hz); es Aldo, Izan, Lalo and Yael
+   (157–170 Hz); pt Davi and Igor (160–169 Hz), and pt Kauã and Vitor (185–189
+   Hz) read as female. None of them was needed.
+3. **The full set.** The three candidates spoke all 12 items, scored by
+   `bench/phonon/lt216/score.py` (Whisper large-v3-turbo) and UTMOS22. Lowest
+   WER ships; a tie goes to the higher UTMOS.
+
+| Language | Candidate | F0 | WER | UTMOS |
+|---|---|---|---|---|
+| fr | **Lilou** | 212.6 Hz | 0.013 | 3.72 |
+| fr | Coralie | 231.8 Hz | 0.013 | 3.67 |
+| fr | Tiphaine | 200.7 Hz | 0.015 | 3.65 |
+| de | **Annika** | 213.8 Hz | 0.006 | 4.06 |
+| de | Nele | 200.7 Hz | 0.006 | 3.99 |
+| de | Josefine | 197.2 Hz | 0.006 | 3.78 |
+| es | **Ximena** | 215.1 Hz | 0.000 | 4.00 |
+| es | Regina | 207.7 Hz | 0.003 | 3.94 |
+| es | Alicia | 201.8 Hz | 0.003 | 3.75 |
+| pt | **Isadora** | 221.4 Hz | 0.003 | 3.98 |
+| pt | Débora | 218.8 Hz | 0.003 | 3.68 |
+| pt | Rafaela | 247.0 Hz | 0.006 | 3.64 |
+
+Each pick is within 0.02 WER of its language's default, rendered the same
+night: fr 0.013, de 0.006, es 0.003, pt 0.000. The defaults' es and pt WER
+are lower than LT-216's 0.011 and 0.006: Phonon samples, so the same text can
+come out differently, and these are 12 items. The WER errors are almost all
+the names LT-216 lists, so every voice in a language scores about the same.
+
+- RTF was 0.13–0.15 warm for every candidate, first sound 27–37 ms.
+- The Whisper GPU job was dropped once by macOS ("Impacting Interactivity")
+  while other work used the GPU; those scores ran on the CPU instead
+  (`mlx.core.set_default_device(mx.cpu)`), with the same model.
+- Renders, scores and `voice.json` per voice are in
+  `/Users/Shared/LT-222/work/render/`, outside git.
+
+### In the reader
+
+The real reader, built by `scripts/stage-local.sh` from this branch, read the
+social_psychology 1.2 page in Chrome headless. It played each language in both
+voices: English, then fr, de, es and pt, with the voice menu switched once in
+each. The voice menu stayed enabled throughout, and the voice carried across
+every language switch. The pitch of the first four sentences the worker
+rendered in each voice, measured by `voice.py`:
+
+| Language | Male (M1) | Female (F1) |
+|---|---|---|
+| en | 108 Hz | 180 Hz (Hadley, unchanged since LT-214) |
+| fr | 120 Hz | 216 Hz |
+| de | 124 Hz | 229 Hz |
+| es | 113 Hz | 210 Hz |
+| pt | 122 Hz | 237 Hz |
+
+The first sentence in a newly picked voice came back 0.9–1.3 s after play.
+Any lookahead the worker had already rendered in the old voice was discarded,
+because the player flushes on a voice change.
+
+Two notes from that check:
+
+- Under heavy CPU load (the Whisper jobs running), one run stopped on the
+  "pt is slow on this device" question. That is LT-217's falling-behind prompt
+  doing its job, not a voice fault, and the next run was clean.
+- English Female (Hadley) measures 180 Hz on this page, at the edge of the
+  female range and lower than the four new voices. It was not pitch-checked in
+  LT-214, and LT-222 does not change English.
+
+### Not verified (LT-222)
+
+- A listening test. Pitch says each voice is the gender it is labelled;
+  nobody has yet judged whether Lilou, Annika, Ximena and Isadora sound like
+  good readers next to the defaults.
+- UTMOS is an English-trained predictor; it is used here only to rank voices
+  within one language.
+
 ## Listening test
 
 A blind A/B set of all 21 items: Supertonic M1 (r4) against the recommended
