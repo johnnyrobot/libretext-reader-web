@@ -121,7 +121,9 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen).toEqual(['a']);           // still the same sentence
   });
 
-  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays', async () => {
+  // The guard withdrew all the reader heard of a, so they are waiting again:
+  // the next sentence streams like the first one after play, not whole.
+  it('a skipped sentence is marked, nothing of it is left playing, and the next one streams', async () => {
     player.play();
     await tick();
     const a = engine.jobs.get('a');
@@ -129,7 +131,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.reset();
     a.finish('skipped');
     await tick();
-    engine.jobs.get('b').finish();
+    engine.jobs.get('b').chunk();
     await tick();
 
     expect(skipped).toEqual(['a']);
@@ -209,8 +211,8 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
 
   // The runaway trade-off (LT-214). Only the sentence the reader is waiting on
   // streams; one rendered ahead plays only once the length guard has passed it
-  // whole, so a runaway is never heard. That costs no time to first sound, since
-  // a sentence rendered ahead has the whole of the one before it to finish in.
+  // whole, so a runaway is never heard. Time to first sound is unchanged; the
+  // cost is a pause before a sentence that is not whole by its turn.
   it('a sentence rendered ahead that has streamed but not finished waits to be whole', async () => {
     player.play();
     await tick();
@@ -222,12 +224,12 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     await tick();
 
     live(context).forEach((n) => n.end());
-    const heard = context.nodes.length;
+    const nodesBefore = context.nodes.length;
     await tick();
     b.chunk();
     await tick();
     expect(seen).toEqual(['a']);              // b's turn, but nothing of it plays yet
-    expect(context.nodes).toHaveLength(heard);
+    expect(context.nodes).toHaveLength(nodesBefore);
 
     b.finish('ok', 3 * 1920);
     await tick();
@@ -279,7 +281,8 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
 
   // The guard withdrew what the next sentence had streamed and is rendering it
   // again. `first` had already resolved on the withdrawn chunk, so its turn
-  // found nothing to play and passed it over, unmarked.
+  // found nothing to play and passed it over, unmarked. A sentence rendered
+  // ahead now waits to be whole anyway; this keeps it from being passed over.
   it('a sentence reset before its turn waits for its retry instead of being passed over', async () => {
     player.play();
     await tick();

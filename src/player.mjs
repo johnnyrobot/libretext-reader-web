@@ -12,9 +12,12 @@
  * the sentence plays as one buffer as it always did.
  *
  * Only the sentence the reader is waiting on -- the first one heard after play or
- * a seek -- plays as a stream. Every sentence after it was rendered ahead, and
- * plays only once it has finished and the length guard (src/phonon-guard.mjs)
- * has passed it, so a runaway is never heard. Time to first sound is unchanged.
+ * a seek, or the next one when the guard skipped that -- plays as a stream. Every
+ * sentence after it was rendered ahead, and plays only once it has finished and
+ * the length guard (src/phonon-guard.mjs) has passed it, so a runaway is never
+ * heard. Time to first sound is unchanged. The cost is a possible pause between
+ * sentences: the worker renders one sentence at a time, in order, so a long
+ * sentence after a short streamed one may not be whole by its turn.
  */
 
 import { createStreamPlayback } from './stream-playback.mjs';
@@ -55,8 +58,9 @@ export function createPlayer({
   let source = null;
   let streamPlayback = null;
   let awaitingFirstSound = false;
-  // Set by play() and seekTo(), cleared once a sentence is heard: whether the
-  // sentence now awaited may play as a stream rather than whole.
+  // Set by play() and seekTo(), cleared once a sentence starts playing, and set
+  // again when the guard skips one that was streaming: whether the sentence now
+  // awaited may play as a stream rather than whole.
   let waitingToHear = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
@@ -164,7 +168,8 @@ export function createPlayer({
     const stream = mayStream ? streams.get(sentence.id) : undefined;
     if (stream?.chunks.length) return { stream };
     state(true, 'Preparing audio…');
-    // Whichever comes first: the first streamed chunk, or the whole sentence.
+    // Whichever comes first: the first streamed chunk, if it may stream, or the
+    // whole sentence.
     await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
     state(false);
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
@@ -201,6 +206,8 @@ export function createPlayer({
         if (entry?.skipped) {
           stopSource();
           onSentenceSkipped(id);
+          // All that was heard of it is withdrawn: the reader is waiting again.
+          waitingToHear = true;
           advance();
           return;
         }
@@ -211,6 +218,7 @@ export function createPlayer({
 
     onSentenceChange(id);
     state(false);
+    waitingToHear = false;
     markFirstSound();
     fill();
   }
@@ -246,7 +254,7 @@ export function createPlayer({
     const entry = await waitFor(position, waitingToHear);
     if (mine !== generation || !playing) return;
     if (!entry) { await playAt(position + 1); return; }
-    if (entry.stream) { waitingToHear = false; playStream(position, mine, entry.stream); return; }
+    if (entry.stream) { playStream(position, mine, entry.stream); return; }
     if (!entry.buffer) {
       if (entry.skipped) onSentenceSkipped(sentences[position].id);
       await playAt(position + 1);
