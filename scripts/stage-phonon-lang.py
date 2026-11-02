@@ -16,6 +16,10 @@ PocketTTS architecture with 6 transformer layers where the 40M has 9:
 
 - `flow_lm.onnx`: the English graph with its last layer cloned three times,
   and every weight replaced by the language's own.
+- `voices/M1.bin` and `voices/F1.bin`: the reader's Male and Female voice
+  (VOICES), one the release's own default (CC BY-NC, as the model) and the
+  other from the voice catalogue Ollama's `phonon:40m-<lang>` carries
+  (phonon-voices, Apache 2.0, LT-222). The manifest records each one's source.
 - `mimi_decoder.onnx`: the English graph unchanged except the latent
   mean and std, which differ per model. Every Phonon copy shares one Mimi
   (`mimi_sig` in its config); the script refuses a copy trained on another.
@@ -54,7 +58,32 @@ PINS = {
     "pt": "sha256:e8fb87dea0cdbfaecfbe1c713d4389a5ab4e35bb273c6f047ae22217e6919839",
 }
 
+# Each language's voice catalogue (LT-222): `phonon:40m-<lang>` carries
+# gradium/phonon-voices @ da6c9ec0, Apache 2.0, beside the same model weights.
+# Only its voice tensors are read. Pinned the same way, 2026-11-01.
+VOICE_PINS = {
+    "fr": "sha256:eef1ed69574aeab7b98f29b9808bb3a75c9644adfb53533df669ce57c5723756",
+    "de": "sha256:024449ea0a54272832611a4c38a16c3b2c8e67752a2e1a2fd0c4350b3561a905",
+    "es": "sha256:446893b2a1fdd3409869ad2853bbed8a7d1ba37a756bc2bd0d9d8d71ca3b8d94",
+    "pt": "sha256:c640b8b12b6375091b57ef42d6361c7c40c0b0355552a7a0376a24568550edb8",
+}
+VOICES_LICENCE = "apache-2.0"
+
+# The reader's Male (M1) and Female (F1) voice in each language (LT-222).
+# "default" is the one voice `phonon:<lang>` ships, the one Johnny approved in
+# LT-217, in its own gender's slot; the other is the catalogue voice that read
+# the LT-216 bench set best (bench/phonon/FINDINGS.md, "LT-222").
+# Every shipped default measured male (median F0 112-120 Hz), so each keeps M1
+# and F1 is the female catalogue voice with the lowest WER.
+VOICES = {
+    "fr": {"M1": "default", "F1": "Lilou"},
+    "de": {"M1": "default", "F1": "Annika"},
+    "es": {"M1": "default", "F1": "Ximena"},
+    "pt": {"M1": "default", "F1": "Isadora"},
+}
+
 INNER_MANIFEST = "application/vnd.docker.distribution.manifest.v2+json"
+VOICE_FILE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 @dataclass
@@ -92,8 +121,9 @@ def _tensor(data: bytes, what: str) -> np.ndarray:
     return values.reshape(meta["shape"]).copy()
 
 
-def read_ollama(tag: str, pin: str, models: Path = OLLAMA_MODELS) -> OllamaCopy:
-    """Read `phonon:<tag>`, refusing anything that is not exactly the pinned copy."""
+def read_ollama(tag: str, pin: str, models: Path = OLLAMA_MODELS, keep=lambda name: True) -> OllamaCopy:
+    """Read `phonon:<tag>`, refusing anything that is not exactly the pinned copy.
+    Only the tensors whose names `keep` accepts are read."""
     name = f"phonon:{tag}"
     path = models / "manifests" / "registry.ollama.ai" / "library" / "phonon" / tag
     if not path.is_file():
@@ -108,7 +138,7 @@ def read_ollama(tag: str, pin: str, models: Path = OLLAMA_MODELS) -> OllamaCopy:
     tensors, files = {}, {}
     for layer in inner["layers"]:
         kind, label = layer["mediaType"], layer.get("name")
-        if kind.endswith(".tensor"):
+        if kind.endswith(".tensor") and keep(label):
             tensors[label] = _tensor(_blob(models, layer["digest"], f"{name} {label}"), f"{name} {label}")
         elif kind.endswith(".json"):
             files[label] = _blob(models, layer["digest"], f"{name} {label}")
@@ -372,6 +402,40 @@ def build_config(copy: OllamaCopy, template: dict) -> dict:
     return config
 
 
+# --- voices ----------------------------------------------------------------
+
+def voice_files(lang: str, voices: dict, models: Path = OLLAMA_MODELS) -> dict:
+    """`voices/<file>.bin` for each {file: voice} in `voices`, in the
+    [1, voice_dim, frames] float32 layout the worker reads. "default" is
+    `phonon:<lang>`'s own voice; any other name is read from the pinned
+    catalogue in `phonon:40m-<lang>`."""
+    for name in voices:
+        if not VOICE_FILE.match(name):
+            raise SystemExit(f"voice file name {name!r} is not a plain name")
+    is_voice = lambda label: label.startswith("voices.")
+    own = read_ollama(lang, PINS[lang], models, keep=lambda label: label == "voices.default").tensors
+    catalogue = {}
+    if any(voice != "default" for voice in voices.values()):
+        catalogue = read_ollama(f"40m-{lang}", VOICE_PINS[lang], models, keep=is_voice).tensors
+    files = {}
+    for name, voice in voices.items():
+        tensor = own.get("voices.default") if voice == "default" else catalogue.get(f"voices.{voice}")
+        if tensor is None:
+            raise SystemExit(f"phonon:{lang}: no voice {voice!r}"
+                             f"{'' if voice == 'default' else f' in phonon:40m-{lang}'}")
+        files[f"voices/{name}.bin"] = np.ascontiguousarray(tensor, np.float32).tobytes()
+    return files
+
+
+def voice_sources(lang: str, voices: dict) -> dict:
+    """Where each {file: voice} came from, for the manifest. "default" is the
+    model's own voice, so it carries the model's licence; a catalogue voice is
+    phonon-voices, Apache 2.0."""
+    own = {"repo": f"ollama:phonon:{lang}", "revision": PINS[lang], "licence": LICENCE}
+    catalogue = {"repo": f"ollama:phonon:40m-{lang}", "revision": VOICE_PINS[lang], "licence": VOICES_LICENCE}
+    return {name: {"voice": voice, **(own if voice == "default" else catalogue)} for name, voice in voices.items()}
+
+
 # --- staging ---------------------------------------------------------------
 
 def _english_export():
@@ -408,12 +472,15 @@ def _refuse_a_tracked_target(target: Path) -> None:
                          "stage outside any checkout or into a git-ignored folder")
 
 
-def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
-    """Build `phonon:<lang>` into `target` for the worker, verify, write manifest.json."""
+def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS, voices: dict = None) -> dict:
+    """Build `phonon:<lang>` into `target` for the worker, verify, write manifest.json.
+    `voices` is {file: voice} as voice_files takes it: VOICES[lang], the menu's
+    M1 and F1, unless a bench asks for others."""
     if lang not in PINS:
         raise SystemExit(f"no pinned Ollama copy for {lang!r}; LT-216 staged {sorted(PINS)}")
     target = Path(target).resolve()
     _refuse_a_tracked_target(target)
+    voices = VOICES[lang] if voices is None else voices
 
     english = _english_export()
     template = english.CACHE
@@ -430,8 +497,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
         "onnx/flow_lm.onnx": build_flow_lm(onnx.load(template / "onnx" / "flow_lm.onnx"), copy).SerializeToString(),
         "onnx/mimi_decoder.onnx": build_mimi_decoder(
             onnx.load(template / "onnx" / "mimi_decoder.onnx"), copy, template_config).SerializeToString(),
-        # [1, voice_dim, frames], the layout the worker reads.
-        "voices/default.bin": np.ascontiguousarray(copy.tensors["voices.default"], np.float32).tobytes(),
+        **voice_files(lang, voices, models),
     }
 
     # Withdrawn first, as fetch-phonon.py does: until the new one is written the
@@ -450,6 +516,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
     manifest = {
         "version": 1,
         "source": {"repo": f"ollama:phonon:{lang}", "revision": copy.pin, "licence": LICENCE},
+        "voices": voice_sources(lang, voices),
         "files": entries,
     }
     (target / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

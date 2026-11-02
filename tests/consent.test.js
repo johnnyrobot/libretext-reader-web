@@ -146,10 +146,13 @@ describe('the translation gate when the translation voice is not downloaded yet 
     expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
     expect(text).toContain('190 MB voice that reads español aloud');
     expect(text).toContain('Phonon by Gradium, CC BY-NC 4.0');
+    // Its Male and Female voices are Gradium's separate Apache 2.0 voice set (LT-222).
+    expect(text).toContain('Voices: Phonon by Gradium, phonon-voices, Apache 2.0');
     expect(text).not.toContain('Supertonic');
     expect(text).not.toContain('OpenRAIL-M');
     const link = dialog().querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]');
     expect(link).not.toBeNull();
+    expect(dialog().querySelector('a[href="https://www.apache.org/licenses/LICENSE-2.0"]')).not.toBeNull();
     click('decline');
     await answer;
   });
@@ -159,6 +162,7 @@ describe('the translation gate when the translation voice is not downloaded yet 
       language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
     });
     expect(dialog().textContent).not.toContain('CC BY-NC');
+    expect(dialog().textContent).not.toContain('phonon-voices');
     expect(dialog().textContent).not.toContain('Supertonic');
     click('decline');
     await answer;

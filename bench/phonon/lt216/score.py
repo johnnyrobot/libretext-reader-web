@@ -71,7 +71,8 @@ def score(directory, lang):
         "lang": lang, "items": len(counted),
         "wer": round(sum(r["word_errors"] for r in counted) / sum(r["words"] for r in counted), 4),
         "cer": round(sum(r["char_errors"] for r in counted) / sum(r["chars"] for r in counted), 4),
-        "p00_wer": next(round(r["word_errors"] / r["words"], 4) for r in counted if r["id"] == "p00"),
+        # None when --items left p00 out.
+        "p00_wer": next((round(r["word_errors"] / r["words"], 4) for r in counted if r["id"] == "p00"), None),
     }
     (directory / lang / "scores.json").write_text(json.dumps({"total": total, "rows": rows}, ensure_ascii=False, indent=1))
     return total, rows
@@ -89,7 +90,8 @@ def main():
         for r in rows:
             if r["word_errors"]:
                 print(f"  {lang} {r['name']}: {r['word_errors']}/{r['words']}\n    ref {r['ref']}\n    hyp {r['hyp']}")
-        print(f"{lang}: WER {total['wer']:.3f}  CER {total['cer']:.3f}  (p00 WER {total['p00_wer']:.3f}, {total['items']} items)")
+        p00 = "not spoken" if total["p00_wer"] is None else f"{total['p00_wer']:.3f}"
+        print(f"{lang}: WER {total['wer']:.3f}  CER {total['cer']:.3f}  (p00 WER {p00}, {total['items']} items)")
 
 
 if __name__ == "__main__":

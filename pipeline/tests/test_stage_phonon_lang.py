@@ -88,6 +88,81 @@ def test_pins_one_ollama_id_per_language():
         assert digest.startswith("sha256:") and len(digest) == len("sha256:") + 64
 
 
+def _fake_voices(models, tag, voices):
+    """Add `phonon:<tag>` to a fake models folder, holding only voice tensors."""
+    layers = [{"mediaType": "application/vnd.ollama.image.tensor",
+               "digest": _blob(models, _safetensor(f"voices.{name}", values)), "name": f"voices.{name}"}
+              for name, values in voices.items()]
+    inner = json.dumps({"schemaVersion": 2, "layers": layers}).encode()
+    pin = _blob(models, inner)
+    path = models / "manifests" / "registry.ollama.ai" / "library" / "phonon" / tag
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schemaVersion": 2, "layers": [*layers, {
+        "mediaType": "application/vnd.docker.distribution.manifest.v2+json", "digest": pin, "size": len(inner)}]}))
+    return pin
+
+
+def _two_sources(tmp_path, monkeypatch):
+    """phonon:fr with its one shipped voice, and phonon:40m-fr with the
+    catalogue, whose own default is a different voice (as it is for fr)."""
+    models = tmp_path / "ollama"
+    monkeypatch.setitem(stage_lang.PINS, "fr", _fake_voices(models, "fr", {"default": [1.0, 1.0]}))
+    monkeypatch.setitem(stage_lang.VOICE_PINS, "fr", _fake_voices(
+        models, "40m-fr", {"default": [9.0, 9.0], "Hélène": [2.0, 3.0], "Lucien": [4.0, 5.0]}))
+    return models
+
+
+def _floats(data: bytes):
+    import numpy as np
+    return np.frombuffer(data, np.float32).tolist()
+
+
+def test_stages_one_file_per_menu_voice_the_shipped_default_from_its_own_model(tmp_path, monkeypatch):
+    models = _two_sources(tmp_path, monkeypatch)
+    files = stage_lang.voice_files("fr", {"M1": "default", "F1": "Hélène"}, models)
+    assert sorted(files) == ["voices/F1.bin", "voices/M1.bin"]
+    assert _floats(files["voices/M1.bin"]) == [1.0, 1.0]   # phonon:fr's, not the catalogue's default
+    assert _floats(files["voices/F1.bin"]) == [2.0, 3.0]
+
+
+def test_takes_both_voices_from_the_catalogue_when_asked(tmp_path, monkeypatch):
+    models = _two_sources(tmp_path, monkeypatch)
+    files = stage_lang.voice_files("fr", {"M1": "Lucien", "F1": "Hélène"}, models)
+    assert _floats(files["voices/M1.bin"]) == [4.0, 5.0]
+
+
+def test_credits_each_voice_to_the_copy_it_came_from(monkeypatch):
+    """The shipped default is the model's own voice, under the model's CC BY-NC
+    licence; only a catalogue voice is phonon-voices, Apache 2.0."""
+    monkeypatch.setitem(stage_lang.PINS, "fr", "sha256:model")
+    monkeypatch.setitem(stage_lang.VOICE_PINS, "fr", "sha256:catalogue")
+    assert stage_lang.voice_sources("fr", {"M1": "default", "F1": "Hélène"}) == {
+        "M1": {"voice": "default", "repo": "ollama:phonon:fr", "revision": "sha256:model", "licence": "cc-by-nc-4.0"},
+        "F1": {"voice": "Hélène", "repo": "ollama:phonon:40m-fr", "revision": "sha256:catalogue",
+               "licence": "apache-2.0"},
+    }
+
+
+def test_refuses_a_voice_the_catalogue_does_not_have(tmp_path, monkeypatch):
+    models = _two_sources(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit, match="Ninon"):
+        stage_lang.voice_files("fr", {"M1": "default", "F1": "Ninon"}, models)
+
+
+def test_refuses_a_voice_file_name_that_is_not_a_plain_name(tmp_path, monkeypatch):
+    models = _two_sources(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit, match="../F1"):
+        stage_lang.voice_files("fr", {"../F1": "Hélène"}, models)
+
+
+def test_every_language_has_a_male_and_a_female_voice_from_a_pinned_catalogue():
+    assert set(stage_lang.VOICE_PINS) == set(stage_lang.PINS)
+    for lang, digest in stage_lang.VOICE_PINS.items():
+        assert digest.startswith("sha256:") and len(digest) == len("sha256:") + 64
+        assert set(stage_lang.VOICES[lang]) == {"M1", "F1"}
+        assert stage_lang.VOICES[lang]["M1"] != stage_lang.VOICES[lang]["F1"], lang
+
+
 # The round trip: built from Johnny's Ollama copy of phonon:31m-en, the browser
 # graphs must match onnx-community's English export, which was made
 # independently from the same release. That proves the weight mapping the
@@ -326,8 +401,9 @@ def test_refuses_a_language_it_has_no_pin_for(tmp_path):
 
 
 @needs_real_copies
-@pytest.mark.skipif(not (OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / "fr").is_file(),
-                    reason="needs `ollama pull phonon:fr`")
+@pytest.mark.skipif(not all((OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / tag).is_file()
+                        for tag in ("fr", "40m-fr")),
+                    reason="needs `ollama pull phonon:fr` and `ollama pull phonon:40m-fr`")
 @pytest.mark.parametrize("where", ["no checkout", "a checkout's ignored stage"])
 def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
     """Outside any checkout, or in one's git-ignored stage, as scripts/stage-local.sh's .stage/ is."""
@@ -337,9 +413,15 @@ def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
     manifest = stage_lang.stage("fr", target)
 
     assert manifest["source"] == {"repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"], "licence": "cc-by-nc-4.0"}
+    assert manifest["voices"] == {
+        "M1": {"voice": "default", "repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"],
+               "licence": "cc-by-nc-4.0"},
+        "F1": {"voice": "Lilou", "repo": "ollama:phonon:40m-fr", "revision": stage_lang.VOICE_PINS["fr"],
+               "licence": "apache-2.0"},
+    }
     assert sorted(f["path"] for f in manifest["files"]) == [
         "config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
-        "tokenizer.json", "tokenizer_config.json", "voices/default.bin"]
+        "tokenizer.json", "tokenizer_config.json", "voices/F1.bin", "voices/M1.bin"]
     for entry in manifest["files"]:
         data = (target / entry["path"]).read_bytes()
         assert entry["name"] == entry["path"]
@@ -348,7 +430,8 @@ def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
 
     config = json.loads((target / "config.json").read_bytes())
     assert config["languages"] == ["fr"] and config["phonon"]["flow_lm"]["num_layers"] == 9
-    assert (target / "voices" / "default.bin").stat().st_size == 512 * 125 * 4
+    for voice in ("M1", "F1"):
+        assert (target / "voices" / f"{voice}.bin").stat().st_size == 512 * 125 * 4
     flow = onnx.load(target / "onnx" / "flow_lm.onnx")
     onnx.checker.check_model(flow)
     assert sum(i.name.startswith("past_key_values.") for i in flow.graph.input) == 18

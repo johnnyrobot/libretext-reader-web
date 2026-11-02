@@ -1,14 +1,18 @@
 // THROWAWAY SPIKE (LT-216). Speak the test set through the listening page in Chrome and keep the
 // audio and timings, for score.py to check with Whisper.
 //
-//   node bench/phonon/lt216/measure.mjs [--base http://127.0.0.1:8820] [--out DIR] [fr de es pt en]
+//   node bench/phonon/lt216/measure.mjs [--base http://127.0.0.1:8820] [--out DIR] [--voice M1]
+//     [--items p00,s01] [fr de es pt en]
+//
+// --voice is a voice file the stage has (LT-222: bench/phonon/lt222/stage.py
+// stages every catalogue voice); --items speaks only those items.
 //
 // One fresh Chrome per language, so its cold load and memory are its own. The
 // first item is spoken twice: the first time includes the model load (the cold
 // first sound), the second is the warm figure the bar is about.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import path from 'node:path';
 
@@ -19,6 +23,8 @@ const flag = (name, fallback) => {
 };
 const base = flag('--base', 'http://127.0.0.1:8820');
 const out = flag('--out', '/Users/Shared/LT-216/work/measure');
+const voice = flag('--voice', 'M1');
+const only = flag('--items', null)?.split(',');
 const langs = args.length ? args : ['fr', 'de', 'es', 'pt', 'en'];
 const set = JSON.parse(readFileSync(new URL('./sentences.json', import.meta.url)));
 
@@ -50,9 +56,11 @@ function wav(int16, sampleRate) {
 
 const results = [];
 for (const lang of langs) {
-  const items = set.items.filter((item) => item[lang]);
+  const items = set.items.filter((item) => item[lang] && (!only || only.includes(item.id)));
   const dir = path.join(out, lang);
   mkdirSync(dir, { recursive: true });
+  // score.py scores every WAV here, so an earlier run's must not outlive this one.
+  for (const f of readdirSync(dir)) if (f.endsWith('.wav')) rmSync(path.join(dir, f));
   // Tagged so its process tree can be found: Playwright does not expose the pid.
   const tag = `--lt216-measure=${lang}-${process.pid}`;
   const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [tag] });
@@ -67,8 +75,8 @@ for (const lang of langs) {
     const idle = treeRss(pid);
     const runs = [];
     for (const [n, item] of [[0, items[0]], ...items.map((it, i) => [i + 1, it])]) {
-      const run = await page.evaluate(async ({ lang, text }) => {
-        const result = await window.lt216.speak(lang, text, { mute: true });
+      const run = await page.evaluate(async ({ lang, text, voice }) => {
+        const result = await window.lt216.speak(lang, text, { mute: true, voice });
         const { samples } = window.lt216.last;
         const pcm = new Int16Array(samples.length);
         samples.forEach((s, i) => { pcm[i] = Math.max(-1, Math.min(1, s)) * 0x7fff; });
@@ -76,7 +84,7 @@ for (const lang of langs) {
         const bytes = new Uint8Array(pcm.buffer);
         for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
         return { ...result, sampleRate: window.lt216.last.sampleRate, pcm: btoa(binary) };
-      }, { lang, text: item[lang] });
+      }, { lang, text: item[lang], voice });
       const { pcm, sampleRate, ...timing } = run;
       const name = n === 0 ? `${item.id}-cold` : item.id;
       // A skipped sentence carries no audio: scoring an empty file would count it as all deletions.

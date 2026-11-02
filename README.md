@@ -102,10 +102,13 @@ checks every file against a pinned size and sha256, and writes `phonon/manifest.
 Stage each translation voice with
 `python3 scripts/stage-phonon-lang.py <lang> <dir>/phonon-<lang>` (fr, de, es, pt): it
 builds that language's Phonon 40M from the Ollama copy `phonon:<lang>` (pinned by its
-Ollama ID) into the two ONNX graphs the browser runs, with one voice,
-`voices/default.bin`. It needs numpy and onnx, and refuses a target inside this
-repository, because those weights are CC BY-NC 4.0. The weights are not in this
-repository (see *Model weights* below). Then lay out the served directory:
+Ollama ID) into the two ONNX graphs the browser runs, with the Male and Female voices,
+`voices/M1.bin` and `voices/F1.bin` (LT-222): one is the copy's own default voice, the
+other comes from the voice catalogue in `phonon:40m-<lang>` (also pinned), so both
+`ollama pull phonon:<lang>` and `ollama pull phonon:40m-<lang>` must have run first. It
+needs numpy and onnx, and refuses a target inside this repository, because those weights
+are CC BY-NC 4.0. The weights are not in this repository (see *Model weights* below).
+Then lay out the served directory:
 
 ```
 /_assets/tts/
@@ -315,7 +318,11 @@ pinned revision into `bench/assets/` (gitignored) when `npm run stage` runs.
 
 French, German, Spanish and Portuguese are spoken by **Phonon by Gradium, CC BY-NC 4.0**:
 each language's own 40M checkpoint (`phonon:fr`, `phonon:de`, `phonon:es`, `phonon:pt` in
-Ollama), with its one default voice, run in the browser. `scripts/stage-phonon-lang.py`
+Ollama), run in the browser. Each language's Male voice is its checkpoint's own default
+voice, under the same CC BY-NC licence. Its Female voice is an Apache 2.0 voice from
+[`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices) (credited as
+"Voices: Phonon by Gradium, phonon-voices, Apache 2.0"), read from the language's
+`phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. `scripts/stage-phonon-lang.py`
 builds the browser files from a pinned Ollama copy at stage time, outside this
 repository; they are never committed. A reader who only ever listens in English never
 downloads them, and one who picks a language downloads only that language's. They may
@@ -430,8 +437,10 @@ Working and deployed, not finished.
 Known limits, all documented rather than hidden:
 
 - Not validated on low-end hardware. The RTF budget assumes roughly an M1-class core.
-- The translation voices are CC BY-NC 4.0; they run on the staging mirror, a demo, and
-  are not served publicly until Gradium confirms the use is noncommercial.
+- The translation models, and the Male voice each carries, are CC BY-NC 4.0 (the Female
+  voices are Apache 2.0);
+  they run on the staging mirror, a demo, and are not served publicly until Gradium
+  confirms the use is noncommercial.
 - The translation quality gate (472 sentences, at most 2% failing) passed for all four:
   Portuguese 6, German 9, French 10 and Spanish 10 failures.
 - `docs/SPEAKING_MATHEMATICS.md` §8 lists the remaining phrasing defects.

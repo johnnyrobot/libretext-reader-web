@@ -142,7 +142,7 @@ describe('controls.mjs', () => {
     controls.destroy();
   });
 
-  it('turns the voice menu off while a translation is picked: it has one voice (LT-217)', () => {
+  it('keeps the voice menu on in every language: each has a Male and a Female voice (LT-222)', () => {
     const h = { ...handlers(), onLang: vi.fn(), languages: LANGS() };
     const controls = mountControls(document.body, h);
     const voice = document.querySelector('[data-act="voice"]');
@@ -150,11 +150,12 @@ describe('controls.mjs', () => {
     expect(voice.disabled).toBe(false);
     lang.value = 'fr';
     lang.dispatchEvent(new Event('change'));
-    expect(voice.disabled).toBe(true);
-    controls.setLang('en'); // the switch fell back to English
     expect(voice.disabled).toBe(false);
     controls.setLang('es');
-    expect(voice.disabled).toBe(true);
+    expect(voice.disabled).toBe(false);
+    voice.value = 'F1';
+    voice.dispatchEvent(new Event('change'));
+    expect(h.onVoice).toHaveBeenCalledWith('F1');
     controls.destroy();
   });
 
