@@ -13,7 +13,7 @@
 
 const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ONNX';
 
-const TRANSLATION_VOICE_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/';
+const TRANSLATION_MODEL_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/';
 const APACHE_LICENSE_URL = 'https://www.apache.org/licenses/LICENSE-2.0';
 
 // The Opus-MT checkpoint the ONNX export is quantized from. Linked rather than
@@ -109,7 +109,7 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
       : '';
     const voiceCredit = voiceBytes
       ? `<p><small>Voice model: Phonon 40M by Gradium,
-        <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>.
+        <a href="${TRANSLATION_MODEL_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>.
         Male voice: the model's own.
         Female voice: from Gradium's phonon-voices,
         <a href="${APACHE_LICENSE_URL}" target="_blank" rel="noopener">Apache 2.0</a>.</small></p>`

@@ -24,8 +24,9 @@ const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
 // The voices that speak translations: each language's own Phonon 40M (CC BY-NC
 // 4.0), exported from Johnny's Ollama copies and staged into phonon-<lang>/ by
-// scripts/stage-phonon-lang.py (LT-216), each with its own Male voice and a
-// Female voice from Gradium's Apache 2.0 phonon-voices (LT-222). Each is downloaded only
+// scripts/stage-phonon-lang.py (LT-216). The model speaks both voices: its own
+// Male voice, and a Female voice file from Gradium's Apache 2.0 phonon-voices
+// (LT-222, LT-234). Each is downloaded only
 // when its language is first picked, run by the same worker as English, and
 // cached beside it. Supertonic is gone, with no fallback (LT-217).
 export const TRANSLATION_VOICES = Object.freeze(Object.fromEntries(['fr', 'de', 'es', 'pt'].map((lang) => [

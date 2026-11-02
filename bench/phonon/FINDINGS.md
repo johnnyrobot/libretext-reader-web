@@ -972,9 +972,10 @@ to the model's CC BY-NC credit (LT-231 later named each: "Male voice: Phonon by
 Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache
 2.0."; LT-234 replaced that, since the NC model speaks both voices: "Voice model:
 Phonon 40M by Gradium, CC BY-NC 4.0. Male voice: the model's own. Female voice:
-from Gradium's phonon-voices, Apache 2.0."). The Male voice is the model's own default, so it
-stays under that CC BY-NC licence; the staged manifest records each file's source
-and licence. None of them is committed.
+from Gradium's phonon-voices, Apache 2.0."). The Male voice is the model's own
+default. Either voice is spoken by the CC BY-NC model; only the Female voice file
+is Apache 2.0. The staged manifest records each file's source and licence. None
+of them is committed.
 
 ### How they were chosen
 
