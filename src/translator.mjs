@@ -47,6 +47,10 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   // which pair the worker currently holds to avoid it.
   let loaded = null;
   let loadedPair = null;
+  // Each init is numbered and the worker echoes the number, so a reply still in
+  // transit from a load the reader has replaced cannot settle the newer one.
+  let initSerial = 0;
+  const latest = (data) => data.initId === undefined || data.initId === initSerial;
 
   worker.onmessage = ({ data }) => {
     switch (data.type) {
@@ -54,7 +58,7 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
         onProgress(data);
         break;
       case 'ready':
-        readyResolve?.();
+        if (latest(data)) readyResolve?.();
         break;
       case 'translated': {
         pending.get(data.id)?.resolve(data.lines);
@@ -66,7 +70,7 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
         if (data.id !== undefined && pending.has(data.id)) {
           pending.get(data.id).reject(error);
           pending.delete(data.id);
-        } else {
+        } else if (latest(data)) {
           readyReject?.(error);
         }
         break;
@@ -100,7 +104,8 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
           throw error;
         });
       loaded = load;
-      worker.postMessage({ type: 'init', manifestUrl: `${root}${pair}/manifest.json`, pair });
+      initSerial += 1;
+      worker.postMessage({ type: 'init', manifestUrl: `${root}${pair}/manifest.json`, pair, initId: initSerial });
       return loaded;
     },
 

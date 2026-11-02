@@ -304,6 +304,16 @@ describe('the worker protocol', () => {
     expect(of('ready')).toHaveLength(1);
   });
 
+  it('says which init its ready and its failure answer', async () => {
+    const ok = handlerWith(async () => echoUpper);
+    await ok.handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es', initId: 3 });
+    expect(ok.of('ready')[0]).toEqual({ type: 'ready', initId: 3 });
+
+    const bad = handlerWith(async () => { throw new Error('404'); });
+    await bad.handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es', initId: 4 });
+    expect(bad.of('error')[0]).toMatchObject({ initId: 4, message: '404' });
+  });
+
   it('says so when a batch arrives before any init', async () => {
     const { handle, of } = handlerWith(async () => echoUpper);
     await handle({ type: 'translate', id: 1, lines: ['one.'] });

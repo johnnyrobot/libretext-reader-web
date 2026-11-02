@@ -65,7 +65,7 @@ describe('translator.mjs', () => {
     await translator.init({ pair: 'en-es' });
 
     expect(worker.sent[0]).toEqual({
-      type: 'init', pair: 'en-es', manifestUrl: '/_assets/tts/mt/en-es/manifest.json',
+      type: 'init', pair: 'en-es', manifestUrl: '/_assets/tts/mt/en-es/manifest.json', initId: 1,
     });
   });
 
@@ -103,6 +103,25 @@ describe('translator.mjs', () => {
     // And French is not remembered as loaded: picking it again loads it again.
     translator.init({ pair: 'en-fr' });
     expect(worker.sent.filter((m) => m.type === 'init').map((m) => m.pair)).toEqual(['en-fr', 'en-de', 'en-fr']);
+  });
+
+  it('ignores a reply still in transit from the load it replaced', async () => {
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    translator.init({ pair: 'en-fr' }).catch(() => {});
+    const german = translator.init({ pair: 'en-de' });
+    const [fr, de] = worker.sent.map((m) => m.initId);
+    expect(fr).not.toBe(de);
+
+    let settled = false;
+    german.then(() => { settled = true; }, () => { settled = true; });
+    worker.onmessage({ data: { type: 'ready', initId: fr } });
+    worker.onmessage({ data: { type: 'error', initId: fr, message: 'French failed' } });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    worker.onmessage({ data: { type: 'ready', initId: de } });
+    await expect(german).resolves.toBeUndefined();
   });
 
   it('forwards download progress while loading', async () => {

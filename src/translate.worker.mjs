@@ -10,12 +10,12 @@
  *
  * Protocol, deliberately the same shape as the speech worker's:
  *
- *   -> { type: 'init', manifestUrl, pair }
+ *   -> { type: 'init', manifestUrl, pair, initId }
  *   <- { type: 'progress', file, loaded, total, phase }
- *   <- { type: 'ready' }
+ *   <- { type: 'ready', initId }          only for the latest init
  *   -> { type: 'translate', id, lines: string[] }
  *   <- { type: 'translated', id, lines: string[] }
- *   <- { type: 'error', id, message }
+ *   <- { type: 'error', id, initId, message }   id for a batch, initId for an init
  *
  * `lines` out is the same length as `lines` in, always. Highlighting is keyed by
  * position, so a length mismatch does not lose one sentence -- it misaligns
@@ -253,7 +253,7 @@ export function createHandler({ post, load = loadTranslator }) {
           replaced = loading !== mine;
           throw error;
         }
-        post({ type: 'ready' });
+        post({ type: 'ready', initId: data.initId });
         return;
       }
 
@@ -271,7 +271,7 @@ export function createHandler({ post, load = loadTranslator }) {
       }
     } catch (error) {
       if (replaced) return;
-      post({ type: 'error', id: data.id, message: String(error?.message ?? error) });
+      post({ type: 'error', id: data.id, initId: data.initId, message: String(error?.message ?? error) });
     }
   };
 }
