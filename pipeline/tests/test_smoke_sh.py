@@ -42,8 +42,8 @@ def speech_json(break_offsets=False):
         sentences.append({"id": f"b0s{i}", "offset": offset + (1 if break_offsets and i == 3 else 0),
                           "length": len(display), "display": display})
         offset += len(display) + 1
-    # Indented, as the pipeline writes it: Python 3.9 rejects raw UTF-8 past line 1
-    # of a program it reads from stdin, which is how the old check 2 failed live.
+    # Indented, as the pipeline writes it. The old check 2 handed the JSON to Python
+    # as its program; live, the raw UTF-8 made that a SyntaxError on 3.9.
     return json.dumps({"version": 1, "lang": "en", "blocks": [{"id": "b0", "kind": "p", "text": text,
                                                              "sentences": sentences}],
                        "stats": {"sentences": 12}}, ensure_ascii=False, indent=2)
@@ -96,7 +96,9 @@ def mirror(tmp_path):
 
 
 def smoke(mirror, **extra):
-    env = {**os.environ, "SMOKE_BASE": mirror.base, "SMOKE_PAGE": PAGE, "SMOKE_OUT_OF_SCOPE": "/chem101/", **extra}
+    # Nothing inherited picks the languages, or sends 127.0.0.1 through a proxy.
+    inherited = {k: v for k, v in os.environ.items() if not k.startswith("SMOKE_") and "proxy" not in k.lower()}
+    env = {**inherited, "no_proxy": "*", "SMOKE_BASE": mirror.base, "SMOKE_PAGE": PAGE, "SMOKE_OUT_OF_SCOPE": "/chem101/", **extra}
     run = subprocess.run(["bash", str(ROOT / "scripts" / "smoke.sh")], env=env, capture_output=True,
                          text=True, timeout=120)
     return run.returncode, run.stdout + run.stderr

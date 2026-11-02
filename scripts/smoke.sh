@@ -24,8 +24,6 @@ fails=0 checks=0
 note() { printf '  %-60s %s\n' "$1" "$2"; checks=$((checks + 1)); }
 bad()  { note "$1" "FAIL  $2"; fails=$((fails + 1)); }
 good() { note "$1" "ok"; }
-# status HEADERS: the HTTP status in a curl -I response, or "none" when there was none.
-status() { awk 'NR == 1 { s = $2 } END { print (s == "" ? "none" : s) }' <<<"$1"; }
 
 # 1. Sample pages carry the reader.
 html=$(curl -sS --max-time 30 "$BASE$PAGE" || true)
@@ -68,11 +66,13 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
 # requires a 200: against the retired Supertonic paths they were green on nothing.
 # served PATH HEADER-PATTERN WHY-NOT: prints nothing when PATH answers 200 with a
 # header matching the pattern, and otherwise why not.
+# The status comes from curl's %{http_code}, not the first header line, which
+# behind a proxy is the proxy's own "200 Connection established".
 served() {
   local h s
-  h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$1" || true)
-  s=$(status "$h")
-  if [ "$s" != 200 ]; then echo "$1: HTTP $s"
+  h=$(curl -sSI --max-time 30 -w '%{http_code}' "$BASE/_assets/tts/$1" || true)
+  s="${h##*$'\n'}"
+  if [ "$s" != 200 ]; then echo "$1: HTTP ${s:-none}"
   elif ! grep -qi "$2" <<<"$h"; then echo "$1 $3"
   fi
 }
@@ -91,6 +91,7 @@ if [ -z "$why" ]; then good "the worker carries its own COEP"; else bad "the wor
 # translations by default, as on the mirror. The translations stay off a public
 # host until Gradium confirms the use (README), so such a host sets SMOKE_VOICES=phonon.
 VOICES="${SMOKE_VOICES:-phonon phonon-fr phonon-de phonon-es phonon-pt}"
+# shellcheck disable=SC2086 # VOICES is a list, split on spaces
 for lang_dir in $VOICES; do
   check="$lang_dir: its models and voices are served, immutable"
   code=$(curl -sS --max-time 30 -o "$tmp/$lang_dir.json" -w '%{http_code}' "$BASE/_assets/tts/$lang_dir/manifest.json" || true)
@@ -121,12 +122,9 @@ done
 # browser holding a manifest from before LT-222 could not find the voices it names.
 # Every path that fails is named, so one run shows them all.
 stale=""
-for path in reader.js phonon.worker.js; do
+# shellcheck disable=SC2086 # VOICES is a list, split on spaces
+for path in reader.js phonon.worker.js $(printf '%s/manifest.json ' $VOICES); do
   why=$(served "$path" 'cache-control: .*must-revalidate' "does not revalidate")
-  [ -z "$why" ] || stale="${stale:+$stale; }$why"
-done
-for lang_dir in $VOICES; do
-  why=$(served "$lang_dir/manifest.json" 'cache-control: .*must-revalidate' "does not revalidate")
   [ -z "$why" ] || stale="${stale:+$stale; }$why"
 done
 if [ -z "$stale" ]; then good "the code and the manifests revalidate"
