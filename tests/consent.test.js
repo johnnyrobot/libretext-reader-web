@@ -155,6 +155,7 @@ describe('the translation gate when the translation voice is not downloaded yet 
     expect(text).not.toContain('OpenRAIL-M');
     // The model's licence is linked from the model, the Apache one from the Female voice.
     const credit = [...dialog().querySelectorAll('small')].find((s) => s.textContent.includes('Voice model:'));
+    expect(credit).toBeDefined();
     expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]').textContent)
       .toBe('CC BY-NC 4.0');
     expect(credit.querySelector('a[href="https://www.apache.org/licenses/LICENSE-2.0"]').textContent)

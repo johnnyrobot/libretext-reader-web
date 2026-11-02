@@ -323,7 +323,7 @@ pinned revision into `bench/assets/` (gitignored) when `npm run stage` runs.
 French, German, Spanish and Portuguese are spoken by **Phonon by Gradium, CC BY-NC 4.0**:
 each language's own 40M checkpoint (`phonon:fr`, `phonon:de`, `phonon:es`, `phonon:pt` in
 Ollama), run in the browser. Each language's Male voice is its checkpoint's own default
-voice, under the same CC BY-NC licence. Its Female voice is an Apache 2.0 voice from
+voice, under the same CC BY-NC licence. Its Female voice file is an Apache 2.0 voice from
 [`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices), read from the language's
 `phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. Both voices
 are spoken by the CC BY-NC model, so the reader credits them as "Voice model: Phonon 40M by
@@ -448,8 +448,8 @@ Working and deployed, not finished.
 Known limits, all documented rather than hidden:
 
 - Not validated on low-end hardware. The RTF budget assumes roughly an M1-class core.
-- The translation models, and the Male voice each carries, are CC BY-NC 4.0 (the Female
-  voices are Apache 2.0);
+- The translation models, which speak both voices, are CC BY-NC 4.0 (only the Female
+  voice files are Apache 2.0);
   they run on the staging mirror, a demo, and are not served publicly until Gradium
   confirms the use is noncommercial.
 - The translation quality gate (472 sentences, at most 2% failing) passed for all four:

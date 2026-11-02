@@ -970,7 +970,9 @@ way as the model. Only its voice tensors are read; no Hugging Face. The Female
 voices are credited "Voices: Phonon by Gradium, phonon-voices, Apache 2.0" next
 to the model's CC BY-NC credit (LT-231 later named each: "Male voice: Phonon by
 Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache
-2.0."). The Male voice is the model's own default, so it
+2.0."; LT-234 replaced that, since the NC model speaks both voices: "Voice model:
+Phonon 40M by Gradium, CC BY-NC 4.0. Male voice: the model's own. Female voice:
+from Gradium's phonon-voices, Apache 2.0."). The Male voice is the model's own default, so it
 stays under that CC BY-NC licence; the staged manifest records each file's source
 and licence. None of them is committed.
 
