@@ -107,10 +107,9 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
          aloud, downloaded once and kept.</p>`
       : '';
     const voiceCredit = voiceBytes
-      ? `<p><small>Translation voice: Phonon by Gradium,
-        <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>
-        (noncommercial use only).
-        Voices: Phonon by Gradium, phonon-voices,
+      ? `<p><small>Male voice: Phonon by Gradium,
+        <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>.
+        Female voice: Phonon by Gradium, phonon-voices,
         <a href="${APACHE_LICENSE_URL}" target="_blank" rel="noopener">Apache 2.0</a>.</small></p>`
       : '';
     const terms = escapeHtml(licence);

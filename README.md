@@ -258,8 +258,12 @@ SMOKE_BASE=https://<host> SMOKE_BOOK=<book> SMOKE_PAGE=/<book>/<a page>/ bash sc
 node scripts/math-audit.mjs --url https://<host>/<book>/<a page with equations>/
 ```
 
-`smoke.sh` checks the eight things above (button, `speech.json` offsets, every header,
-scope). It prints `SMOKE_OK`, or one line per check that failed. Then open a page, press
+`smoke.sh` checks the things above (button, `speech.json` offsets, the page's isolation
+headers and CSP, scope), that the worker answers 200 with its own COEP and CORP, that each
+language's manifest names both models and both voices and answers 200 with every file it
+names, that the models and voices are cached for a year and the code and the manifests
+revalidate (a header alone proves nothing: Caddy sends it on a 404 too). It checks English and the four translations; a host that serves English only
+sets `SMOKE_VOICES=phonon`. It prints `SMOKE_OK`, or one line per check that failed. Then open a page, press
 *Enter Reader Mode*, accept the download, press ▶, and listen — see *Checking that it
 sounds right* for why that last step is not optional.
 
@@ -320,9 +324,10 @@ French, German, Spanish and Portuguese are spoken by **Phonon by Gradium, CC BY-
 each language's own 40M checkpoint (`phonon:fr`, `phonon:de`, `phonon:es`, `phonon:pt` in
 Ollama), run in the browser. Each language's Male voice is its checkpoint's own default
 voice, under the same CC BY-NC licence. Its Female voice is an Apache 2.0 voice from
-[`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices) (credited as
-"Voices: Phonon by Gradium, phonon-voices, Apache 2.0"), read from the language's
-`phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. `scripts/stage-phonon-lang.py`
+[`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices), read from the language's
+`phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. The reader
+credits them as "Male voice: Phonon by Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium,
+phonon-voices, Apache 2.0." `scripts/stage-phonon-lang.py`
 builds the browser files from a pinned Ollama copy at stage time, outside this
 repository; they are never committed. A reader who only ever listens in English never
 downloads them, and one who picks a language downloads only that language's. They may
