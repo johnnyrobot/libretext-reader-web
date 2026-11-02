@@ -3,7 +3,9 @@
 THROWAWAY SPIKE. Nothing here changes `src/` or `pipeline/`; the scripts beside
 this file exist to produce the numbers below and can be deleted once a decision
 is made. Sources for every licence and model fact are in
-[`notes/sources.md`](notes/sources.md).
+[`notes/sources.md`](notes/sources.md). The LT-216 section is the exception:
+the worker fix and the stage script it describes (`scripts/`, with its tests
+in `pipeline/tests/`) are kept.
 
 ## Recommendation
 
@@ -593,6 +595,192 @@ library.libretexts.dev):
 | Supertonic requests for an English-only reader | 0 |
 | Time to first sound (`tts:first-sound`, play → first frame scheduled) | 35 ms, heard about 50 ms later (the player's lead-in), so about 85 ms |
 | Translations | all nine still play, on Supertonic, loaded only when one is picked |
+
+## LT-216: French, German, Spanish and Portuguese in the browser
+
+Phonon 40M fr, de, es and pt now run in the reader's browser through the same
+worker as English (`src/phonon.worker.mjs`, wasm fp32). All four pass the bar
+set for them: WER within 1.5× of English, RTF ≤ 0.5, first sound ≤ 1 s once
+loaded. They are CC BY-NC 4.0 and are staged only for the demo, credited
+"Phonon by Gradium, CC BY-NC 4.0"; the weights are never committed.
+
+### The route: built from Johnny's Ollama copies
+
+No 40M ONNX export exists. The browser files are built by
+`scripts/stage-phonon-lang.py` from Johnny's Ollama copies (`~/.ollama/models`,
+or `OLLAMA_MODELS`; Ollama 0.40.13), each pinned by the ID `ollama list` shows,
+the sha256 of its inner manifest. Every blob is checked against its own digest
+before it is read. No 40M weight comes from Hugging Face and no token is
+needed; the only Hub files the build uses are the English template below
+(its config.json, flow_lm.onnx and mimi_decoder.onnx), the Apache 2.0 export
+`scripts/fetch-phonon.py` already fetches for English, at a pinned revision.
+The script refuses a target that any git checkout would track (or where git
+cannot tell); a git-ignored stage inside one, such as `scripts/stage-local.sh`'s
+`.stage/`, is allowed, so LT-217 can stage into its usual layout.
+
+| Tag | Pinned ID |
+|---|---|
+| `phonon:fr` | `sha256:da29147f…` |
+| `phonon:de` | `sha256:6ef26804…` |
+| `phonon:es` | `sha256:d5df2ae8…` |
+| `phonon:pt` | `sha256:e8fb87de…` |
+
+The copies are the original release, bf16 safetensors with one blob per tensor.
+onnx-community's English export of `phonon-31m-en` is the template: it is the
+same PocketTTS architecture with 6 transformer layers where the 40M has 9.
+
+- `flow_lm.onnx` is the English graph with its last layer cloned three times
+  (layers 6–8 from layer 5, each with its own KV cache input and output), and
+  every weight replaced by the language's own.
+- `mimi_decoder.onnx` is the English graph with the language's latent mean and
+  std. Every copy shares one Mimi codec (`mimi_sig` in its config); the script
+  refuses a copy trained on another.
+- The tokenizer and config come from the copy. The copy's one voice is written
+  as `voices/default.bin`, which the worker uses whichever menu voice is
+  picked (`voiceBuffer`).
+
+How it was checked: built from Ollama's `phonon:31m-en`, the script reproduces
+onnx-community's English export tensor for tensor (flow_lm and mimi weights,
+tokenizer and config apart from its source), which shows the weight mapping is
+right. The grown graph was run in ORT twice: with the cloned layers' output
+projections zeroed it must speak exactly as the 6-layer English graph does, and
+with them left in it must not, and each clone must read and write only its own
+cache. `pipeline/tests/test_stage_phonon_lang.py` holds all
+of this (19 tests). Each language's files come to 199.6 MB (190.3 MiB), against
+English's 162.2 MB (154.7 MiB).
+
+Route (b), the `phonon-tts` npm package, was not tried. The ticket says to
+prefer the route that reuses the runtime already shipped, unless the other is
+clearly better; route (a) runs on the shipped worker and runtime unchanged and
+clears every bar with room to spare, so there was nothing for (b) to be clearly
+better at. The per-language copies were the default, and none failed, so the
+multilingual model was not needed either.
+
+### Results
+
+Chrome 156 (Playwright's `channel: 'chrome'`, the installed desktop Chrome, run
+headless) on this M2 Max, through the listening page
+(`bench/phonon/listen/`) and `bench/phonon/lt216/measure.mjs`. Each language
+ran in a fresh browser with cross-origin isolation on, speaking one item cold
+and then all 12 warm. Scored by `bench/phonon/lt216/score.py`: Whisper
+large-v3-turbo with the language set, Whisper's basic normaliser, and numerals
+mapped to words on both sides.
+
+| Language | WER | CER | Warm RTF | First sound, median (max) | Cold load | Download | Peak Chrome RSS | Load avg |
+|---|---|---|---|---|---|---|---|---|
+| fr | 0.013 | 0.004 | 0.183 | 39 ms (49 ms) | 1.10 s | 199.6 MB | 2797 MiB | 7.2 |
+| de | 0.006 | 0.000 | 0.198 | 47 ms (54 ms) | 1.31 s | 199.6 MB | 2786 MiB | 7.9 |
+| es | 0.011 | 0.004 | 0.260 | 57 ms (69 ms) | 1.24 s | 199.6 MB | 2902 MiB | 10.2 |
+| pt | 0.006 | 0.004 | 0.383 | 73 ms (129 ms) | 1.23 s | 199.6 MB | 2851 MiB | 20.7 |
+| en (paragraph only) | 0.000 | 0.000 | 0.353 | 90 ms | 2.55 s | 162.2 MB | 2401 MiB | 22.9 |
+
+- The length guard passed every render ('ok'); it retried, split or skipped
+  none.
+- RTF follows the machine's load more than the language: pt and en ran while
+  other teams' work pushed the load average to 21–46, and in the first pass, at
+  45, they measured 0.77 and 1.80. Those runs are kept in
+  `/Users/Shared/LT-216/work/measure/{pt,en}-contended/` and were discarded.
+- Cold load is from the local server's disk, not a network.
+- Peak RSS is Chrome's whole process tree, shared pages included, so it
+  overstates what the tab costs. The 40M voices cost about 400 MiB more than
+  English.
+
+The WER bar was 1.5× English's 0.072, i.e. 0.108. That 0.072 includes
+chemistry, math and citations, which this set has none of. On the categories
+it does have, English through the same worker scores prose 0.022, numbers
+0.009 and dates 0. The translations, at 0.006–0.013, are at English's level
+either way.
+
+What Whisper still heard wrong were mostly English names, and homophones:
+
+- "Camp David" was heard as "comte david" (fr) and "kent david" (pt).
+- "Spectrum Human Rights Alliance" became "hammond rights" (es).
+- "Israel" became "eis arreel" (es).
+- Homophones: "solo" heard as "sólo", "münzwurf zahl" as "münzwurfzahl".
+- Portuguese once said "matematimatamente".
+
+The first pass (before the fix below) added fr "apprenne/apprennent", "lancer/
+lancé" and "Abou/Abu", also homophones.
+
+### The test set
+
+`bench/phonon/lt216/sentences.json`, 12 items per language:
+
+- p00 is the sample paragraph the Chief's Ollama clips read. The clips folder
+  had no text files, so the paragraph was recovered from the clips by
+  Whisper.
+- s01–s11 are the prose, numbers and dates items of the LT-213 English set,
+  translated for this ticket (by the agent, not a native speaker), with numbers
+  spelt out the way the reader's normaliser would.
+
+There are no chemistry or math items, because the normaliser that spells out
+symbols (`pipeline/normalize.py`) is English-only. Before formulas are read in
+these languages, that needs its own work and its own test.
+
+### A bug found: a call cut at a comma ran past its end
+
+The worker splits text longer than 50 tokens into several calls at clause
+punctuation. A call that ended on a comma ran on past its end. Spanish p00
+(58 tokens) split into "…influyen en nuestros pensamientos," and
+"sentimientos y comportamiento.":
+
+| First call ends | Renders | Overran | Length |
+|---|---|---|---|
+| "pensamientos," | 8 | 8 (babble or repeated words) | 16.0–18.6 s |
+| "pensamientos." | 8 | 0 | 13.6–14.7 s |
+
+Ollama's own Phonon read the same paragraph cleanly in 8 of 8 at about 13 s,
+which is what pointed at the split.
+
+The fix, `speechCalls` in the worker, ends every call it cuts mid-sentence with
+a full stop: a trailing `,`, `;` or `:` becomes `.`. A call that already ends
+on `.`, `!` or `?` keeps its own ending. Clauses are packed together while they
+fit, as before. The unit tests in `tests/phonon.worker.test.js` pin this.
+After the fix, every language's p00 read word-perfect.
+
+The cost: where a sentence is cut, the voice now ends a sentence there, with a
+sentence-final fall and pause. Whisper's raw transcripts show it ("nous
+ressentons. Pensons…"); the scorer strips punctuation, so WER does not.
+Ollama's runtime read the same paragraph with no break, so at that point the
+browser does not yet sound the same. A pause at a comma is the better failure
+than babble, but splitting less often, or not at all for a sentence only a
+little over 50 tokens, may remove it; that is for LT-217 to try, measured the
+same way (8 renders, look for overruns).
+
+The bug is in English too, for a sentence over 50 tokens with a comma near the
+cut. To show the fix costs English nothing, the 21-item LT-213 set was rendered
+through the fixed worker (Preston, temperature 0.1, d=1): WER 0.078 and CER
+0.014, inside LT-214's wasm fp32 range (WER 0.064–0.085). By category: prose
+0.022, numbers 0.009, dates 0, citations 0.083, chemistry 0.269, math 0.08.
+None of the 21 sentences is cut there, so this shows the fix does no harm, not
+that it helps English.
+
+### Listening
+
+`/Users/Shared/LT-216/HOW-TO-LISTEN.md` says how to open the page in Chrome. It
+runs at <http://127.0.0.1:8820/social_psychology/listen-lt216/>, on the stage
+built by `bench/phonon/listen/stage.sh` (port 8820, because 8812–8814 were taken
+by LT-217's servers). The page picks a language, plays the text in the box,
+shows first sound, RTF and download size, and saves a WAV.
+
+### Not verified (LT-216)
+
+- Any listener who speaks these languages. WER says the words are right, not
+  that the accent or prosody is.
+- The voices in the reader itself. LT-217 wires them in; this ticket stops at
+  the worker and the listening page. The worker's `setLang` still accepts only
+  English.
+- Chemistry, math or citations in these languages.
+- Desktop Chrome with a window: the measurements ran headless. The listening
+  page is for hearing it in a real window.
+- Memory for the tab or worker alone; only Chrome's whole process tree was
+  measured.
+- Which voice each copy carries. Each Ollama copy has one voice, its default,
+  written as `voices/default.bin`; it plays for both menu voices (Preston and
+  Hadley), so a translation has one voice. It has not been described or
+  compared with phonon-voices, which the ticket dropped.
+- Gradium's confirmation that the demo use is noncommercial, which Johnny is
+  asking for himself.
 
 ## Listening test
 
