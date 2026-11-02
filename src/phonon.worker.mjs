@@ -42,6 +42,17 @@ export const SAMPLE_RATE = 24000;
 // voices from gradium/phonon-voices (revision 0ee17205): Preston and Hadley.
 export const VOICES = Object.freeze({ M1: 'qIxlZ7Ei8KvWlyQH', F1: 'bXwrkHhURL1VFJdG' });
 
+/**
+ * The voice file for a menu voice. A translation model staged by
+ * scripts/stage-phonon-lang.py (LT-216) carries one voice, its release's
+ * default, which it speaks whichever of M1/F1 is chosen.
+ */
+export function voiceBuffer(buffers, voiceId) {
+  const buffer = buffers[`voices/${voiceId}.bin`] ?? buffers['voices/default.bin'];
+  if (!buffer) throw new Error(`no voices/${voiceId}.bin and no voices/default.bin`);
+  return buffer;
+}
+
 // Sampling settings calibrated on the LT-213 bench set (bench/phonon/FINDINGS.md,
 // "LT-214 calibration"). DURATION_DELTA slows Phonon from ~16.2 to ~14.3
 // characters a second, Supertonic's default rate (14.1); it is also what made
@@ -52,6 +63,43 @@ export const DURATION_DELTA = 1.0;
 
 // The model card: keep each call to at most ~50 tokens.
 const MAX_TOKENS = 50;
+
+/**
+ * A call's text as the model is given it: capitalised and closed with a full
+ * stop, as the model card's examples are; without the stop Phonon is markedly
+ * more likely not to end. A call cut at a comma, semicolon or colon ends with a
+ * full stop instead: Phonon es ran on past "en nuestros pensamientos," in 8
+ * renders of 8 and stopped cleanly at "pensamientos." in 8 of 8 (LT-216).
+ */
+function callText(s) {
+  const t = s.trim().replace(/\s+/g, ' ').replace(/[,;:]$/, '.');
+  return t[0].toUpperCase() + t.slice(1) + (/[\p{L}\p{N}]$/u.test(t) ? '.' : '');
+}
+
+/**
+ * Split `text` into the calls Phonon speaks, each at most `maxTokens` by
+ * `count` (which is given the call's text as the model will see it): clause
+ * boundaries first, then words, packed back together while they fit.
+ */
+export function speechCalls(text, count, maxTokens = MAX_TOKENS) {
+  const size = (t) => count(callText(t));
+  const clauses = text.split(/(?<=[.!?;:,])\s+/).filter(Boolean).flatMap((c) => {
+    if (size(c) <= maxTokens) return [c];
+    const out = [];
+    let cur = '';
+    for (const w of c.split(' ')) {
+      if (cur && size(`${cur} ${w}`) > maxTokens) { out.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w;
+    }
+    return cur ? [...out, cur] : out;
+  });
+  const packed = [];
+  for (const c of clauses) {
+    const last = packed.at(-1);
+    if (last && size(`${last} ${c}`) <= maxTokens) packed[packed.length - 1] = `${last} ${c}`;
+    else packed.push(c);
+  }
+  return packed.map(callText);
+}
 
 /**
  * Load Phonon from our own verified cache and return `{ setVoice, speak }`.
@@ -130,41 +178,13 @@ async function loadPhonon({ manifestUrl, onProgress }) {
     num_speakers: i64([1], [1]), duration_delta: f32([1], Float32Array.of(DURATION_DELTA)), ...past,
   });
 
-  // Capitalised and closed with a full stop, as the model card's examples are;
-  // without the stop Phonon is markedly more likely not to end.
-  const prep = (s) => {
-    const t = s.trim().replace(/\s+/g, ' ');
-    return t[0].toUpperCase() + t.slice(1) + (/[\p{L}\p{N}]$/u.test(t) ? '.' : '');
-  };
-  const count = (t) => tokenizer.encode(prep(t), { add_special_tokens: false }).length;
-
-  // Calls of at most MAX_TOKENS: clause boundaries first, then words, packed back
-  // together while they fit.
-  function chunks(text) {
-    const clauses = text.split(/(?<=[.!?;:,])\s+/).filter(Boolean).flatMap((c) => {
-      if (count(c) <= MAX_TOKENS) return [c];
-      const out = [];
-      let cur = '';
-      for (const w of c.split(' ')) {
-        if (cur && count(`${cur} ${w}`) > MAX_TOKENS) { out.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w;
-      }
-      return cur ? [...out, cur] : out;
-    });
-    const packed = [];
-    for (const c of clauses) {
-      const last = packed.at(-1);
-      if (last && count(`${last} ${c}`) <= MAX_TOKENS) packed[packed.length - 1] = `${last} ${c}`;
-      else packed.push(c);
-    }
-    return packed;
-  }
+  const count = (t) => tokenizer.encode(t, { add_special_tokens: false }).length;
 
   const randn = () => Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
   let voiceState = null;
 
   // One call: 80 ms frames until end of speech, or the frame ceiling (eos false).
-  async function* speakCall(piece) {
-    const text = prep(piece);
+  async function* speakCall(text) {
     const ids = tokenizer.encode(text, { add_special_tokens: false });
     let state = nextState(await runFlow(voiceState, { text: ids }));
     let codec = { past_offset: i64([0], [1]), ...emptyCache(cfg.mimi_decoder) };
@@ -188,14 +208,14 @@ async function loadPhonon({ manifestUrl, onProgress }) {
 
   return {
     async setVoice(voiceId) {
-      const data = new Float32Array(buffers[`voices/${voiceId}.bin`].slice(0));
+      const data = new Float32Array(voiceBuffer(buffers, voiceId).slice(0));
       voiceState = nextState(await runFlow(emptyCache(cfg.flow_lm), {
         voiceLatents: f32([1, cfg.voice_dim, data.length / cfg.voice_dim], data),
       }));
     },
     async* speak(text) {
       let eos = true;
-      for (const piece of chunks(text)) eos = (yield* speakCall(piece)).eos && eos;
+      for (const call of speechCalls(text, count)) eos = (yield* speakCall(call)).eos && eos;
       return { eos };
     },
   };
