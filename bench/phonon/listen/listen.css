@@ -1,0 +1,12 @@
+/* THROWAWAY SPIKE (LT-216): the local listening page's styles. */
+body { font: 16px/1.5 system-ui, sans-serif; margin: 0; background: #fafafa; color: #1a1a1a; }
+main { max-width: 44rem; margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 1.5rem; }
+label { display: block; font-weight: 600; margin-top: 1rem; }
+select, textarea { width: 100%; font: inherit; padding: .4rem; box-sizing: border-box; }
+.row { display: flex; gap: .5rem; margin-top: 1rem; }
+button { font: inherit; padding: .5rem 1.2rem; }
+#play { font-weight: 600; }
+.note { color: #555; font-size: .9rem; }
+#stats { display: grid; grid-template-columns: max-content 1fr; gap: .2rem 1rem; }
+#stats dt { color: #555; }

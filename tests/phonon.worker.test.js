@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createHandler, VOICES, SAMPLE_RATE, voiceBuffer } from '../src/phonon.worker.mjs';
+import { createHandler, VOICES, SAMPLE_RATE, voiceBuffer, speechCalls } from '../src/phonon.worker.mjs';
 import { expectedSeconds } from '../src/phonon-guard.mjs';
 
 const FRAME = 1920;
@@ -177,5 +177,19 @@ describe('phonon.worker.mjs', () => {
     expect(voiceBuffer({ 'voices/default.bin': own }, VOICES.F1)).toBe(own);
     expect(voiceBuffer(english, VOICES.F1)).toBe(english[`voices/${VOICES.F1}.bin`]);
     expect(() => voiceBuffer({}, VOICES.M1)).toThrow(VOICES.M1);
+  });
+
+  // Measured on Phonon es (LT-216): a call ending "en nuestros pensamientos,"
+  // ran on past its end in 8 renders of 8; ending it with a full stop, 0 of 8.
+  it('ends every call it cuts mid-sentence with a full stop, so the voice stops there', () => {
+    const words = (t) => t.split(' ').length;
+    const calls = speechCalls('one two three, four five six; seven eight nine: ten.', words, 3);
+    expect(calls).toEqual(['One two three.', 'Four five six.', 'Seven eight nine.', 'Ten.']);
+  });
+
+  it('keeps a call\'s own ending, and packs clauses together while they fit', () => {
+    const words = (t) => t.split(' ').length;
+    expect(speechCalls('one two, three four. five six', words, 4)).toEqual(['One two, three four.', 'Five six.']);
+    expect(speechCalls('really? yes!', words, 4)).toEqual(['Really? yes!']);
   });
 });
