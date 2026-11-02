@@ -1,9 +1,10 @@
-// A listening page for Phonon's translation voices (LT-216): pick a language,
-// press Play, hear src/phonon.worker.mjs speak it in this browser from the
-// files scripts/stage-phonon-lang.py staged. Not part of the reader.
+// THROWAWAY SPIKE (LT-216). A listening page for Phonon's translation voices:
+// pick a language, press Play, hear src/phonon.worker.mjs speak it in this
+// browser from the files scripts/stage-phonon-lang.py staged. Not part of the
+// reader.
 //
 // It also keeps what it measured on `window.lt216`, which
-// bench/phonon/lt216_measure.mjs reads.
+// bench/phonon/lt216/measure.mjs reads.
 
 const WORKER = '/_assets/tts/phonon.worker.js';
 const NC = 'Phonon by Gradium, CC BY-NC 4.0. Demo use only.';
@@ -28,6 +29,7 @@ const $ = (id) => document.getElementById(id);
 const engines = new Map();   // lang -> Promise<{ worker, loadMs, bytes }>
 let audio = null;            // { ctx, sources, next }
 let nextId = 0;
+let stopCurrent = null;      // ends the run being spoken, for the Stop button
 const lt216 = (window.lt216 = { runs: [], last: null });
 
 function startEngine(lang) {
@@ -87,7 +89,16 @@ export async function speak(lang, text, { mute = false } = {}) {
   const sent = performance.now();
   let firstSoundMs = null;
   return new Promise((resolve, reject) => {
-    worker.addEventListener('message', function onSynth({ data }) {
+    // A cancelled sentence gets no reply from the worker, so Stop settles the run itself.
+    stopCurrent = () => {
+      worker.removeEventListener('message', onSynth);
+      worker.postMessage({ type: 'cancel', id });
+      stopAudio();
+      stopCurrent = null;
+      resolve({ lang, text, outcome: 'stopped' });
+    };
+    worker.addEventListener('message', onSynth);
+    function onSynth({ data }) {
       if (data.id !== id) return;
       if (data.type === 'chunk') {
         firstSoundMs ??= performance.now() - sent;
@@ -97,6 +108,7 @@ export async function speak(lang, text, { mute = false } = {}) {
         firstSoundMs = null;
       } else if (data.type === 'audio') {
         worker.removeEventListener('message', onSynth);
+        stopCurrent = null;
         const renderMs = performance.now() - sent;
         const seconds = data.samples.length / data.sampleRate;
         const run = { lang, text, coldStart, loadMs: coldStart ? loadMs : null, bytes, firstSoundMs, renderMs,
@@ -106,9 +118,10 @@ export async function speak(lang, text, { mute = false } = {}) {
         resolve(run);
       } else if (data.type === 'error') {
         worker.removeEventListener('message', onSynth);
+        stopCurrent = null;
         reject(new Error(data.message));
       }
-    });
+    }
     worker.postMessage({ type: 'synth', id, text, stream: true });
   });
 }
@@ -148,7 +161,8 @@ function choose(lang) {
 
 addEventListener('DOMContentLoaded', () => {
   for (const [code, { name }] of Object.entries(LANGS)) $('lang').add(new Option(name, code));
-  $('lang').value = new URLSearchParams(location.search).get('lang') ?? 'fr';
+  const asked = new URLSearchParams(location.search).get('lang');
+  $('lang').value = asked in LANGS ? asked : 'fr';
   choose($('lang').value);
   $('lang').addEventListener('change', () => choose($('lang').value));
   $('play').addEventListener('click', async () => {
@@ -157,6 +171,7 @@ addEventListener('DOMContentLoaded', () => {
     status(`Speaking ${LANGS[lang].name}…`);
     try {
       const run = await speak(lang, $('text').value);
+      if (run.outcome === 'stopped') { status('Stopped.'); return; }
       status(run.outcome === 'skipped' ? 'The voice could not finish this text.' : 'Done.');
       showStats(run);
       $('save').disabled = false;
@@ -166,7 +181,8 @@ addEventListener('DOMContentLoaded', () => {
       $('play').disabled = false;
     }
   });
-  $('stop').addEventListener('click', () => { stopAudio(); $('stop').disabled = true; });
+  // The render finishes well before its audio does: after it, Stop just silences.
+  $('stop').addEventListener('click', () => { (stopCurrent ?? stopAudio)(); $('stop').disabled = true; });
   $('save').addEventListener('click', () => {
     const { samples, sampleRate, lang } = lt216.last;
     const a = document.createElement('a');

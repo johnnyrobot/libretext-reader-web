@@ -6,8 +6,8 @@
 Reads `phonon:<lang>` from ~/.ollama/models, checks it against the Ollama ID
 pinned below, and writes the files `src/phonon.worker.mjs` loads, in the same
 layout and manifest shape as scripts/fetch-phonon.py writes for English. The
-target must be outside this repo: the weights are CC BY-NC 4.0 and never
-committed.
+weights are CC BY-NC 4.0 and never committed, so the target must be outside
+any git checkout or in a git-ignored folder (scripts/stage-local.sh's .stage/).
 
 Ollama's copy is the original release as bf16 safetensors, one blob per
 tensor. The browser needs two ONNX graphs, and no 40M export exists, so they
@@ -21,7 +21,8 @@ PocketTTS architecture with 6 transformer layers where the 40M has 9:
   (`mimi_sig` in its config); the script refuses a copy trained on another.
 
 The English export is the template, read from fetch-phonon.py's cache and
-checked against its pins. Built from Ollama's phonon:31m-en, this script
+checked against its pins (fetch-phonon.py downloads it from Hugging Face,
+Apache 2.0, no token, when the cache does not have it). Built from Ollama's phonon:31m-en, this script
 reproduces that export's weights and tokenizer (pipeline/tests); how it was
 worked out is in bench/phonon/FINDINGS.md, "LT-216".
 
@@ -30,6 +31,7 @@ Needs numpy and onnx (`pip install numpy onnx`).
 
 import hashlib
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -38,7 +40,8 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-OLLAMA_MODELS = Path.home() / ".ollama" / "models"
+# Where Ollama keeps its models: OLLAMA_MODELS when set, as Ollama itself reads it.
+OLLAMA_MODELS = Path(os.environ.get("OLLAMA_MODELS") or Path.home() / ".ollama" / "models")
 LICENCE = "cc-by-nc-4.0"
 
 # The ID `ollama list` shows for each tag: the sha256 of the inner manifest,
@@ -308,10 +311,14 @@ def build_mimi_decoder(template, copy: OllamaCopy, template_config: dict):
     if (release.get("mimi_sig"), release.get("mimi_epoch")) != (want["mimi_sig"], want["mimi_epoch"]):
         raise SystemExit(f"phonon:{copy.tag}: mimi {release.get('mimi_sig')} is not the template's "
                          f"{want['mimi_sig']}, so its decoder cannot be reused")
+    replaced = set()
     for init in template.graph.initializer:
         if init.name in ("emb_mean", "emb_std"):
             value = copy.tensors[FLOW + init.name].astype(np.float32)
             init.CopyFrom(numpy_helper.from_array(value.reshape(tuple(init.dims)), init.name))
+            replaced.add(init.name)
+    if replaced != {"emb_mean", "emb_std"}:
+        raise SystemExit(f"the template's mimi decoder has {sorted(replaced)}, not emb_mean and emb_std")
     return template
 
 
@@ -377,13 +384,31 @@ def _english_export():
     return module
 
 
+def _refuse_a_tracked_target(target: Path) -> None:
+    """The weights are CC BY-NC and must never be committed: refuse a target
+    any git checkout would track. A git-ignored stage inside one, as
+    scripts/stage-local.sh's .stage/ is, is fine."""
+    import subprocess
+
+    existing = next(p for p in (target, *target.parents) if p.exists())
+    try:
+        inside = subprocess.run(["git", "-C", str(existing), "rev-parse", "--is-inside-work-tree"],
+                                capture_output=True, text=True).stdout.strip() == "true"
+        ignored = inside and subprocess.run(["git", "-C", str(existing), "check-ignore", "-q",
+                                             str(target / "manifest.json")]).returncode == 0
+    except FileNotFoundError:   # no git: fall back to this repo alone
+        inside, ignored = target == ROOT or ROOT in target.parents, False
+    if inside and not ignored:
+        raise SystemExit(f"{target}: git would commit the CC BY-NC weights there; "
+                         "stage outside any checkout or into a git-ignored folder")
+
+
 def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS) -> dict:
     """Build `phonon:<lang>` into `target` for the worker, verify, write manifest.json."""
     if lang not in PINS:
         raise SystemExit(f"no pinned Ollama copy for {lang!r}; LT-216 staged {sorted(PINS)}")
     target = Path(target).resolve()
-    if target == ROOT or ROOT in target.parents:
-        raise SystemExit(f"{target} is inside the repo; stage the CC BY-NC weights outside it")
+    _refuse_a_tracked_target(target)
 
     import onnx
 

@@ -1,4 +1,4 @@
-// LT-216: speak the test set through the listening page in Chrome and keep the
+// THROWAWAY SPIKE (LT-216). Speak the test set through the listening page in Chrome and keep the
 // audio and timings, for score.py to check with Whisper.
 //
 //   node bench/phonon/lt216/measure.mjs [--base http://127.0.0.1:8820] [--out DIR] [fr de es pt en]

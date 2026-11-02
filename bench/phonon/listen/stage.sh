@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Stage the LT-216 listening page: the built reader's Phonon worker, English
-# Phonon 31M, and fr/de/es/pt Phonon 40M exported from the Ollama copies.
+# THROWAWAY SPIKE (LT-216). Stage the listening page: the built reader's Phonon
+# worker, English Phonon 31M, and fr/de/es/pt Phonon 40M exported from the
+# Ollama copies.
 # Everything lands in STAGE (default /Users/Shared/LT-216/stage), outside git.
 #
 #   bench/phonon/listen/stage.sh
-#   scripts/serve-local.py --root /Users/Shared/LT-216/stage --port 8813
-#   open http://127.0.0.1:8813/social_psychology/listen-lt216/
+#   scripts/serve-local.py --root /Users/Shared/LT-216/stage --port 8820
+#   open http://127.0.0.1:8820/social_psychology/listen-lt216/
 #
 # The page sits under /social_psychology/ because serve-local.py (like the live
 # Caddyfile) sends COOP/COEP only on the reader books, and Phonon needs

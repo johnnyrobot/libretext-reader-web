@@ -285,9 +285,23 @@ def test_refuses_a_copy_whose_mimi_is_not_the_templates():
         stage_lang.build_mimi_decoder(onnx.ModelProto(), copy, template_config)
 
 
-def test_refuses_to_stage_inside_the_repo():
-    with pytest.raises(SystemExit, match="outside"):
-        stage_lang.stage("fr", ROOT / ".stage" / "_assets" / "tts" / "phonon-fr")
+def _checkout(path):
+    import subprocess
+    path.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    (path / ".gitignore").write_text(".stage/\n")
+    return path
+
+
+def test_refuses_to_stage_where_this_repo_would_commit_the_weights():
+    with pytest.raises(SystemExit, match="git would commit"):
+        stage_lang.stage("fr", ROOT / "src" / "phonon-fr")
+
+
+def test_refuses_to_stage_where_another_checkout_would_commit_the_weights(tmp_path):
+    other = _checkout(tmp_path / "other")
+    with pytest.raises(SystemExit, match="git would commit"):
+        stage_lang.stage("fr", other / "_assets" / "tts" / "phonon-fr")
 
 
 def test_refuses_a_language_it_has_no_pin_for(tmp_path):
@@ -298,9 +312,12 @@ def test_refuses_a_language_it_has_no_pin_for(tmp_path):
 @needs_real_copies
 @pytest.mark.skipif(not (OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / "fr").is_file(),
                     reason="needs `ollama pull phonon:fr`")
-def test_stages_french_in_the_layout_the_worker_loads(tmp_path):
+@pytest.mark.parametrize("where", ["no checkout", "a checkout's ignored stage"])
+def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
+    """Outside any checkout, or in one's git-ignored stage, as scripts/stage-local.sh's .stage/ is."""
     import onnx
-    target = tmp_path / "_assets" / "tts" / "phonon-fr"
+    root = tmp_path if where == "no checkout" else _checkout(tmp_path / "checkout") / ".stage"
+    target = root / "_assets" / "tts" / "phonon-fr"
     manifest = stage_lang.stage("fr", target)
 
     assert manifest["source"] == {"repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"], "licence": "cc-by-nc-4.0"}

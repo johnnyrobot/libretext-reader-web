@@ -1,4 +1,4 @@
-"""LT-216: Whisper WER/CER for the audio measure.mjs kept, against the text spoken.
+"""THROWAWAY SPIKE (LT-216). Whisper WER/CER for the audio measure.mjs kept, against the text spoken.
 
     HF_HUB_OFFLINE=1 bench/phonon/.venv/bin/python bench/phonon/lt216/score.py [DIR] [lang ...]
 
@@ -79,7 +79,7 @@ def score(directory, lang):
 
 def main():
     args = sys.argv[1:]
-    directory = pathlib.Path(args.pop(0)) if args and "/" in args[0] else pathlib.Path("/Users/Shared/LT-216/work/measure")
+    directory = pathlib.Path(args.pop(0)) if args and pathlib.Path(args[0]).is_dir() else pathlib.Path("/Users/Shared/LT-216/work/measure")
     langs = args or [p.name for p in sorted(directory.iterdir()) if (p / "timings.json").exists()]
     for lang in langs:
         total, rows = score(directory, lang)
