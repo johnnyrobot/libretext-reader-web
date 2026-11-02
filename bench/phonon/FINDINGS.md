@@ -807,12 +807,15 @@ context; on `about:blank` `AudioEncoder` does not exist):
 [lamejs](https://github.com/zhuker/lamejs) 1.2.1 from npm, a JavaScript port of
 LAME, licensed **LGPL-3.0**. It lives at `bench/phonon/listen/vendor/lamejs/`
 as the unmodified `lame.min.js` (156,043 bytes, 55,123 gzipped, sha256
-`15d285e2…ec6df4`), with its LICENSE, COPYING.LESSER and COPYING beside it, a
+`15d285e2…ec6df4`); `serve-local.py` does not compress, so a reader downloads
+the full 156 KB once, on their first Save. It sits beside its LICENSE, COPYING.LESSER and COPYING beside it, a
 `SHA256SUMS` that `stage.sh` checks before staging, and a README giving where
 it came from and how to replace it. No MIT code bundles it: a classic Worker
 (`mp3.worker.js`) loads it with `importScripts`, and the page starts that Worker
 on the first Save, so nobody downloads the encoder until they save. Save is off
-while a voice renders and Play is off while an MP3 is made.
+while a voice renders and Play is off while an MP3 is made. The render finishes
+before its audio does, so Save turns on while the end of the sentence may still
+be playing; "never while speaking" is read as never while the voice renders.
 
 ### Results
 
@@ -841,7 +844,7 @@ Encode time per minute of speech, in Chrome, Worker warm:
 |---|---|---|---|
 | en | 1.82 s (1.09 s quieter) | 1.93 s (0.88 s quieter) | 42.3 (7.4) |
 | fr | 1.65 s | 1.98 s | 41.5 |
-| de | 1.95 s (1.35 s quieter) | 1.56 s (0.83 s quieter) | 22.4 (10.2) |
+| de | 1.95 s (1.34 s quieter) | 1.56 s (0.83 s quieter) | 22.4 (10.2) |
 | es | 2.34 s | 1.11 s | 23.8 |
 | pt | 2.14 s | 1.90 s | 19.4 |
 
@@ -883,12 +886,35 @@ cause, the same renders were scored again:
 | Raw, Whisper held to one style by a prompt | 0.0153 | 0.0000 | 0.0055 | 0.0287 |
 | Saved MP3, same prompt | 0.0408 | 0.0227 | 0.0385 | 0.0917 |
 
-So the cause is the bitrate, not lamejs (native LAME is as bad at 64), not the
-delay, and not Whisper turning on any small change (the noise does nothing).
-Holding Whisper to one style narrows the gap but does not close it, so the
-64 kbps audio itself is harder to transcribe in these languages. English loses
-nothing at any rate tried. Whether a listener hears the difference was not
-tested.
+The delay is not the cause: adding it to the raw changes almost nothing. The
+bitrate is the main cause. Native LAME at 64 kbps is as bad as lamejs for fr,
+de and pt, and both pass at 128. Spanish is the exception: native LAME at 64
+kbps passes there (+0.0055), so for es the encoder matters too. The noise
+control shows only that Whisper ignores mild noise. At 40 dB it is far milder
+than the MP3's change to the waveform, which measures about 21.7 dB SNR
+(waveform SNR overstates what a lossy codec does to the ear).
+
+Whisper is also touchy about the MP3 itself. The same file, decoded and cut to
+the render's length ("lined back up"), scores up to 0.02 away from the file as
+saved. Holding Whisper to one style with a prompt narrows the gap but does not
+close it, so at 64 kbps the audio itself is harder to transcribe in these
+languages. English loses nothing at any rate tried. Nobody has listened for a
+difference.
+
+The scripts and outputs behind this table are in
+`/Users/Shared/LT-216/work/lt219/why-64kbps/`, outside git.
+
+### What the Chief can choose
+
+| Option | MB per minute | WER bar (fr/de/es/pt) |
+|---|---|---|
+| Keep 64 kbps, as decided | 0.48 | fails by 0.04–0.06 |
+| 112 kbps | 0.84 | passes, largest Δ +0.003 |
+| 128 kbps | 0.96 | passes, largest Δ +0.003 |
+
+All three are CBR, 24 kHz mono, with no resampling, and all are still a third or
+less of WAV's 2.88 MB a minute. Changing the rate is one constant in
+`mp3.worker.js`, plus the test and check that pin 64.
 
 ### Not verified (LT-219)
 
