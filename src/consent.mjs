@@ -5,12 +5,15 @@
  * Phonon 40M under CC BY-NC 4.0, downloaded only when a reader first picks that
  * language (LT-217). The noncommercial licence is linked here rather than only in a
  * repository file: the person accepting the download is the person it binds, so
- * it is shown in the dialog that downloads that voice.
+ * it is shown in the dialog that downloads that voice. Its Male voice is the
+ * model's own; its Female voice comes from Gradium's phonon-voices, Apache 2.0
+ * (LT-222), credited beside it.
  */
 
 const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ONNX';
 
 const TRANSLATION_VOICE_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/';
+const APACHE_LICENSE_URL = 'https://www.apache.org/licenses/LICENSE-2.0';
 
 // The Opus-MT checkpoint the ONNX export is quantized from. Linked rather than
 // the export itself because the export carries no licence tag of its own -- see
@@ -106,7 +109,9 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
     const voiceCredit = voiceBytes
       ? `<p><small>Translation voice: Phonon by Gradium,
         <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>
-        (noncommercial use only).</small></p>`
+        (noncommercial use only).
+        Voices: Phonon by Gradium, phonon-voices,
+        <a href="${APACHE_LICENSE_URL}" target="_blank" rel="noopener">Apache 2.0</a>.</small></p>`
       : '';
     const terms = escapeHtml(licence);
     const warning = quotaSufficient

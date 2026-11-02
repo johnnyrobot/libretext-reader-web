@@ -24,7 +24,8 @@ const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
 // The voices that speak translations: each language's own Phonon 40M (CC BY-NC
 // 4.0), exported from Johnny's Ollama copies and staged into phonon-<lang>/ by
-// scripts/stage-phonon-lang.py (LT-216), one voice each. Each is downloaded only
+// scripts/stage-phonon-lang.py (LT-216), each with its own Male voice and a
+// Female voice from Gradium's Apache 2.0 phonon-voices (LT-222). Each is downloaded only
 // when its language is first picked, run by the same worker as English, and
 // cached beside it. Supertonic is gone, with no fallback (LT-217).
 export const TRANSLATION_VOICES = Object.freeze(Object.fromEntries(['fr', 'de', 'es', 'pt'].map((lang) => [
@@ -48,6 +49,10 @@ export function offeredPairs(pairs, voices) {
 }
 
 let session = null;
+// The entry still in progress. `session` is set only at the very end of entering,
+// after the consent dialog and the download, so on its own it lets a second press
+// start a second entry and stack a second dialog (LT-223).
+let entering = null;
 
 async function loadSpeechManifest() {
   const res = await fetch(new URL('speech.json', location.href).pathname);
@@ -234,9 +239,15 @@ export async function switchLanguage(lang, {
   }
 }
 
-export async function enterReaderMode() {
-  if (session) return;
+export function enterReaderMode() {
+  if (session) return Promise.resolve();
+  // Cleared however entering ends -- declined, cancelled or failed -- so the
+  // button still works the next time it is pressed.
+  entering ??= runEntry().finally(() => { entering = null; });
+  return entering;
+}
 
+async function runEntry() {
   const manifest = await loadSpeechManifest();
   const root = document.getElementById('main-content');
   if (!root) return;
@@ -247,7 +258,7 @@ export async function enterReaderMode() {
   // scrolling them into the bibliography to reach the button.
   //
   // This still costs a visitor who never presses the button nothing: it runs
-  // only inside enterReaderMode, which only a click reaches.
+  // only from enterReaderMode, which only a click reaches.
   ensureStylesheet();
 
   // A reader from before LT-217 may still hold Supertonic's ~380 MB.
@@ -312,6 +323,10 @@ export async function enterReaderMode() {
   } catch (error) {
     progress.close();
     engine.terminate();
+    // Put the page back here and on a cancel below, as exitReaderMode does:
+    // wrapped sentences left behind fail the next entry with "Nothing on this
+    // page could be matched to the reading list" (LT-223).
+    unmountSentences(elements);
     closeOverlay();
     showError(String(error?.message ?? error));
     return;
@@ -323,6 +338,7 @@ export async function enterReaderMode() {
   // then tear it down rather than to pretend it stopped early.
   if (progress.cancelled()) {
     engine.terminate();
+    unmountSentences(elements);
     closeOverlay();
     return;
   }

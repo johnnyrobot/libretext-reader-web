@@ -2,11 +2,10 @@
 
 import { formatBytes } from './consent.mjs';
 
-// Two English voices, from gradium/phonon-voices: the worker maps M1 and F1 to
-// them. One clear pair is a better choice than a long menu of names nobody has
-// heard. A translation has one voice, its model's own default (LT-217), so the
-// menu is turned off while one is picked rather than offering a choice that
-// changes nothing.
+// Two voices in every language: the worker maps M1 and F1 to each language's
+// Male and Female voice (LT-222; bench/phonon/FINDINGS.md says which). One clear pair is a
+// better choice than a long menu of names nobody has heard, and the reader's
+// pick carries across a language switch.
 const VOICES = [['M1', 'Male'], ['F1', 'Female']];
 const RATES = [0.75, 1, 1.25, 1.5];
 
@@ -83,9 +82,8 @@ export function mountControls(host, {
   });
   el('voice').addEventListener('change', (e) => onVoice(e.target.value));
   el('rate').addEventListener('change', (e) => onRate(Number(e.target.value)));
-  const enableVoicesFor = (lang) => { el('voice').disabled = lang !== 'en'; };
   if (languages.length) {
-    el('lang').addEventListener('change', (e) => { enableVoicesFor(e.target.value); onLang(e.target.value); });
+    el('lang').addEventListener('change', (e) => onLang(e.target.value));
   }
 
   const onKey = (event) => {
@@ -111,7 +109,6 @@ export function mountControls(host, {
     setLang(lang) {
       const select = el('lang');
       if (select) select.value = lang;
-      enableVoicesFor(lang);
     },
 
     /** Repaint one language after its model arrives.
