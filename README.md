@@ -57,7 +57,7 @@ flowchart LR
     K --> P
     P --> M["player.mjs<br/>audio + sentence highlight"]
     I -. language chosen .-> N["translate.worker.js<br/>Opus-MT, per sentence"]
-    N --> L["the translation voice<br/>Phonon, CC BY-NC 4.0, loaded only then (LT-216)"]
+    N --> L["phonon.worker.js, phonon-&lt;lang&gt;/<br/>that language's Phonon 40M, CC BY-NC 4.0,<br/>~190 MB, loaded only then"]
     L --> M
   end
   G --> H
@@ -71,6 +71,7 @@ What each edge carries:
 | `speech.json` → reader | fetched relative to the page URL, so it is always `<page>/speech.json` | `src/reader.mjs` `loadSpeechManifest()` |
 | reader → speech worker | one sentence of Speech Text at a time, four to eight ahead of playback | `src/player.mjs` |
 | `phonon/manifest.json` → English voice download | name, path, size and sha256 of each model file, plus the pinned Hub revision; the download is verified against it | `scripts/fetch-phonon.py` |
+| `phonon-<lang>/manifest.json` → translation voice download | the same shape, for fr, de, es or pt, plus the pinned Ollama ID it was built from; its size is what the language menu and the consent box add to the model's | `scripts/stage-phonon-lang.py` |
 
 The pipeline never runs in the browser and the browser never runs the pipeline. If a
 sentence sounds wrong, the fix is in `pipeline/` and the page is rebuilt; nothing in
@@ -98,20 +99,27 @@ npm run build                    # → dist/_assets/tts/
 Stage the English voice with `python3 scripts/fetch-phonon.py <dir>/phonon`: it fetches
 [Phonon 31M](https://huggingface.co/onnx-community/phonon-31m-en-ONNX) at a pinned revision,
 checks every file against a pinned size and sha256, and writes `phonon/manifest.json`.
-The weights are not in this repository (see *Model weights* below). Then lay out the
-served directory:
+Stage each translation voice with
+`python3 scripts/stage-phonon-lang.py <lang> <dir>/phonon-<lang>` (fr, de, es, pt): it
+builds that language's Phonon 40M from the Ollama copy `phonon:<lang>` (pinned by its
+Ollama ID) into the two ONNX graphs the browser runs, with one voice,
+`voices/default.bin`. It needs numpy and onnx, and refuses a target inside this
+repository, because those weights are CC BY-NC 4.0. The weights are not in this
+repository (see *Model weights* below). Then lay out the served directory:
 
 ```
 /_assets/tts/
 ├── boot.js  reader.js  models.js  qa.js  reader.css  preload-helper.js  from dist/
 ├── phonon.worker.js  translate.worker.js  transformers.web.js           from dist/
 ├── phonon/                  English voice (~155 MB): scripts/fetch-phonon.py <this dir>/phonon
+├── phonon-fr/ phonon-de/    one Phonon 40M per translation language (~300 MB each,
+├── phonon-es/ phonon-pt/      pt ~685 MB): scripts/stage-phonon-lang.py <lang> <this dir>/phonon-<lang>
 ├── ort-mt/                  onnxruntime-web wasm, for Phonon and the translator
 └── mt/                      optional: one directory per language pair + pairs.json
 ```
 
-`scripts/stage-local.sh` does exactly this into `.stage/` and is the reference for the
-copy order, including how it picks the right `ort-mt/` binaries out of `node_modules`:
+`scripts/stage-local.sh` does exactly this into `.stage/` (or `STAGE=<dir>`) and is the
+reference for the copy order, including how it picks the right `ort-mt/` binaries out of `node_modules`:
 they must be the version transformers.js bundles, because another version's wasm
 aborts inside its JS with no readable error. It ends by running
 `node scripts/check-no-supertonic.mjs` on the staged directory, which fails if any file
@@ -121,9 +129,16 @@ runs Phonon only (LT-217), so a mirror that served Supertonic should delete thos
 when it deploys this.
 
 Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (multi-GB
-download, ~120 MB served per pair) and copy its output to `mt/`. Without `mt/` the
-language menu simply does not appear, and it does not appear either until the fr, de, es
-and pt Phonon voice is wired (LT-216): no other engine speaks a translation.
+download, ~120 MB served per pair) and copy its output to `mt/`, then stage each
+language's voice. A language is offered only when both its pair and its
+`phonon-<lang>/` are served: no other engine speaks a translation. `stage-local.sh`
+stages the four voices when `STAGE` is outside the repository (it skips them for the
+default `.stage/`, which is inside it), leaves out a language whose voice fails to
+build, and prunes `mt/pairs.json` to the languages that have one. Without `mt/` the
+language menu does not appear.
+
+`PAGES_FROM=<dir>` makes `stage-local.sh` copy the books from an existing stage instead
+of fetching them from the mirror, and rebuild only `_assets/tts/`.
 
 ### 2. Give each page the hook
 
@@ -202,8 +217,14 @@ header @ttsscope Content-Security-Policy "default-src 'self'; script-src 'self' 
 #    reader.js keeps a returning visitor on the old bundle for a year.
 #    Phonon's weights and voices are immutable; its manifest, config and
 #    tokenizer are small and revalidate with the code.
-@ttsmodels path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/*
-@ttscode { path /_assets/tts/*  not path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* }
+#    Each voice directory is named, not globbed: Caddy reads a path ending in *
+#    as a plain prefix, so phonon-*/onnx/* would match nothing. One line each,
+#    since a Caddyfile has no line continuation.
+@ttsmodels path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* /_assets/tts/phonon-fr/onnx/* /_assets/tts/phonon-fr/voices/* /_assets/tts/phonon-de/onnx/* /_assets/tts/phonon-de/voices/* /_assets/tts/phonon-es/onnx/* /_assets/tts/phonon-es/voices/* /_assets/tts/phonon-pt/onnx/* /_assets/tts/phonon-pt/voices/*
+@ttscode {
+    path /_assets/tts/*
+    not path /_assets/tts/phonon/onnx/* /_assets/tts/phonon/voices/* /_assets/tts/phonon-fr/onnx/* /_assets/tts/phonon-fr/voices/* /_assets/tts/phonon-de/onnx/* /_assets/tts/phonon-de/voices/* /_assets/tts/phonon-es/onnx/* /_assets/tts/phonon-es/voices/* /_assets/tts/phonon-pt/onnx/* /_assets/tts/phonon-pt/voices/*
+}
 header @ttsmodels Cache-Control "public, max-age=31536000, immutable"
 header @ttscode   Cache-Control "public, max-age=0, must-revalidate"
 ```
@@ -234,6 +255,13 @@ sounds right* for why that last step is not optional.
 its source and `speech.json` is removed. The headers and the staged assets are left in
 place on purpose — with no page carrying the boot tag they are never requested, and
 removing them is a separate, human decision.
+
+The voices roll back by directory. Each language's `phonon-<lang>/` and its `mt/en-<lang>/`
+pair are self-contained, so removing one and its entry in `mt/pairs.json` takes that
+language off the menu without touching the others. A reader who already downloaded it
+keeps its files in Cache Storage until the site clears them; they are never fetched again.
+Restoring a previous stage of `/_assets/tts/` as a whole is the full rollback; the
+reader's code and its voices are versioned together, so restore them together.
 
 ## Porting the equation speech to another stack
 
@@ -274,11 +302,14 @@ an export of `gradium/phonon-31m-en`, with the Preston and Hadley voices. Its we
 (about 155 MB) are **not** in this repository; `scripts/fetch-phonon.py` fetches them at a
 pinned revision into `bench/assets/` (gitignored) when `npm run stage` runs.
 
-French, German, Spanish and Portuguese are to be spoken by **Phonon by Gradium,
-CC BY-NC 4.0**, a 40M checkpoint run in the browser; which one, and how, is LT-216. Those
-weights are fetched at stage time like the English ones and never committed. A reader who
-only ever listens in English never downloads them. They go public only once Gradium has
-confirmed in writing that this use is noncommercial; Listen mode stays free, with no
+French, German, Spanish and Portuguese are spoken by **Phonon by Gradium, CC BY-NC 4.0**:
+each language's own 40M checkpoint (`phonon:fr`, `phonon:de`, `phonon:es`, `phonon:pt` in
+Ollama), with its one default voice, run in the browser. `scripts/stage-phonon-lang.py`
+builds the browser files from a pinned Ollama copy at stage time, outside this
+repository; they are never committed. A reader who only ever listens in English never
+downloads them, and one who picks a language downloads only that language's. They may
+run on the staging mirror, a demo on its own domain; they go public only once Gradium
+has confirmed in writing that this use is noncommercial. Listen mode stays free, with no
 paywall, ads or member-only access.
 
 This project's own code is **MIT**, see `LICENSE`. That covers everything in `src/`,
@@ -379,18 +410,17 @@ Working and deployed, not finished.
 
 - **Four books** are live on a staging mirror: `social_psychology`, `math_elem_teachers`,
   `chem_4b` and `human_relations`.
-- **English** is spoken by Phonon 31M. **French, German, Spanish and Portuguese** are the
-  translation languages (LT-217); until their Phonon voice is wired (LT-216) Listen mode
-  is English only. Czech, Danish, Hungarian, Italian, Dutch and Swedish were dropped with
-  Supertonic.
+- **English** is spoken by Phonon 31M. **French, German, Spanish and Portuguese** are
+  machine-translated in the browser and spoken by their own Phonon 40M (LT-216, LT-217).
+  Czech, Danish, Hungarian, Italian, Dutch and Swedish were dropped with Supertonic.
 - **Equations and chemistry are spoken**, not skipped.
 - Both test suites run in CI on every push and pull request.
 
 Known limits, all documented rather than hidden:
 
 - Not validated on low-end hardware. The RTF budget assumes roughly an M1-class core.
-- The translation voice is CC BY-NC 4.0; it is not served publicly until Gradium confirms
-  the use is noncommercial.
-- Portuguese has not been through the translation quality gate yet; it was not among the
-  languages `bench/sweep/` screened. It ships only once it passes.
+- The translation voices are CC BY-NC 4.0; they run on the staging mirror, a demo, and
+  are not served publicly until Gradium confirms the use is noncommercial.
+- The translation quality gate (472 sentences, at most 2% failing) passed for all four:
+  Portuguese 6, German 9, French 10 and Spanish 10 failures.
 - `docs/SPEAKING_MATHEMATICS.md` §8 lists the remaining phrasing defects.

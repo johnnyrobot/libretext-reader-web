@@ -67,6 +67,38 @@ describe('createListenEngine (LT-214)', () => {
     expect(log.filter((line) => line.startsWith('translation:init'))).toHaveLength(1);
   });
 
+  it('creates the voice for the language asked: each has its own Phonon model (LT-217)', async () => {
+    const { engine, createOther, others } = await started();
+    const prepared = engine.prepare('fr', {});
+    others[0].ready();
+    await prepared;
+    expect(createOther).toHaveBeenCalledWith('fr');
+    expect(engine.prepared('fr')).toBe(true);
+    expect(engine.prepared('de')).toBe(false);
+  });
+
+  it('another language replaces the loaded voice, so only one 40M is ever held (LT-217)', async () => {
+    const { engine, createOther, others, log } = await started();
+    const fr = engine.prepare('fr', {});
+    others[0].ready();
+    await fr;
+    await engine.setLang('fr');
+
+    const de = engine.prepare('de', {});
+    expect(others[0].terminate).toHaveBeenCalled();
+    expect(createOther).toHaveBeenLastCalledWith('de');
+    // French is gone and German not yet loaded: nothing may reach either.
+    engine.synthesize('s6', 'Hello.', {});
+    expect(log).toContain('phonon:synth:s6');
+    await expect(engine.setLang('fr')).rejects.toThrow(/not loaded/i);
+
+    others[1].ready();
+    await de;
+    await engine.setLang('de');
+    engine.synthesize('s7', 'Hallo.', {});
+    expect(others[1].synthesize).toHaveBeenCalledWith('s7', 'Hallo.', {});
+  });
+
   it('a voice chosen while the translation voice loads is applied once it has', async () => {
     const { engine, others, log } = await started();
     const prepared = engine.prepare('es', {});
@@ -78,12 +110,12 @@ describe('createListenEngine (LT-214)', () => {
 
   it('says whether the translation voice is loaded, so the reader shows a wait only when there is one', async () => {
     const { engine, others } = await started();
-    expect(engine.prepared()).toBe(false);
+    expect(engine.prepared('es')).toBe(false);
     const loading = engine.prepare('es', {});
-    expect(engine.prepared()).toBe(false);
+    expect(engine.prepared('es')).toBe(false);
     others[0].ready();
     await loading;
-    expect(engine.prepared()).toBe(true);
+    expect(engine.prepared('es')).toBe(true);
   });
 
   it('a failed prepare is torn down and may be tried again', async () => {

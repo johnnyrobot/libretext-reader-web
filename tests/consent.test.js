@@ -135,16 +135,16 @@ describe('the voice gate (English on Phonon, LT-214)', () => {
 
 describe('the translation gate when the translation voice is not downloaded yet (LT-217)', () => {
   it('adds the voice to the size and credits Phonon under CC BY-NC 4.0', async () => {
-    // Translations are spoken by a Phonon checkpoint an English-only reader has
-    // never downloaded. Its size and its noncommercial licence are part of what
-    // they are agreeing to here. Supertonic is gone (LT-217).
+    // Each translation is spoken by its own Phonon 40M, which an English-only
+    // reader has never downloaded. Its size and its noncommercial licence are
+    // part of what they are agreeing to here. Supertonic is gone (LT-217).
     const answer = requestTranslationConsent({
       language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
-      voiceBytes: 401_604_608,
+      voiceBytes: 199_570_458,               // phonon-es, as staged
     });
     const text = dialog().textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('498 MB');     // 115 MB + 383 MB, rounded once
-    expect(text).toContain('383 MB');
+    expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
+    expect(text).toContain('190 MB voice that reads español aloud');
     expect(text).toContain('Phonon by Gradium, CC BY-NC 4.0');
     expect(text).not.toContain('Supertonic');
     expect(text).not.toContain('OpenRAIL-M');

@@ -1,7 +1,8 @@
 /**
  * English speech with Phonon 31M (onnx-community/phonon-31m-en, Apache 2.0), in
  * the reader's browser (LT-214). Since LT-217 Phonon is Listen mode's only
- * engine; the fr, de, es and pt voice is LT-216's to wire.
+ * engine: the same worker loads fr, de, es or pt from that language's Phonon
+ * 40M (CC BY-NC 4.0), staged by scripts/stage-phonon-lang.py (LT-216).
  *
  * Protocol, the one `engine.mjs` drives, with two additions for streaming:
  *
@@ -14,7 +15,7 @@
  *   <- { type: 'audio', id, samples, sampleRate, outcome }
  *   -> { type: 'cancel', id }
  *   -> { type: 'setVoice', voice }  <- { type: 'voiceSet', voice }
- *   -> { type: 'setLang', lang }    <- { type: 'langSet', lang }   English only
+ *   -> { type: 'setLang', lang }    <- { type: 'langSet', lang }   init's lang only
  *   <- { type: 'error', id, code, message }
  *
  * `outcome` is the length guard's verdict (src/phonon-guard.mjs): 'ok',
@@ -39,6 +40,17 @@ export const SAMPLE_RATE = 24000;
 // The reader's voice menu is M1/F1 whichever engine speaks. Both are Apache 2.0
 // voices from gradium/phonon-voices (revision 0ee17205): Preston and Hadley.
 export const VOICES = Object.freeze({ M1: 'qIxlZ7Ei8KvWlyQH', F1: 'bXwrkHhURL1VFJdG' });
+
+/**
+ * The voice file for a menu voice. A translation model staged by
+ * scripts/stage-phonon-lang.py (LT-216) carries one voice, its release's
+ * default, which it speaks whichever of M1/F1 is chosen.
+ */
+export function voiceBuffer(buffers, voiceId) {
+  const buffer = buffers[`voices/${voiceId}.bin`] ?? buffers['voices/default.bin'];
+  if (!buffer) throw new Error(`no voices/${voiceId}.bin and no voices/default.bin`);
+  return buffer;
+}
 
 // Sampling settings calibrated on the LT-213 bench set (bench/phonon/FINDINGS.md,
 // "LT-214 calibration"). DURATION_DELTA slows Phonon from ~16.2 to ~14.3
@@ -186,7 +198,7 @@ async function loadPhonon({ manifestUrl, onProgress }) {
 
   return {
     async setVoice(voiceId) {
-      const data = new Float32Array(buffers[`voices/${voiceId}.bin`].slice(0));
+      const data = new Float32Array(voiceBuffer(buffers, voiceId).slice(0));
       voiceState = nextState(await runFlow(emptyCache(cfg.flow_lm), {
         voiceLatents: f32([1, cfg.voice_dim, data.length / cfg.voice_dim], data),
       }));
@@ -202,6 +214,10 @@ async function loadPhonon({ manifestUrl, onProgress }) {
 export function createHandler({ post, load = loadPhonon }) {
   let loading = null;
   let model = null;
+  // Each Phonon model speaks one language: English is the 31M, and fr, de, es
+  // and pt each have their own 40M (LT-216), so the worker speaks the one it
+  // was loaded for.
+  let lang = 'en';
   let queue = Promise.resolve();
   // Ids queued or rendering, and how many times: a cancel for an id that is not
   // here is late (its audio is already sent) and must not be remembered, or it
@@ -236,6 +252,7 @@ export function createHandler({ post, load = loadPhonon }) {
   return async function handle(data) {
     switch (data.type) {
       case 'init':
+        lang = data.lang ?? 'en';
         try {
           loading = load({
             manifestUrl: data.manifestUrl,
@@ -268,11 +285,11 @@ export function createHandler({ post, load = loadPhonon }) {
         });
 
       case 'setLang':
-        // English only: the reader routes every other language to the
-        // translation voice before it gets here, so anything else is a routing
-        // bug, said loudly.
-        if (data.lang === 'en') post({ type: 'langSet', lang: 'en' });
-        else post({ type: 'error', id: 'lang', code: 'UNSUPPORTED_LANG', message: `Phonon speaks English only, not ${data.lang}` });
+        // Only the language this model was loaded for: the reader routes every
+        // other language to that language's own worker before it gets here, so
+        // anything else is a routing bug, said loudly.
+        if (data.lang === lang) post({ type: 'langSet', lang });
+        else post({ type: 'error', id: 'lang', code: 'UNSUPPORTED_LANG', message: `This Phonon model speaks ${lang}, not ${data.lang}` });
         return;
 
       default:

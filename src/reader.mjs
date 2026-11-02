@@ -22,21 +22,29 @@ import { substituteMathSpeech } from './math-speech.mjs';
 const PHONON_MANIFEST_URL = '/_assets/tts/phonon/manifest.json';
 const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
-// The voice that speaks translations: Phonon, CC BY-NC 4.0, downloaded only when
-// a translation is first picked. `{ workerUrl, manifestUrl, cacheName }` once
-// LT-216 has picked its route for fr, de, es and pt. Until then there is none,
-// so Listen mode is English only: Supertonic is gone, with no fallback (LT-217).
-const TRANSLATION_VOICE = null;
+// The voices that speak translations: each language's own Phonon 40M (CC BY-NC
+// 4.0), exported from Johnny's Ollama copies and staged into phonon-<lang>/ by
+// scripts/stage-phonon-lang.py (LT-216), one voice each. Each is downloaded only
+// when its language is first picked, run by the same worker as English, and
+// cached beside it. Supertonic is gone, with no fallback (LT-217).
+export const TRANSLATION_VOICES = Object.freeze(Object.fromEntries(['fr', 'de', 'es', 'pt'].map((lang) => [
+  lang,
+  Object.freeze({
+    workerUrl: PHONON_WORKER_URL,
+    manifestUrl: `/_assets/tts/phonon-${lang}/manifest.json`,
+    cacheName: PHONON_CACHE_NAME,
+  }),
+])));
 
 // Endonyms: the reader who wants Spanish reads Spanish. Also the allowlist of
 // what Listen mode speaks besides English (LT-217): a hosted pair for any other
 // language is never offered.
 const LANGUAGE_LABELS = { es: 'español', fr: 'français', de: 'Deutsch', pt: 'português' };
 
-/** The hosted translations a reader is offered: those in LANGUAGE_LABELS, and
- * none at all while there is no voice to speak them. */
-export function offeredPairs(pairs, translationVoice) {
-  return translationVoice ? pairs.filter((p) => p.code in LANGUAGE_LABELS) : [];
+/** The hosted translations a reader is offered: those in LANGUAGE_LABELS that
+ * have a voice in `voices` to speak them. */
+export function offeredPairs(pairs, voices) {
+  return pairs.filter((p) => p.code in LANGUAGE_LABELS && p.code in voices);
 }
 
 let session = null;
@@ -272,11 +280,10 @@ export async function enterReaderMode() {
     return;
   }
 
-  // English on Phonon 31M; the translation voice is created only when a
-  // translation is picked.
+  // English on Phonon 31M; a language's voice is created only when it is picked.
   const engine = createListenEngine({
     english: createEngine({ workerUrl: PHONON_WORKER_URL, manifestUrl: PHONON_MANIFEST_URL }),
-    createOther: () => createEngine(TRANSLATION_VOICE),
+    createOther: (lang) => createEngine(TRANSLATION_VOICES[lang]),
   });
   const progress = showProgress();
   let provider = 'wasm';
@@ -309,7 +316,7 @@ export async function enterReaderMode() {
   // Which languages this DEPLOYMENT can translate into, not which tracks this
   // PAGE has: with translation client-side there are no tracks on disk, so
   // manifest.languages describes something that no longer exists.
-  const pairs = offeredPairs(TRANSLATION_VOICE ? await hostedPairs() : [], TRANSLATION_VOICE);
+  const pairs = offeredPairs(await hostedPairs(), TRANSLATION_VOICES);
 
   const mtManifestUrl = (pair) => `${MT_ROOT}${pair}/manifest.json`;
 
@@ -322,18 +329,18 @@ export async function enterReaderMode() {
   const stored = await Promise.all(pairs.map((p) =>
     modelsPresent(mtManifestUrl(p.pair), MT_CACHE_NAME)));
 
-  /** The translation voice's download, 0 once it is stored. Every language's
-   * size includes it until then, in the menu and in the dialog alike. Asked only
-   * when a translation is offered: it fetches the voice's manifest (a few KB),
-   * never its weights. */
-  async function translationVoiceBytes() {
-    const { manifestUrl, cacheName } = TRANSLATION_VOICE;
+  /** A language's voice download, 0 once it is stored. That language's size
+   * includes it until then, in the menu and in the dialog alike. It fetches the
+   * voice's manifest (a few KB), never its weights. */
+  async function translationVoiceBytes(lang) {
+    const { manifestUrl, cacheName } = TRANSLATION_VOICES[lang];
     if (await modelsPresent(manifestUrl, cacheName)) return 0;
     return (await checkQuota(manifestUrl)).required;
   }
-  // Only the menu needs this now, so a manifest that will not load must not stop
-  // an English reader: the size is unknown (null) until consent asks again.
-  let voiceBytes = pairs.length ? await translationVoiceBytes().catch(() => null) : 0;
+  // Only the menu needs these now, so a manifest that will not load must not
+  // stop an English reader: that size is unknown (null) until consent asks again.
+  const voiceBytes = Object.fromEntries(await Promise.all(pairs.map(async (p) =>
+    [p.code, await translationVoiceBytes(p.code).catch(() => null)])));
   const modelStored = new Set(pairs.filter((p, i) => stored[i]).map((p) => p.code));
 
   let translator = null;
@@ -360,19 +367,19 @@ export async function enterReaderMode() {
   async function consentToDownload(hosted) {
     // modelsPresent must not create the cache just by asking (models.mjs's
     // invariant, tested): a reader who declines leaves nothing behind.
-    voiceBytes = await translationVoiceBytes();
-    if (!voiceBytes && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
+    const voice = voiceBytes[hosted.code] = await translationVoiceBytes(hosted.code);
+    if (!voice && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
 
     // The translation model's size is stated even in the rare case it is stored
     // and only the voice is missing (a reader who deleted the voice): it then
     // over-states, never under-states, what is fetched.
-    const { sufficient } = await checkQuotaFor(hosted.bytes + voiceBytes);
+    const { sufficient } = await checkQuotaFor(hosted.bytes + voice);
     const accepted = await requestTranslationConsent({
       language: LANGUAGE_LABELS[hosted.code],
       requiredBytes: hosted.bytes,
       quotaSufficient: sufficient,
       licence: hosted.licence ?? 'a permissive licence',
-      voiceBytes,
+      voiceBytes: voice,
     });
     if (accepted) await navigator.storage?.persist?.();
     return accepted;
@@ -415,27 +422,25 @@ export async function enterReaderMode() {
     // Repainted rather than rebuilt: the reader is looking at this select right
     // now, and rebuilding it would drop their selection.
     modelStored.add(hosted.code);
-    controls.setLanguageStored(hosted.code, !voiceBytes);
+    controls.setLanguageStored(hosted.code, !voiceBytes[hosted.code]);
     // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
     if (download.cancelled()) return null;
 
-    // The voice that speaks translations, loaded the first time one is picked
-    // and kept for the rest of the visit.
-    if (!engine.prepared()) {
-      const voiceLoad = showProgress({ title: 'Preparing the translation voice' });
+    // This language's voice, loaded when it is picked and kept until another
+    // language replaces it.
+    if (!engine.prepared(lang)) {
+      const voiceLoad = showProgress({ title: `Preparing the ${label} voice` });
       try {
         await engine.prepare(lang, { onProgress: (p) => voiceLoad.update(p) });
       } finally {
         voiceLoad.close();
       }
-      if (voiceBytes) {
-        voiceBytes = 0;
-        for (const p of pairs) {
-          controls.setLanguageBytes(p.code, p.bytes);
-          if (modelStored.has(p.code)) controls.setLanguageStored(p.code, true);
-        }
+      if (voiceBytes[lang]) {
+        voiceBytes[lang] = 0;
+        controls.setLanguageBytes(lang, hosted.bytes);
+        if (modelStored.has(lang)) controls.setLanguageStored(lang, true);
       }
       if (voiceLoad.cancelled()) return null;
     }
@@ -592,7 +597,7 @@ export async function enterReaderMode() {
     // controls.mjs's unescaped bar.innerHTML, and only languages a voice can
     // speak reach the menu. pairs.json is written by our own script today,
     // which is exactly the kind of assumption that stops being true quietly.
-    languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
+    languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes[p.code])),
     onLang: (lang) => switchLanguage(lang, {
       player, engine, controls, startTranslating, stopTranslating,
       // Only now may batches reach the player: before the swap the engine is

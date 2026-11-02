@@ -1,9 +1,9 @@
 /**
  * The consent gate. Nothing may fetch a model byte before this resolves true.
  *
- * English is spoken by Phonon 31M (Apache 2.0); translations by a Phonon
- * checkpoint under CC BY-NC 4.0, downloaded only when a reader first picks one
- * (LT-217). The noncommercial licence is linked here rather than only in a
+ * English is spoken by Phonon 31M (Apache 2.0); each translation by its own
+ * Phonon 40M under CC BY-NC 4.0, downloaded only when a reader first picks that
+ * language (LT-217). The noncommercial licence is linked here rather than only in a
  * repository file: the person accepting the download is the person it binds, so
  * it is shown in the dialog that downloads that voice.
  */
@@ -94,20 +94,20 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
  */
 export function requestTranslationConsent({ language, requiredBytes, quotaSufficient, licence, voiceBytes = 0 }) {
   return new Promise((resolve) => {
-    // `voiceBytes` is the translation voice, when it is not downloaded yet: an
-    // English-only reader has never fetched it (LT-217).
+    // `voiceBytes` is this language's own voice, when it is not downloaded yet:
+    // an English-only reader has never fetched it (LT-217).
     // One total, rounded once, so the parts never disagree with the sum.
     const size = formatBytes(requiredBytes + voiceBytes);
+    const name = escapeHtml(language);
     const voice = voiceBytes
-      ? `<p>That includes the <strong>${formatBytes(voiceBytes)}</strong> voice that reads
-         translations aloud, downloaded once and kept.</p>`
+      ? `<p>That includes the <strong>${formatBytes(voiceBytes)}</strong> voice that reads ${name}
+         aloud, downloaded once and kept.</p>`
       : '';
     const voiceCredit = voiceBytes
       ? `<p><small>Translation voice: Phonon by Gradium,
         <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>
         (noncommercial use only).</small></p>`
       : '';
-    const name = escapeHtml(language);
     const terms = escapeHtml(licence);
     const warning = quotaSufficient
       ? ''

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { changeVoice, changeLanguage, recoverToEnglish, languageOption, offeredPairs, switchLanguage } from '../src/reader.mjs';
+import { changeVoice, changeLanguage, recoverToEnglish, languageOption, offeredPairs, switchLanguage, TRANSLATION_VOICES } from '../src/reader.mjs';
 
 /* Changing voice must invalidate cached audio IMMEDIATELY, not after the engine
  * round-trip.
@@ -159,24 +159,41 @@ describe('languageOption', () => {
 });
 
 // LT-217: Listen mode speaks en, fr, de, es and pt, and a language is offered
-// only when something can speak it. Supertonic is gone with no fallback, so
-// until the fr/de/es/pt voice lands (LT-216) the menu offers nothing.
+// only when something can speak it: its own Phonon 40M (LT-216). Supertonic is
+// gone with no fallback.
 describe('offeredPairs', () => {
   const hosted = ['es', 'fr', 'it', 'nl', 'hu', 'da', 'sv', 'de', 'cs', 'pt']
     .map((code) => ({ code, pair: `en-${code}`, bytes: 1 }));
-  const voice = { workerUrl: '/w.js', manifestUrl: '/m.json', cacheName: 'c' };
+  const voice = (lang) => ({ workerUrl: '/w.js', manifestUrl: `/${lang}.json`, cacheName: 'c' });
+  const all = Object.fromEntries(['es', 'fr', 'de', 'pt', 'it'].map((l) => [l, voice(l)]));
 
   it('offers nothing while there is no translation voice', () => {
-    expect(offeredPairs(hosted, null)).toEqual([]);
+    expect(offeredPairs(hosted, {})).toEqual([]);
   });
 
-  it('offers only French, German, Spanish and Portuguese', () => {
-    expect(offeredPairs(hosted, voice).map((p) => p.code)).toEqual(['es', 'fr', 'de', 'pt']);
+  it('offers a language only when it has a voice', () => {
+    expect(offeredPairs(hosted, { fr: voice('fr'), de: voice('de') }).map((p) => p.code)).toEqual(['fr', 'de']);
+  });
+
+  it('offers only French, German, Spanish and Portuguese, even given a voice for another', () => {
+    expect(offeredPairs(hosted, all).map((p) => p.code)).toEqual(['es', 'fr', 'de', 'pt']);
   });
 
   it('labels each offered language in its own name', () => {
-    expect(offeredPairs(hosted, voice).map((p) => languageOption(p, false, 0).label))
+    expect(offeredPairs(hosted, all).map((p) => languageOption(p, false, 0).label))
       .toEqual(['español', 'français', 'Deutsch', 'português']);
+  });
+});
+
+// The staged layout is a contract with scripts/stage-phonon-lang.py, the Caddy
+// rules and deploy-phonon.sh: each language's 40M lives in its own directory.
+describe('TRANSLATION_VOICES', () => {
+  it('speaks fr, de, es and pt, each from its own staged Phonon model', () => {
+    expect(Object.keys(TRANSLATION_VOICES).sort()).toEqual(['de', 'es', 'fr', 'pt']);
+    for (const [lang, v] of Object.entries(TRANSLATION_VOICES)) {
+      expect(v.manifestUrl).toBe(`/_assets/tts/phonon-${lang}/manifest.json`);
+      expect(v.workerUrl).toBe('/_assets/tts/phonon.worker.js');
+    }
   });
 });
 

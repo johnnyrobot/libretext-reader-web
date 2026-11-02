@@ -1,27 +1,31 @@
 /**
- * The one engine the reader talks to: English on Phonon 31M, translations on
- * the translation voice (LT-217).
+ * The one engine the reader talks to: English on Phonon 31M, each translation
+ * on that language's own Phonon 40M (LT-216, LT-217).
  *
- * The translation voice is a separate download, so it is not created until a
- * reader picks a translation -- `prepare()` -- and a reader who only ever
- * listens in English never fetches a byte of it. Which Phonon checkpoint it is
- * for fr, de, es and pt is LT-216's to decide; this module only routes.
+ * A translation voice is a separate download, so it is not created until a
+ * reader picks that language -- `prepare(lang)` -- and a reader who only ever
+ * listens in English never fetches a byte of one. Each 40M speaks one
+ * language, so picking another replaces it: only one is ever held, since each
+ * is ~200 MB of wasm memory on top of English.
  *
- * Same interface as createEngine, plus `prepare`. `setLang` switches which
- * engine `synthesize` reaches SYNCHRONOUSLY, before its promise settles:
- * changeLanguage flushes, swaps the text and returns, and the player's next
- * request must already go to the engine that speaks that language.
+ * Same interface as createEngine, plus `prepare` and `prepared`. `setLang`
+ * switches which engine `synthesize` reaches SYNCHRONOUSLY, before its promise
+ * settles: changeLanguage flushes, swaps the text and returns, and the player's
+ * next request must already go to the engine that speaks that language.
  */
 export function createListenEngine({ english, createOther }) {
   let active = english;
   let voice = 'M1';
   let other = null;        // the translation voice, once created
+  let otherLang = null;    // the language it speaks
   let otherReady = null;   // its init promise, shared by concurrent prepares
   let otherLoaded = false;
 
   function dropOther() {
+    if (active === other) active = english;
     other?.terminate();
     other = null;
+    otherLang = null;
     otherReady = null;
     otherLoaded = false;
   }
@@ -32,10 +36,12 @@ export function createListenEngine({ english, createOther }) {
       return english.init({ voice, lang: 'en', onProgress });
     },
 
-    /** Load the translation voice. Resolves once it can speak `lang`. */
+    /** Load the voice for `lang`. Resolves once it can speak it. */
     prepare(lang, { onProgress } = {}) {
+      if (otherLang !== lang) dropOther();
       if (!otherReady) {
-        other = createOther();
+        other = createOther(lang);
+        otherLang = lang;
         const mine = other;
         const loadedWith = voice;
         otherReady = mine.init({ voice, lang, onProgress }).then(
@@ -52,8 +58,9 @@ export function createListenEngine({ english, createOther }) {
       return otherReady;
     },
 
-    prepared() {
-      return otherLoaded;
+    /** Whether the voice for `lang` is loaded. */
+    prepared(lang) {
+      return otherLoaded && otherLang === lang;
     },
 
     setLang(lang) {
@@ -61,7 +68,7 @@ export function createListenEngine({ english, createOther }) {
         active = english;
         return english.setLang('en');
       }
-      if (!otherLoaded) return Promise.reject(new Error('The translation voice is not loaded.'));
+      if (!otherLoaded || otherLang !== lang) return Promise.reject(new Error('The translation voice is not loaded.'));
       active = other;
       return other.setLang(lang);
     },

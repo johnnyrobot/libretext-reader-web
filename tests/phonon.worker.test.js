@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createHandler, VOICES, SAMPLE_RATE } from '../src/phonon.worker.mjs';
+import { createHandler, VOICES, SAMPLE_RATE, voiceBuffer } from '../src/phonon.worker.mjs';
 import { expectedSeconds } from '../src/phonon-guard.mjs';
 
 const FRAME = 1920;
@@ -54,6 +54,16 @@ describe('phonon.worker.mjs', () => {
     expect(model.voice).toBe(VOICES.M1);
     expect(of('voiceSet')).toHaveLength(1);
     expect(VOICES.M1).not.toBe(VOICES.F1);
+  });
+
+  it('speaks the language it was loaded for, and refuses any other (LT-217)', async () => {
+    const { handle, of } = handlerWith(fakeModel());
+    await handle({ type: 'init', voice: 'M1', lang: 'fr', manifestUrl: '/_assets/tts/phonon-fr/manifest.json' });
+    await handle({ type: 'setLang', lang: 'fr' });
+    await handle({ type: 'setLang', lang: 'de' });
+    await flush();
+    expect(of('langSet')).toEqual([{ type: 'langSet', lang: 'fr' }]);
+    expect(of('error')).toEqual([expect.objectContaining({ id: 'lang', code: 'UNSUPPORTED_LANG' })]);
   });
 
   it('refuses a language other than English, against the pending lang request', async () => {
@@ -159,5 +169,13 @@ describe('phonon.worker.mjs', () => {
     await handle({ type: 'init', voice: 'M1', lang: 'en', manifestUrl: '/m.json' });
     expect(posted).toEqual([expect.objectContaining({ type: 'error', message: expect.stringMatching(/integrity/) })]);
     expect(posted[0].id).toBeUndefined();
+  });
+
+  it('speaks a translation model\'s one voice whichever menu voice is chosen (LT-216)', () => {
+    const own = new ArrayBuffer(8);
+    const english = { [`voices/${VOICES.M1}.bin`]: new ArrayBuffer(4), [`voices/${VOICES.F1}.bin`]: new ArrayBuffer(4) };
+    expect(voiceBuffer({ 'voices/default.bin': own }, VOICES.F1)).toBe(own);
+    expect(voiceBuffer(english, VOICES.F1)).toBe(english[`voices/${VOICES.F1}.bin`]);
+    expect(() => voiceBuffer({}, VOICES.M1)).toThrow(VOICES.M1);
   });
 });

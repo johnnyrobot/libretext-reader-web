@@ -12,6 +12,17 @@
 # Serve it with scripts/serve-local.py, which sets the COOP/COEP that the RTF
 # gate depends on. Without those headers wasm runs single-threaded and measured
 # RTF goes from 0.410 to 0.912, past the 0.500 budget.
+#
+# PAGES_FROM=<an earlier stage> builds it offline: that stage's books and page
+# assets are copied in, and nothing is fetched from the mirror. Only the reader,
+# its models and the pipeline's injection are new.
+#
+# ASSETS_ONLY=1 stages STAGE/_assets/tts and stops: no books, nothing fetched
+# from the mirror. The deploy uses it, so what it uploads is this layout.
+#
+# French, German, Spanish and Portuguese are spoken by Phonon 40M, CC BY-NC 4.0,
+# staged from Johnny's Ollama copies (LT-216). Those weights must stay out of the
+# repo, so they are staged only when STAGE is outside it.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,6 +33,19 @@ PAGE_DIR="${PAGE_DIR:-13:_Competition_and_Cooperation_in_Our_Social_Worlds/13.01
 TTS="$STAGE/_assets/tts"
 BOOK_NAME="${BOOK_NAME:-social_psychology}"
 BOOK="$STAGE/$BOOK_NAME"
+PAGES_FROM="${PAGES_FROM:-}"
+PHONON_LANGS="${PHONON_LANGS-fr de es pt}"
+ASSETS_ONLY="${ASSETS_ONLY:-}"
+
+if [ -n "$PAGES_FROM" ]; then
+  [ -d "$PAGES_FROM/_assets" ] || { echo "PAGES_FROM=$PAGES_FROM is not a stage (no _assets/)" >&2; exit 1; }
+  # STAGE is deleted below, so it must not be the stage being copied from.
+  mkdir -p "$STAGE"
+  if [ "$(cd "$PAGES_FROM" && pwd -P)" = "$(cd "$STAGE" && pwd -P)" ]; then
+    echo "PAGES_FROM and STAGE are the same directory; staging would delete its own source" >&2
+    exit 1
+  fi
+fi
 
 echo "==> building"
 cd "$ROOT"
@@ -29,7 +53,8 @@ npx vite build >/dev/null
 
 echo "==> staging assets into $TTS"
 rm -rf "$STAGE"
-mkdir -p "$TTS" "$BOOK/$PAGE_DIR"
+mkdir -p "$TTS"
+[ -n "$ASSETS_ONLY" ] || mkdir -p "$BOOK/$PAGE_DIR"
 cp dist/_assets/tts/* "$TTS/"
 
 # Phonon 31M, the English voice (LT-214), and since LT-217 the only engine:
@@ -53,6 +78,37 @@ if [ -d "$ROOT/bench/assets/mt" ]; then
   done
 else
   echo "==> no translation models to stage (run scripts/convert-mt-models.py)"
+fi
+
+# Each translation's voice, Phonon 40M, built from Johnny's Ollama copy by
+# scripts/stage-phonon-lang.py (LT-216, needs numpy and onnx). A language whose
+# voice cannot be staged here is left out: its translation model goes too, since
+# pairs.json is what the reader offers and a translation it cannot speak must
+# not be on the menu.
+echo "==> staging Phonon 40M for translations ($PHONON_LANGS)"
+case "$(mkdir -p "$TTS" && cd "$TTS" && pwd -P)/" in
+  "$ROOT"/*) echo "  (skipped: STAGE is inside the repo; the CC BY-NC weights are staged only outside it)"; PHONON_LANGS="";;
+esac
+for lang in $PHONON_LANGS; do
+  if ! .venv/bin/python "$ROOT/scripts/stage-phonon-lang.py" "$lang" "$TTS/phonon-$lang"; then
+    echo "  phonon-$lang: could not be staged; $lang is left out"
+    rm -rf "$TTS/phonon-$lang"
+  fi
+done
+if [ -f "$TTS/mt/pairs.json" ]; then
+  node - "$TTS" <<'JS'
+const { readFileSync, writeFileSync, existsSync, rmSync } = require('node:fs');
+const tts = process.argv[2];
+const index = JSON.parse(readFileSync(`${tts}/mt/pairs.json`, 'utf8'));
+const spoken = (p) => existsSync(`${tts}/phonon-${p.code}/manifest.json`);
+for (const p of index.pairs.filter((p) => !spoken(p))) {
+  rmSync(`${tts}/mt/${p.pair}`, { recursive: true, force: true });
+  console.log(`  ${p.pair}: no voice staged, left out`);
+}
+index.pairs = index.pairs.filter(spoken);
+writeFileSync(`${tts}/mt/pairs.json`, JSON.stringify(index, null, 2));
+console.log(`  offered: ${index.pairs.map((p) => p.code).join(', ') || '(English only)'}`);
+JS
 fi
 
 echo "==> staging ORT for Phonon and the translation worker"
@@ -91,6 +147,29 @@ echo "  onnxruntime-web ${ORT_MT_SRC##* } -> $TTS/ort-mt ($(du -sh "$TTS/ort-mt"
 
 echo "==> checking no Supertonic file was staged (LT-217)"
 node "$ROOT/scripts/check-no-supertonic.mjs" "$TTS"
+
+if [ -n "$ASSETS_ONLY" ]; then
+  echo
+  echo "staged (assets only):"
+  du -sh "$TTS"
+  exit 0
+fi
+
+if [ -n "$PAGES_FROM" ]; then
+  echo "==> copying books and page assets from $PAGES_FROM (nothing fetched)"
+  rmdir "$BOOK/$PAGE_DIR" 2>/dev/null || true
+  for entry in "$PAGES_FROM"/*; do
+    [ "$(basename "$entry")" = "_assets" ] || cp -R "$entry" "$STAGE/"
+  done
+  for entry in "$PAGES_FROM"/_assets/*; do
+    [ "$(basename "$entry")" = "tts" ] || cp -R "$entry" "$STAGE/_assets/"
+  done
+  echo "==> running the pipeline over every book but chem101 (out of scope)"
+  for book in "$STAGE"/*/; do
+    case "$(basename "$book")" in _assets|chem101) continue;; esac
+    .venv/bin/python -m pipeline.tts_manifest "${book%/}" --site-root "$STAGE"
+  done
+else
 
 echo "==> fetching a real page"
 curl -sSL --fail -o "$BOOK/$PAGE_DIR/index.html" "$PAGE_URL"
@@ -140,6 +219,7 @@ shasum -a 256 "$STAGE/chem101/$PAGE_DIR/index.html" | cut -d" " -f1 > "$STAGE/ch
 
 echo "==> running the pipeline over it"
 .venv/bin/python -m pipeline.tts_manifest "$BOOK" --site-root "$STAGE"
+fi
 
 echo "==> translating (set LANGS= to skip, LANGS=all for every shipped language)"
 # Skipped by default: converting the Opus-MT checkpoints is a one-time multi-GB
@@ -156,7 +236,7 @@ fi
 echo
 echo "staged:"
 du -sh "$TTS" "$BOOK"
-grep -c 'tts-enter' "$BOOK/$PAGE_DIR/index.html" | sed 's/^/  tts-enter occurrences: /'
+[ -f "$BOOK/$PAGE_DIR/index.html" ] && grep -c 'tts-enter' "$BOOK/$PAGE_DIR/index.html" | sed 's/^/  tts-enter occurrences: /'
 if [ "$(shasum -a 256 "$STAGE/chem101/$PAGE_DIR/index.html" | cut -d' ' -f1)" = "$(cat "$STAGE/chem101/.sha256-before")" ]; then
   echo "  out-of-scope book: byte-identical (correct)"
 else
