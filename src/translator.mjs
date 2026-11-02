@@ -84,12 +84,22 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   return {
     init({ pair, onProgress: progress = () => {} }) {
       if (loadedPair === pair) return loaded;
+      // A load still in flight is for a language the reader has since left
+      // (LT-217). The worker keeps only the latest init, so this one will never
+      // hear back: cancel it rather than leave its caller waiting. Already
+      // loaded, this does nothing.
+      readyReject?.(new Error(`translator load cancelled: ${loadedPair}`));
       onProgress = progress;
       loadedPair = pair;
-      loaded = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; })
+      const load = new Promise((resolve, reject) => { readyResolve = resolve; readyReject = reject; })
         // A failed load must not be remembered as the loaded pair, or every
-        // later attempt returns the same rejection without ever retrying.
-        .catch((error) => { loadedPair = null; loaded = null; throw error; });
+        // later attempt returns the same rejection without ever retrying. Only
+        // the latest load is the one remembered, so only it is forgotten.
+        .catch((error) => {
+          if (loaded === load) { loadedPair = null; loaded = null; }
+          throw error;
+        });
+      loaded = load;
       worker.postMessage({ type: 'init', manifestUrl: `${root}${pair}/manifest.json`, pair });
       return loaded;
     },

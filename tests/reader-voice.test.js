@@ -280,6 +280,26 @@ describe('switchLanguage', () => {
     expect(deps.controls.setLang).not.toHaveBeenCalled();
   });
 
+  it('a pick replaced while it goes back to English leaves the newer menu alone', async () => {
+    // Declined or cancelled, then the reader picks again during the swap back.
+    const { deps } = switchFakes({ ready: null });
+    let latest = true;
+    deps.current = () => latest;
+    deps.engine.setLang.mockImplementation(async () => { latest = false; });
+    await switchLanguage('fr', deps);
+    expect(deps.controls.setLang).not.toHaveBeenCalled();
+    expect(deps.controls.setState).not.toHaveBeenCalled();
+  });
+
+  it('an English pick replaced during its swap leaves the newer status line alone', async () => {
+    const { deps } = switchFakes();
+    let latest = true;
+    deps.current = () => latest;
+    deps.engine.setLang.mockImplementation(async () => { latest = false; });
+    await switchLanguage('en', deps);
+    expect(deps.controls.setState).not.toHaveBeenCalled();
+  });
+
   it('tells the translation which pick it is for', async () => {
     const { deps } = switchFakes();
     deps.current = () => true;

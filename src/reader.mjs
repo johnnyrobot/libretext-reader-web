@@ -194,6 +194,7 @@ export async function switchLanguage(lang, {
 
     if (lang === 'en') {
       await changeLanguage(player, engine, 'en', {});
+      if (!current()) superseded = true;
       return;
     }
 
@@ -214,6 +215,7 @@ export async function switchLanguage(lang, {
       // cost the window bound exists to avoid.
       stopTranslating();
       await changeLanguage(player, engine, 'en', {});
+      if (!current()) { superseded = true; return; }
       controls.setLang('en');
       return;
     }

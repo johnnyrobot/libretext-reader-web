@@ -220,6 +220,9 @@ export function createTranslationQueue({
       }
       settled = stopped;
     } catch (error) {
+      // Stopped, this failure is about a language the reader has left, and a
+      // newer queue may already be the live one (LT-217).
+      if (stopped) return;
       settled = true;
       // Reported BOTH ways on purpose, and the caller tells them apart. Before
       // playback starts, the rejected prefix is the failure -- the reader never

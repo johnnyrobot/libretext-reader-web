@@ -269,6 +269,41 @@ describe('the worker protocol', () => {
     expect(of('translated')[0]).toEqual({ type: 'translated', id: 1, lines: ['ES: one.'] });
   });
 
+  it('keeps the LATEST init when an earlier one finishes last (LT-217)', async () => {
+    // A cancelled French download keeps loading while the reader picks German,
+    // which is cached and ready first. French finishing afterwards must not
+    // become the model German batches run on.
+    let releaseFrench;
+    const french = new Promise((resolve) => { releaseFrench = resolve; });
+    const { handle, of } = handlerWith(async ({ pair }) => (pair === 'en-fr'
+      ? (await french, session((lines) => lines.map((l) => `FR: ${l}`)))
+      : session((lines) => lines.map((l) => `DE: ${l}`))));
+
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    await handle({ type: 'init', manifestUrl: '/de.json', pair: 'en-de' });
+    releaseFrench();
+    await fr;
+    await handle({ type: 'translate', id: 1, lines: ['one.'] });
+
+    expect(of('ready')).toHaveLength(1);
+    expect(of('translated')[0].lines[0]).toMatch(/^DE: /);
+  });
+
+  it('does not report a replaced init that fails', async () => {
+    let failFrench;
+    const french = new Promise((resolve, reject) => { failFrench = reject; });
+    const { handle, of } = handlerWith(async ({ pair }) => (pair === 'en-fr'
+      ? french : echoUpper));
+
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    await handle({ type: 'init', manifestUrl: '/de.json', pair: 'en-de' });
+    failFrench(new Error('network'));
+    await fr;
+
+    expect(of('error')).toHaveLength(0);
+    expect(of('ready')).toHaveLength(1);
+  });
+
   it('says so when a batch arrives before any init', async () => {
     const { handle, of } = handlerWith(async () => echoUpper);
     await handle({ type: 'translate', id: 1, lines: ['one.'] });

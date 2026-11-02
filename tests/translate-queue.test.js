@@ -281,6 +281,23 @@ describe('translate-queue.mjs', () => {
     expect(q.calls.length).toBe(1);             // and nothing new was started
   });
 
+  it('a stopped queue whose abandoned batch then fails reports nothing (LT-217)', async () => {
+    // The reader picked another language: that one's queue is the live one now,
+    // and this failure is about a language nobody is listening to.
+    let fail;
+    const held = new Promise((resolve, reject) => { fail = reject; });
+    const q = makeQueue({ translate: async () => held });
+
+    q.queue.start();
+    await tick();
+    q.queue.stop();
+    fail(new Error('translator load cancelled: en-fr'));
+    await tick();
+    await tick();
+
+    expect(q.errors).toHaveLength(0);
+  });
+
   it('rejects the prefix when translation fails before playback starts', async () => {
     // The reader never got what they asked for, so the caller recovers to
     // English. Nothing has been swapped yet.

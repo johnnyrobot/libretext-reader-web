@@ -229,17 +229,30 @@ export function createHandler({ post, load = loadTranslator }) {
   let code = null;
 
   return async function handle(data) {
+    // Only the LATEST init is the reader's (LT-217). A cancelled download keeps
+    // loading after the reader picks another language, and may finish last: its
+    // model must not replace the newer one, and its failure is nobody's error.
+    let replaced = false;
     try {
       if (data.type === 'init') {
         code = String(data.pair ?? '').split('-')[1] ?? null;
-        loading = load({
+        translate = null;
+        const mine = load({
           manifestUrl: data.manifestUrl,
           pair: data.pair,
           onProgress: (p) => post({
             type: 'progress', file: p.file, loaded: p.loaded, total: p.total, phase: p.phase,
           }),
         });
-        translate = await loading;
+        loading = mine;
+        try {
+          const loadedSession = await mine;
+          if (loading !== mine) return;
+          translate = loadedSession;
+        } catch (error) {
+          replaced = loading !== mine;
+          throw error;
+        }
         post({ type: 'ready' });
         return;
       }
@@ -248,16 +261,16 @@ export function createHandler({ post, load = loadTranslator }) {
         // Awaiting the in-flight init rather than rejecting means the host does
         // not have to serialise init against the first batch; a translate that
         // arrives before any init at all is still a programming error and says so.
-        if (!translate) {
-          if (!loading) throw new Error('translator not initialised');
-          translate = await loading;
-        }
-        const lines = await translateBatch(translate, data.lines, (p) => post({
+        // Kept local: a newer init may replace `translate` during the wait.
+        if (!translate && !loading) throw new Error('translator not initialised');
+        const session = translate ?? await loading;
+        const lines = await translateBatch(session, data.lines, (p) => post({
           type: 'progress', file: null, loaded: p.loaded, total: p.total, phase: p.phase,
         }), code);
         post({ type: 'translated', id: data.id, lines });
       }
     } catch (error) {
+      if (replaced) return;
       post({ type: 'error', id: data.id, message: String(error?.message ?? error) });
     }
   };

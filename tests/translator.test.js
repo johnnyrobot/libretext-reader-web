@@ -91,6 +91,20 @@ describe('translator.mjs', () => {
     expect(worker.sent.filter((m) => m.type === 'init')).toHaveLength(2);
   });
 
+  it('a newer pair replaces a load still in flight: the old one is cancelled (LT-217)', async () => {
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    const french = translator.init({ pair: 'en-fr' });
+    const german = translator.init({ pair: 'en-de' });
+    worker.onmessage({ data: { type: 'ready' } });
+
+    await expect(german).resolves.toBeUndefined();
+    await expect(french).rejects.toThrow(/cancelled/);
+    // And French is not remembered as loaded: picking it again loads it again.
+    translator.init({ pair: 'en-fr' });
+    expect(worker.sent.filter((m) => m.type === 'init').map((m) => m.pair)).toEqual(['en-fr', 'en-de', 'en-fr']);
+  });
+
   it('forwards download progress while loading', async () => {
     const { worker, translator } = withFakeWorker();
     const seen = [];
