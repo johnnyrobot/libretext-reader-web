@@ -87,6 +87,16 @@ describe('engine.mjs', () => {
     expect(worker.terminated).toBe(true);
   });
 
+  // A translation voice still loading is terminated when the reader picks
+  // another language (LT-217). Its loader must hear about it, not wait forever.
+  it('terminate rejects an init still loading', async () => {
+    const worker = { postMessage: () => {}, terminate: () => {} };
+    const engine = createEngine({ createWorker: () => worker });
+    const ready = engine.init({ voice: 'M1', lang: 'fr' });
+    engine.terminate();
+    await expect(ready).rejects.toThrow(/terminated/);
+  });
+
   it('setLang resolves when the worker acknowledges', async () => {
     const posted = [];
     const worker = {

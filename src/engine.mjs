@@ -141,6 +141,9 @@ export function createEngine({ createWorker, workerUrl = DEFAULT_WORKER_URL, man
     },
 
     terminate() {
+      // An init still loading has nothing left to wait for. Already settled,
+      // this does nothing.
+      readyReject?.(new SpeechCancelledError('terminated'));
       for (const entry of pending.values()) entry.reject(new SpeechCancelledError('terminated'));
       pending.clear();
       requests.clear();

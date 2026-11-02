@@ -142,6 +142,22 @@ describe('controls.mjs', () => {
     controls.destroy();
   });
 
+  it('turns the voice menu off while a translation is picked: it has one voice (LT-217)', () => {
+    const h = { ...handlers(), onLang: vi.fn(), languages: LANGS() };
+    const controls = mountControls(document.body, h);
+    const voice = document.querySelector('[data-act="voice"]');
+    const lang = document.querySelector('[data-act="lang"]');
+    expect(voice.disabled).toBe(false);
+    lang.value = 'fr';
+    lang.dispatchEvent(new Event('change'));
+    expect(voice.disabled).toBe(true);
+    controls.setLang('en'); // the switch fell back to English
+    expect(voice.disabled).toBe(false);
+    controls.setLang('es');
+    expect(voice.disabled).toBe(true);
+    controls.destroy();
+  });
+
   it('says whether picking a language starts a download, and how big', () => {
     // The single most useful thing this menu can tell a reader, and it is a
     // cache lookup: "starts in three seconds" or "starts after a 115 MB

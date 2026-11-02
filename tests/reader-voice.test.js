@@ -186,7 +186,8 @@ describe('offeredPairs', () => {
 });
 
 // The staged layout is a contract with scripts/stage-phonon-lang.py, the Caddy
-// rules and deploy-phonon.sh: each language's 40M lives in its own directory.
+// rules and the mirror's deploy script (kept outside this repo, beside the
+// server's own settings): each language's 40M lives in its own directory.
 describe('TRANSLATION_VOICES', () => {
   it('speaks fr, de, es and pt, each from its own staged Phonon model', () => {
     expect(Object.keys(TRANSLATION_VOICES).sort()).toEqual(['de', 'es', 'fr', 'pt']);
@@ -249,6 +250,41 @@ describe('switchLanguage', () => {
     await switchLanguage('de', deps);
     expect(deps.reportError).toHaveBeenCalledWith('no model');
     expect(deps.engine.setLang).toHaveBeenLastCalledWith('en');
+  });
+
+  // The reader picked français, then Deutsch before français was ready. The
+  // older pick must not put the menu back on English, report an error or clear
+  // the status line: all three belong to the newer pick now (LT-217).
+  it('a pick the reader has since replaced leaves the newer one alone', async () => {
+    const { deps } = switchFakes({ ready: null });
+    let latest = true;
+    deps.current = () => latest;
+    deps.startTranslating.mockImplementation(async () => { latest = false; return null; });
+    await switchLanguage('fr', deps);
+    expect(deps.controls.setLang).not.toHaveBeenCalled();
+    expect(deps.engine.setLang).not.toHaveBeenCalled();
+    expect(deps.controls.setState).not.toHaveBeenCalled();
+    expect(deps.reportError).not.toHaveBeenCalled();
+  });
+
+  it('a replaced pick that fails is not reported', async () => {
+    const { deps } = switchFakes();
+    let latest = true;
+    deps.current = () => latest;
+    deps.startTranslating.mockImplementation(async () => {
+      latest = false;
+      throw new Error("Cannot read properties of null (reading 'status')");
+    });
+    await switchLanguage('fr', deps);
+    expect(deps.reportError).not.toHaveBeenCalled();
+    expect(deps.controls.setLang).not.toHaveBeenCalled();
+  });
+
+  it('tells the translation which pick it is for', async () => {
+    const { deps } = switchFakes();
+    deps.current = () => true;
+    await switchLanguage('de', deps);
+    expect(deps.startTranslating).toHaveBeenCalledWith('de', deps.current);
   });
 
   it('always clears the progress line', async () => {

@@ -18,7 +18,8 @@
 # its models and the pipeline's injection are new.
 #
 # ASSETS_ONLY=1 stages STAGE/_assets/tts and stops: no books, nothing fetched
-# from the mirror. The deploy uses it, so what it uploads is this layout.
+# from the mirror. The mirror's deploy script (outside this repo) uses it, so
+# what it uploads is this layout.
 #
 # French, German, Spanish and Portuguese are spoken by Phonon 40M, CC BY-NC 4.0,
 # staged from Johnny's Ollama copies (LT-216). Those weights must stay out of the

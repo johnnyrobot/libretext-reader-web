@@ -112,8 +112,8 @@ repository (see *Model weights* below). Then lay out the served directory:
 ├── boot.js  reader.js  models.js  qa.js  reader.css  preload-helper.js  from dist/
 ├── phonon.worker.js  translate.worker.js  transformers.web.js           from dist/
 ├── phonon/                  English voice (~155 MB): scripts/fetch-phonon.py <this dir>/phonon
-├── phonon-fr/ phonon-de/    one Phonon 40M per translation language (~300 MB each,
-├── phonon-es/ phonon-pt/      pt ~685 MB): scripts/stage-phonon-lang.py <lang> <this dir>/phonon-<lang>
+├── phonon-fr/ phonon-de/    one Phonon 40M per translation language (~190 MB each):
+├── phonon-es/ phonon-pt/      scripts/stage-phonon-lang.py <lang> <this dir>/phonon-<lang>
 ├── ort-mt/                  onnxruntime-web wasm, for Phonon and the translator
 └── mt/                      optional: one directory per language pair + pairs.json
 ```
@@ -130,8 +130,9 @@ when it deploys this.
 
 Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (multi-GB
 download, ~120 MB served per pair) and copy its output to `mt/`, then stage each
-language's voice. A language is offered only when both its pair and its
-`phonon-<lang>/` are served: no other engine speaks a translation. `stage-local.sh`
+language's voice. Serve a pair only with its `phonon-<lang>/`: no other engine speaks
+a translation, and the reader offers every language in `mt/pairs.json` that it has a
+voice entry for, without fetching the voice first. `stage-local.sh`
 stages the four voices when `STAGE` is outside the repository (it skips them for the
 default `.stage/`, which is inside it), leaves out a language whose voice fails to
 build, and prunes `mt/pairs.json` to the languages that have one. Without `mt/` the
@@ -139,6 +140,13 @@ language menu does not appear.
 
 `PAGES_FROM=<dir>` makes `stage-local.sh` copy the books from an existing stage instead
 of fetching them from the mirror, and rebuild only `_assets/tts/`.
+
+`ASSETS_ONLY=1` stages only `_assets/tts/` and stops, fetching nothing. Like every run,
+it deletes `STAGE` first, books included, so point it at a directory of its own. The deploy
+uses it, so what it uploads is this layout.
+
+`PHONON_LANGS` picks which translation voices to stage (default `fr de es pt`; an
+empty value stages none). A language left out is pruned from `mt/pairs.json` too.
 
 ### 2. Give each page the hook
 

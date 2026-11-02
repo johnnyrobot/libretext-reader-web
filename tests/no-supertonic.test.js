@@ -48,6 +48,20 @@ describe('supertonicFiles', () => {
     ]);
   });
 
+  it('names a Supertonic file copied in at any depth', () => {
+    put('phonon/onnx/vocoder.onnx');
+    put('phonon-fr/onnx/duration_predictor.onnx');
+    put('mt/en-fr/voice_styles/F1.json');
+    put('phonon-de/engine.worker.js');
+    put('phonon-de/manifest.json', '{"files":[]}');
+    expect(supertonicFiles(root)).toEqual([
+      'mt/en-fr/voice_styles/F1.json',
+      'phonon-de/engine.worker.js',
+      'phonon-fr/onnx/duration_predictor.onnx',
+      'phonon/onnx/vocoder.onnx',
+    ]);
+  });
+
   it('names built code that still points at a Supertonic asset', () => {
     put('reader.js', "fetch('/_assets/tts/manifest.json')");
     put('chunk.js', "new Worker('/_assets/tts/engine.worker.js')");

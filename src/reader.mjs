@@ -173,11 +173,19 @@ export async function recoverToEnglish(player, engine, controls, error, reportEr
  * That costs nothing: changeLanguage drops the English audio anyway, and the
  * reader ended paused on every path before this too.
  *
+ * A LATER PICK WINS. A cancelled download or voice load keeps running, so the
+ * menu is usable again before an earlier pick settles. `current()` says whether
+ * this pick is still the latest; once it is not, this call returns without
+ * touching the menu, the voice, the status line or the error box, all of which
+ * belong to the newer pick (LT-217).
+ *
  * Exported so the order can be tested. See tests/reader-voice.test.js.
  */
 export async function switchLanguage(lang, {
   player, engine, controls, startTranslating, stopTranslating, startStreaming, reportError,
+  current = () => true,
 }) {
+  let superseded = false;
   try {
     // Whatever was being translated is for a language the reader has just
     // left. Stopping FIRST also means a failure below cannot leave a queue
@@ -191,7 +199,8 @@ export async function switchLanguage(lang, {
 
     player.pause();
     player.flushAudio();
-    const ready = await startTranslating(lang);
+    const ready = await startTranslating(lang, current);
+    if (!current()) { superseded = true; return; }
     if (ready === null) {
       // Declined, or cancelled mid-download, or told the device is too slow
       // and picked English. Not an error: they answered the question. Put
@@ -209,14 +218,17 @@ export async function switchLanguage(lang, {
       return;
     }
     await changeLanguage(player, engine, lang, ready);
+    if (!current()) { superseded = true; return; }
     startStreaming();
   } catch (error) {
+    // Most likely the newer pick tore this one's queue or voice down.
+    if (!current()) { superseded = true; return; }
     stopTranslating();
     await recoverToEnglish(player, engine, controls, error, reportError);
   } finally {
     // Clear the progress line on BOTH paths. Leaving "Translating into
     // español…" up after a failure says the opposite of what the error says.
-    controls.setState({ playing: false, buffering: false, message: '' });
+    if (!superseded) controls.setState({ playing: false, buffering: false, message: '' });
   }
 }
 
@@ -398,13 +410,17 @@ export async function enterReaderMode() {
    *
    * Playback does not start in English and improve. A reader who picked Spanish
    * and hears five English sentences reads that as broken, not as loading.
+   *
+   * Also returns null once `current()` says the reader has picked again, at
+   * each wait, so a superseded pick neither replaces the newer pick's voice
+   * nor starts a queue for it.
    */
-  async function startTranslating(lang) {
+  async function startTranslating(lang, current = () => true) {
     const hosted = pairs.find((p) => p.code === lang);
     if (!hosted) throw new Error(`This reader has no ${LANGUAGE_LABELS[lang] ?? lang} translation.`);
     const label = LANGUAGE_LABELS[hosted.code];
 
-    if (!(await consentToDownload(hosted))) return null;
+    if (!(await consentToDownload(hosted)) || !current()) return null;
 
     // TWO waits, told apart deliberately. A 121 MB download gets the same modal
     // progress bar the voice gets, because it is the same kind of wait and can
@@ -426,7 +442,7 @@ export async function enterReaderMode() {
     // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
-    if (download.cancelled()) return null;
+    if (download.cancelled() || !current()) return null;
 
     // This language's voice, loaded when it is picked and kept until another
     // language replaces it.
@@ -442,7 +458,7 @@ export async function enterReaderMode() {
         controls.setLanguageBytes(lang, hosted.bytes);
         if (modelStored.has(lang)) controls.setLanguageStored(lang, true);
       }
-      if (voiceLoad.cancelled()) return null;
+      if (voiceLoad.cancelled() || !current()) return null;
     }
 
     const report = (p) => controls.setState({
@@ -453,7 +469,9 @@ export async function enterReaderMode() {
 
     controls.setState({ playing: false, buffering: true, message: `Translating into ${label}…` });
 
-    queue = createTranslationQueue({
+    // Kept local: a newer pick can replace or clear the shared `queue` while
+    // this one is still starting.
+    const q = createTranslationQueue({
       sentences,
       // A bibliography is not translated: author surnames, journal titles and
       // years are proper nouns, and the real checkpoint renamed a journal
@@ -511,18 +529,20 @@ export async function enterReaderMode() {
       },
     });
 
-    await queue.start();
+    queue = q;
+    await q.start();
+    if (!current()) return null;
 
     // The prefix wait was a real measurement of THIS device on THIS page, and it
     // is the only one available before a word is spoken. A device that cannot
     // keep up is told so now rather than three sentences into a reading that
     // will keep stopping -- refusing to start beats starting and stalling.
-    const measured = queue.status();
+    const measured = q.status();
     if (measured.rate !== null && measured.rate < MIN_RATE
         && await chooseWhenSlow({ language: label, rate: measured.rate }) === 'english') {
       return null;
     }
-    return queue.textById();
+    return q.textById();
   }
 
   /**
@@ -553,6 +573,8 @@ export async function enterReaderMode() {
     }
     if (resume) await player.play();
   }
+
+  let langTurn = 0;
 
   function stopTranslating() {
     streaming = false;
@@ -598,15 +620,21 @@ export async function enterReaderMode() {
     // speak reach the menu. pairs.json is written by our own script today,
     // which is exactly the kind of assumption that stops being true quietly.
     languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes[p.code])),
-    onLang: (lang) => switchLanguage(lang, {
-      player, engine, controls, startTranslating, stopTranslating,
-      // Only now may batches reach the player: before the swap the engine is
-      // still tagged English. Anything that landed during the swap is in the
-      // queue but not in the player, so one catch-up call rather than a race to
-      // get the ordering right.
-      startStreaming: () => { streaming = true; player.updateSpeechText(queue.textById()); },
-      reportError: showError,
-    }),
+    // Each pick is numbered so an earlier one still loading knows it has been
+    // replaced (see switchLanguage).
+    onLang: (lang) => {
+      const turn = ++langTurn;
+      return switchLanguage(lang, {
+        player, engine, controls, startTranslating, stopTranslating,
+        current: () => turn === langTurn,
+        // Only now may batches reach the player: before the swap the engine is
+        // still tagged English. Anything that landed during the swap is in the
+        // queue but not in the player, so one catch-up call rather than a race to
+        // get the ordering right.
+        startStreaming: () => { streaming = true; player.updateSpeechText(queue.textById()); },
+        reportError: showError,
+      });
+    },
   });
   controls.setProvider(provider);
 

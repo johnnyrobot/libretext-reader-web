@@ -19,8 +19,18 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// At the top level, where Supertonic lived. Phonon has its own manifest.json
+// and onnx/ one level down, so these names are not searched for below it.
 const FILES = new Set(['engine.worker.js', 'manifest.json']);
 const DIRS = new Set(['onnx', 'voice_styles', 'ort']);
+// Supertonic's alone, so a copy anywhere in the tree is named: its worker,
+// its four networks and its voice styles. Phonon's networks are flow_lm and
+// mimi_decoder, the translator's encoder_model and decoder_model.
+const ANYWHERE_FILES = new Set([
+  'engine.worker.js',
+  'duration_predictor.onnx', 'text_encoder.onnx', 'vector_estimator.onnx', 'vocoder.onnx',
+]);
+const ANYWHERE_DIRS = new Set(['voice_styles']);
 const URLS = [
   '/_assets/tts/engine.worker.js',
   '/_assets/tts/manifest.json',
@@ -41,8 +51,11 @@ export function supertonicFiles(root) {
   return walk(root)
     .map((path) => relative(root, path).split(sep).join('/'))
     .filter((path) => {
-      const [top] = path.split('/');
+      const parts = path.split('/');
+      const [top] = parts;
       if (FILES.has(path) || (path.includes('/') && DIRS.has(top))) return true;
+      if (ANYWHERE_FILES.has(parts.at(-1))) return true;
+      if (parts.slice(0, -1).some((dir) => ANYWHERE_DIRS.has(dir))) return true;
       if (!path.endsWith('.js')) return false;
       const code = readFileSync(join(root, path), 'utf8');
       return URLS.some((url) => code.includes(url));
