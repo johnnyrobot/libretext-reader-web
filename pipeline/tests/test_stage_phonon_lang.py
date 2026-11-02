@@ -97,10 +97,10 @@ EN_PIN = "sha256:6667dd188d2e30e1448b0476ccbd36bdc8802225a848541d5049f450e2a983e
 TEMPLATE = ROOT / "bench" / "assets" / "phonon-31m-en" / "4f0cda7c60dddb4862d0e68ff9ff60c32ffdc9f4"
 OLLAMA = stage_lang.OLLAMA_MODELS
 needs_real_copies = pytest.mark.skipif(
-    importlib.util.find_spec("onnx") is None
+    importlib.util.find_spec("onnx") is None or importlib.util.find_spec("onnxruntime") is None
     or not (TEMPLATE / "onnx" / "flow_lm.onnx").is_file()
     or not (OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / "31m-en").is_file(),
-    reason="needs onnx, the English export (scripts/fetch-phonon.py) and `ollama pull phonon:31m-en`")
+    reason="needs onnx, onnxruntime, the English export (scripts/fetch-phonon.py) and `ollama pull phonon:31m-en`")
 
 
 @pytest.fixture(scope="module")
@@ -321,7 +321,7 @@ def test_lets_a_checkouts_ignored_stage_through(tmp_path):
 
 
 def test_refuses_a_language_it_has_no_pin_for(tmp_path):
-    with pytest.raises(SystemExit, match="it"):
+    with pytest.raises(SystemExit, match="no pinned Ollama copy for 'it'"):
         stage_lang.stage("it", tmp_path / "phonon-it")
 
 
