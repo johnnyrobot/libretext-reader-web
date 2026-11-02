@@ -155,7 +155,7 @@ function startMp3Worker() {
   });
 }
 
-/** `samples` as a 64 kbps mono MP3 at their own rate; resolves with the Blob and what it took. */
+/** `samples` as a 112 kbps mono MP3 at their own rate; resolves with the Blob and what it took. */
 export function encodeMp3(samples, sampleRate) {
   if (!mp3Worker) startMp3Worker();
   const id = `mp3-${nextId++}`;

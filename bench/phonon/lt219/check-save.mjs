@@ -5,7 +5,7 @@
 //   node bench/phonon/lt219/check-save.mjs [--base http://127.0.0.1:8820] [--out DIR] [en fr de es pt]
 //
 // Fails (exit 1) unless Save is off during a render and Play during a Save, and every
-// saved file is phonon-<lang>.mp3, 24000 Hz mono 64 kbps MPEG-2 Layer III within 0.1 s
+// saved file is phonon-<lang>.mp3, 24000 Hz mono 112 kbps MPEG-2 Layer III within 0.1 s
 // of its render, plays in Chrome and in afplay, and the encoder was fetched once, on
 // the first Save and not before.
 import { chromium } from '@playwright/test';
@@ -25,6 +25,7 @@ const base = flag('--base', 'http://127.0.0.1:8820');
 const out = path.resolve(flag('--out', '/Users/Shared/LT-216/work/lt219'));
 const langs = args.length ? args : ['en', 'fr', 'de', 'es', 'pt'];
 const WITHIN = 0.1;          // seconds an MP3 may differ from its render (LT-219)
+const KBPS = 112;            // what Save writes (LT-219: the Chief's 22:10 PT decision)
 const SAVE_MS = 120_000;     // longest a Save may take
 
 // The LT-216 test set. Its English column has only p00; s01-s11 were translated from
@@ -118,11 +119,11 @@ try {
       const bytes = readFileSync(file);
       const frames = mp3Frames(bytes);
       const seconds = mp3Seconds(frames);
-      check(frames.every((f) => f.version === 2 && f.sampleRate === 24000 && f.kbps === 64 && f.mono),
-        `${lang} ${id}: every frame MPEG-2, 24000 Hz, 64 kbps, mono`);
+      check(frames.every((f) => f.version === 2 && f.sampleRate === 24000 && f.kbps === KBPS && f.mono),
+        `${lang} ${id}: every frame MPEG-2, 24000 Hz, ${KBPS} kbps, mono`);
       check(Math.abs(seconds - raw.seconds) <= WITHIN, `${lang} ${id}: MP3 ${seconds.toFixed(3)} s vs render ${raw.seconds.toFixed(3)} s`);
       const mac = afinfo(file);
-      check(mac.format && mac.mono24k && mac.bitRate === 64000 && Math.abs(mac.seconds - raw.seconds) <= WITHIN,
+      check(mac.format && mac.mono24k && mac.bitRate === KBPS * 1000 && Math.abs(mac.seconds - raw.seconds) <= WITHIN,
         `${lang} ${id}: afinfo ${JSON.stringify(mac)}`);
 
       // Chrome plays it back: the page decodes it, and the file opened in Chrome, as a

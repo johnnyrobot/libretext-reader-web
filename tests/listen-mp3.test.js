@@ -45,10 +45,10 @@ async function bytesOf(reply) {
 
 // Encoding is synchronous and slow on a busy machine; a stuck run still fails.
 describe('the listening page MP3 encoder', { timeout: 60_000 }, () => {
-  it('encodes the 24 kHz mono render as 64 kbps CBR MPEG-2 Layer III, as long as the render', async () => {
+  it('encodes the 24 kHz mono render as 112 kbps CBR MPEG-2 Layer III, as long as the render', async () => {
     const encode = startWorker();
     const frames = mp3Frames(await bytesOf(await encode({ id: 'a', samples: tone(2.5), sampleRate: RATE })));
-    for (const frame of frames) expect(frame).toMatchObject({ version: 2, sampleRate: 24000, kbps: 64, mono: true });
+    for (const frame of frames) expect(frame).toMatchObject({ version: 2, sampleRate: 24000, kbps: 112, mono: true });
     expect(Math.abs(mp3Seconds(frames) - 2.5)).toBeLessThan(WITHIN);
   });
 
@@ -66,10 +66,10 @@ describe('the listening page MP3 encoder', { timeout: 60_000 }, () => {
     expect(Math.abs(mp3Seconds(frames) - 1)).toBeLessThan(WITHIN);
   });
 
-  it('weighs about 0.48 MB a minute of speech', async () => {
+  it('weighs about 0.84 MB a minute of speech (112 kbps)', async () => {
     const encode = startWorker();
     const bytes = await bytesOf(await encode({ id: 'ten', samples: tone(10), sampleRate: RATE }));
-    expect((bytes.length * 6) / 1e6).toBeCloseTo(0.48, 2);
+    expect((bytes.length * 6) / 1e6).toBeCloseTo(0.84, 2);
   });
 });
 
