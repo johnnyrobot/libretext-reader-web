@@ -5,8 +5,9 @@
  * Phonon 40M under CC BY-NC 4.0, downloaded only when a reader first picks that
  * language (LT-217). The noncommercial licence is linked here rather than only in a
  * repository file: the person accepting the download is the person it binds, so
- * it is shown in the dialog that downloads that voice. Its Male and Female voices
- * come from Gradium's phonon-voices, Apache 2.0 (LT-222), credited beside it.
+ * it is shown in the dialog that downloads that voice. Its Male voice is the
+ * model's own; its Female voice comes from Gradium's phonon-voices, Apache 2.0
+ * (LT-222), credited beside it.
  */
 
 const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ONNX';

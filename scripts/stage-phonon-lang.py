@@ -17,8 +17,9 @@ PocketTTS architecture with 6 transformer layers where the 40M has 9:
 - `flow_lm.onnx`: the English graph with its last layer cloned three times,
   and every weight replaced by the language's own.
 - `voices/M1.bin` and `voices/F1.bin`: the reader's Male and Female voice
-  (VOICES), one the release's own default and the other from the voice
-  catalogue Ollama's `phonon:40m-<lang>` carries (Apache 2.0, LT-222).
+  (VOICES), one the release's own default (CC BY-NC, as the model) and the
+  other from the voice catalogue Ollama's `phonon:40m-<lang>` carries
+  (phonon-voices, Apache 2.0, LT-222). The manifest records each one's source.
 - `mimi_decoder.onnx`: the English graph unchanged except the latent
   mean and std, which differ per model. Every Phonon copy shares one Mimi
   (`mimi_sig` in its config); the script refuses a copy trained on another.
@@ -426,6 +427,15 @@ def voice_files(lang: str, voices: dict, models: Path = OLLAMA_MODELS) -> dict:
     return files
 
 
+def voice_sources(lang: str, voices: dict) -> dict:
+    """Where each {file: voice} came from, for the manifest. "default" is the
+    model's own voice, so it carries the model's licence; a catalogue voice is
+    phonon-voices, Apache 2.0."""
+    own = {"repo": f"ollama:phonon:{lang}", "revision": PINS[lang], "licence": LICENCE}
+    catalogue = {"repo": f"ollama:phonon:40m-{lang}", "revision": VOICE_PINS[lang], "licence": VOICES_LICENCE}
+    return {name: {"voice": voice, **(own if voice == "default" else catalogue)} for name, voice in voices.items()}
+
+
 # --- staging ---------------------------------------------------------------
 
 def _english_export():
@@ -470,6 +480,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS, voices: dict = 
         raise SystemExit(f"no pinned Ollama copy for {lang!r}; LT-216 staged {sorted(PINS)}")
     target = Path(target).resolve()
     _refuse_a_tracked_target(target)
+    voices = VOICES[lang] if voices is None else voices
 
     english = _english_export()
     template = english.CACHE
@@ -486,7 +497,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS, voices: dict = 
         "onnx/flow_lm.onnx": build_flow_lm(onnx.load(template / "onnx" / "flow_lm.onnx"), copy).SerializeToString(),
         "onnx/mimi_decoder.onnx": build_mimi_decoder(
             onnx.load(template / "onnx" / "mimi_decoder.onnx"), copy, template_config).SerializeToString(),
-        **voice_files(lang, VOICES[lang] if voices is None else voices, models),
+        **voice_files(lang, voices, models),
     }
 
     # Withdrawn first, as fetch-phonon.py does: until the new one is written the
@@ -505,8 +516,7 @@ def stage(lang: str, target: Path, models: Path = OLLAMA_MODELS, voices: dict = 
     manifest = {
         "version": 1,
         "source": {"repo": f"ollama:phonon:{lang}", "revision": copy.pin, "licence": LICENCE},
-        "voices": {"repo": f"ollama:phonon:40m-{lang}", "revision": VOICE_PINS[lang], "licence": VOICES_LICENCE,
-                   "files": VOICES[lang] if voices is None else voices},
+        "voices": voice_sources(lang, voices),
         "files": entries,
     }
     (target / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

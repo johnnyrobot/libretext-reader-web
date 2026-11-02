@@ -1,12 +1,14 @@
 """THROWAWAY SPIKE (LT-222). Stage every voice of each language's catalogue for the bench.
 
-    PYTHON=... bench/phonon/lt222/stage.py STAGE [fr de es pt]
+    PYTHON=bench/phonon/.venv/bin/python bench/phonon/.venv/bin/python bench/phonon/lt222/stage.py STAGE [fr de es pt]
 
-Builds STAGE as bench/phonon/listen/stage.sh does (it runs it with LANGS=""
-for the worker, English and the page), then stages each language with
+Builds STAGE as bench/phonon/listen/stage.sh does (it runs it with LANGS=" ",
+a blank that is not empty, so it stages no language: just the worker, English
+and the page), then stages each language with
 scripts/stage-phonon-lang.py's stage(), asking for its shipped default and
 every voice in `phonon:40m-<lang>`, each under a plain file name
 (Hélène -> Helene), so measure.mjs --voice can ask the worker for any of them.
+This stage has no M1 or F1: pass measure.mjs `--voice default` or a name.
 """
 
 import importlib.util
@@ -36,7 +38,7 @@ def main():
     stage_dir = Path(sys.argv[1]).resolve()
     langs = sys.argv[2:] or ["fr", "de", "es", "pt"]
     subprocess.run([str(ROOT / "bench/phonon/listen/stage.sh")], check=True,
-                   env={**os.environ, "STAGE": str(stage_dir), "LANGS": ""})
+                   env={**os.environ, "STAGE": str(stage_dir), "LANGS": " "})
     names = {}
     for lang in langs:
         voices = {"default": "default", **{plain(v): v for v in catalogue(lang)}}

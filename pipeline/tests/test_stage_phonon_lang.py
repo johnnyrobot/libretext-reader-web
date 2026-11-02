@@ -131,6 +131,18 @@ def test_takes_both_voices_from_the_catalogue_when_asked(tmp_path, monkeypatch):
     assert _floats(files["voices/M1.bin"]) == [4.0, 5.0]
 
 
+def test_credits_each_voice_to_the_copy_it_came_from(monkeypatch):
+    """The shipped default is the model's own voice, under the model's CC BY-NC
+    licence; only a catalogue voice is phonon-voices, Apache 2.0."""
+    monkeypatch.setitem(stage_lang.PINS, "fr", "sha256:model")
+    monkeypatch.setitem(stage_lang.VOICE_PINS, "fr", "sha256:catalogue")
+    assert stage_lang.voice_sources("fr", {"M1": "default", "F1": "Hélène"}) == {
+        "M1": {"voice": "default", "repo": "ollama:phonon:fr", "revision": "sha256:model", "licence": "cc-by-nc-4.0"},
+        "F1": {"voice": "Hélène", "repo": "ollama:phonon:40m-fr", "revision": "sha256:catalogue",
+               "licence": "apache-2.0"},
+    }
+
+
 def test_refuses_a_voice_the_catalogue_does_not_have(tmp_path, monkeypatch):
     models = _two_sources(tmp_path, monkeypatch)
     with pytest.raises(SystemExit, match="Ninon"):
@@ -389,8 +401,9 @@ def test_refuses_a_language_it_has_no_pin_for(tmp_path):
 
 
 @needs_real_copies
-@pytest.mark.skipif(not (OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / "fr").is_file(),
-                    reason="needs `ollama pull phonon:fr`")
+@pytest.mark.skipif(not all((OLLAMA / "manifests" / "registry.ollama.ai" / "library" / "phonon" / tag).is_file()
+                        for tag in ("fr", "40m-fr")),
+                    reason="needs `ollama pull phonon:fr` and `ollama pull phonon:40m-fr`")
 @pytest.mark.parametrize("where", ["no checkout", "a checkout's ignored stage"])
 def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
     """Outside any checkout, or in one's git-ignored stage, as scripts/stage-local.sh's .stage/ is."""
@@ -400,8 +413,7 @@ def test_stages_french_in_the_layout_the_worker_loads(tmp_path, where):
     manifest = stage_lang.stage("fr", target)
 
     assert manifest["source"] == {"repo": "ollama:phonon:fr", "revision": stage_lang.PINS["fr"], "licence": "cc-by-nc-4.0"}
-    assert manifest["voices"] == {"repo": "ollama:phonon:40m-fr", "revision": stage_lang.VOICE_PINS["fr"],
-                                  "licence": "apache-2.0", "files": stage_lang.VOICES["fr"]}
+    assert manifest["voices"] == stage_lang.voice_sources("fr", stage_lang.VOICES["fr"])
     assert sorted(f["path"] for f in manifest["files"]) == [
         "config.json", "onnx/flow_lm.onnx", "onnx/mimi_decoder.onnx",
         "tokenizer.json", "tokenizer_config.json", "voices/F1.bin", "voices/M1.bin"]

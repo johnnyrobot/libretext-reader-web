@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createHandler, VOICES, SAMPLE_RATE, voiceBuffer, speechCalls } from '../src/phonon.worker.mjs';
+import { createHandler, SAMPLE_RATE, voiceBuffer, speechCalls } from '../src/phonon.worker.mjs';
 import { expectedSeconds } from '../src/phonon-guard.mjs';
 
 const FRAME = 1920;

@@ -799,9 +799,11 @@ language's catalogue:
 
 The catalogue is Gradium's phonon-voices (da6c9ec0, Apache 2.0), as carried by
 the `phonon:40m-<lang>` Ollama copy of each language, pinned by its ID the same
-way as the model. Only its voice tensors are read; no Hugging Face. The voices
-are credited "Voices: Phonon by Gradium, phonon-voices, Apache 2.0" next to the
-model's CC BY-NC credit, and are never committed.
+way as the model. Only its voice tensors are read; no Hugging Face. The Female
+voices are credited "Voices: Phonon by Gradium, phonon-voices, Apache 2.0" next
+to the model's CC BY-NC credit. The Male voice is the model's own default, so it
+stays under that CC BY-NC licence; the staged manifest records each file's source
+and licence. None of them is committed.
 
 ### How they were chosen
 
@@ -864,7 +866,7 @@ rendered in each voice, measured by `voice.py`:
 
 | Language | Male (M1) | Female (F1) |
 |---|---|---|
-| en | 108 Hz | 180 Hz (Hadley, unchanged since LT-214) |
+| en | 108 Hz | 179.8 Hz (Hadley, unchanged since LT-214) |
 | fr | 120 Hz | 216 Hz |
 | de | 124 Hz | 229 Hz |
 | es | 113 Hz | 210 Hz |
@@ -879,9 +881,9 @@ Two notes from that check:
 - Under heavy CPU load (the Whisper jobs running), one run stopped on the
   "pt is slow on this device" question. That is LT-217's falling-behind prompt
   doing its job, not a voice fault, and the next run was clean.
-- English Female (Hadley) measures 180 Hz on this page, at the edge of the
-  female range and lower than the four new voices. It was not pitch-checked in
-  LT-214, and LT-222 does not change English.
+- English Female (Hadley) measures 179.8 Hz on this page: just under the
+  180 Hz line, so "ambiguous" by this measure, and lower than the four new
+  voices. It was not pitch-checked in LT-214, and LT-222 does not change English.
 
 ### Not verified (LT-222)
 
