@@ -82,4 +82,27 @@ test.describe('leaving and re-entering Reader Mode', () => {
     await page.locator('#tts-enter').click();
     await expect(page.getByRole('heading', { name: 'Listen to this page' })).toBeVisible();
   });
+
+  // Cancelling the download used to leave the page's sentences wrapped, and the
+  // next press then reported "Nothing on this page could be matched to the
+  // reading list" -- the same leftover the exit path already cleans up.
+  test('after Cancel, pressing Enter Reader Mode opens Reader Mode', async ({ page }) => {
+    // Slow the voice download so there is time to press Cancel during it.
+    await page.route(/\/phonon\/onnx\//, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+      await route.continue();
+    });
+    await page.goto(IN_SCOPE);
+
+    await page.locator('#tts-enter').click();
+    await page.locator('[data-act="accept"]').click();
+    await page.locator('[data-act="cancel"]').click();
+    // The load cannot be aborted, so the button comes back once it finishes.
+    await page.locator('#tts-enter').waitFor({ state: 'visible' });
+
+    await enterAndWait(page);
+    expect(await page.getByRole('heading', { name: 'The voice could not start' }).count())
+      .toBe(0);
+    expect(await page.locator('.tts-sentence').count()).toBeGreaterThan(0);
+  });
 });
