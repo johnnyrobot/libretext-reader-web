@@ -4,8 +4,9 @@
 // reader.
 //
 // It also keeps what it measured on `window.lt216`, which
-// bench/phonon/lt216/measure.mjs reads. measure.mjs --voice asks for a voice
-// by its file name (LT-222), M1 when it names none.
+// bench/phonon/lt216/measure.mjs and bench/phonon/lt219/check-save.mjs read.
+// measure.mjs --voice asks for a voice by its file name (LT-222), M1 when it
+// names none. Save (LT-219) writes an MP3; mp3.worker.js says how.
 
 const WORKER = '/_assets/tts/phonon.worker.js';
 const NC = 'Phonon by Gradium, CC BY-NC 4.0. Voices: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
@@ -31,7 +32,7 @@ const engines = new Map();   // lang -> Promise<{ worker, loadMs, bytes }>
 let audio = null;            // { ctx, sources, next }
 let nextId = 0;
 let stopCurrent = null;      // ends the run being spoken, for the Stop button
-const lt216 = (window.lt216 = { runs: [], last: null });
+const lt216 = (window.lt216 = { runs: [], last: null, saves: [] });
 
 function startEngine(lang, voice) {
   if (engines.has(lang)) return engines.get(lang);
@@ -154,16 +155,40 @@ export async function speak(lang, text, { mute = false, voice = 'M1' } = {}) {
 }
 lt216.speak = speak;
 
-function wav(samples, sampleRate) {
-  const out = new DataView(new ArrayBuffer(44 + samples.length * 2));
-  const put = (at, s) => [...s].forEach((c, i) => out.setUint8(at + i, c.charCodeAt(0)));
-  put(0, 'RIFF'); out.setUint32(4, 36 + samples.length * 2, true); put(8, 'WAVEfmt ');
-  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
-  out.setUint32(24, sampleRate, true); out.setUint32(28, sampleRate * 2, true);
-  out.setUint16(32, 2, true); out.setUint16(34, 16, true); put(36, 'data'); out.setUint32(40, samples.length * 2, true);
-  samples.forEach((s, i) => out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 0x7fff, true));
-  return new Blob([out], { type: 'audio/wav' });
+// The MP3 encoder runs in its own Worker, started by the first Save: until then the
+// page has not fetched it. See mp3.worker.js.
+let mp3Worker = null;
+const mp3Waiting = new Map();   // id -> { resolve, reject }
+
+function startMp3Worker() {
+  mp3Worker = new Worker(new URL('mp3.worker.js', import.meta.url));
+  mp3Worker.addEventListener('message', ({ data }) => {
+    const waiting = mp3Waiting.get(data.id);
+    mp3Waiting.delete(data.id);
+    if (data.error) waiting?.reject(new Error(data.error));
+    else waiting?.resolve(data.mp3);
+  });
+  // The encoder failed to load: fail every waiting Save, and start afresh on the next one.
+  mp3Worker.addEventListener('error', (event) => {
+    event.preventDefault();
+    for (const { reject } of mp3Waiting.values()) reject(new Error(event.message || 'the MP3 encoder failed to load'));
+    mp3Waiting.clear();
+    mp3Worker.terminate();
+    mp3Worker = null;
+  });
 }
+
+/** `samples` as a 112 kbps mono MP3 at their own rate; resolves with the Blob and what it took. */
+export function encodeMp3(samples, sampleRate) {
+  if (!mp3Worker) startMp3Worker();
+  const id = `mp3-${nextId++}`;
+  const sent = performance.now();
+  return new Promise((resolve, reject) => {
+    mp3Waiting.set(id, { resolve: (mp3) => resolve({ mp3, encodeMs: performance.now() - sent }), reject });
+    mp3Worker.postMessage({ id, samples, sampleRate });
+  });
+}
+lt216.encodeMp3 = encodeMp3;
 
 const status = (text) => { $('status').textContent = text; };
 
@@ -194,27 +219,44 @@ addEventListener('DOMContentLoaded', () => {
   $('lang').addEventListener('change', () => choose($('lang').value));
   $('play').addEventListener('click', async () => {
     const lang = $('lang').value;
-    $('play').disabled = true; $('stop').disabled = false;
+    // Save stays off while the voice renders: encoding never competes with speaking. And
+    // it saves only what was just spoken, so a render that stops, fails or is skipped by
+    // the length guard (which sends no samples) leaves it off.
+    lt216.last = null;
+    $('play').disabled = true; $('stop').disabled = false; $('save').disabled = true;
     status(`Speaking ${LANGS[lang].name}…`);
     try {
       const run = await speak(lang, $('text').value);
       if (run.outcome === 'stopped') { status('Stopped.'); return; }
       status(run.outcome === 'skipped' ? 'The voice could not finish this text.' : 'Done.');
       showStats(run);
-      $('save').disabled = false;
     } catch (error) {
       status(`Something went wrong: ${error.message}`);
     } finally {
       $('play').disabled = false;
+      $('save').disabled = !lt216.last || lt216.last.outcome === 'skipped';
     }
   });
   // The render finishes well before its audio does: after it, Stop just silences.
   $('stop').addEventListener('click', () => { (stopCurrent ?? stopAudio)(); $('stop').disabled = true; });
-  $('save').addEventListener('click', () => {
+  $('save').addEventListener('click', async () => {
     const { samples, sampleRate, lang } = lt216.last;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(wav(samples, sampleRate));
-    a.download = `phonon-${lang}.wav`;
-    a.click();
+    // Play stays off while the MP3 is made.
+    $('save').disabled = true; $('play').disabled = true;
+    status('Making the MP3…');
+    try {
+      const { mp3, encodeMs } = await encodeMp3(samples, sampleRate);
+      lt216.saves.push({ lang, seconds: samples.length / sampleRate, bytes: mp3.size, encodeMs });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(mp3);
+      a.download = `phonon-${lang}.mp3`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+      status(`Saved phonon-${lang}.mp3 (${(mp3.size / 1e6).toFixed(2)} MB).`);
+    } catch (error) {
+      status(`Could not make the MP3: ${error.message}`);
+    } finally {
+      $('save').disabled = false; $('play').disabled = false;
+    }
   });
 });

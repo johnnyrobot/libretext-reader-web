@@ -761,7 +761,8 @@ that it helps English.
 runs at <http://127.0.0.1:8820/social_psychology/listen-lt216/>, on the stage
 built by `bench/phonon/listen/stage.sh` (port 8820, because 8812–8814 were taken
 by LT-217's servers). The page picks a language, plays the text in the box,
-shows first sound, RTF and download size, and saves a WAV.
+shows first sound, RTF and download size, and saves an MP3 (LT-219; it saved a
+WAV until then).
 
 ### Not verified (LT-216)
 
@@ -781,6 +782,172 @@ shows first sound, RTF and download size, and saves a WAV.
   compared with phonon-voices, which the ticket dropped.
 - Gradium's confirmation that the demo use is noncommercial, which Johnny is
   asking for himself.
+
+## LT-219: the listening page saves MP3
+
+The listening page's Save button now writes `phonon-<lang>.mp3`, 24 kHz mono
+MP3 at a constant **112 kbps**, made in the browser only when Save is pressed;
+it no longer writes WAV. Saved through the page in all five languages, every
+frame is MPEG-2 Layer III, 24000 Hz, 112 kbps, mono, and every language's WER
+is within 0.01 of its raw render (below). The ticket first set 64 kbps; at 64
+the bar failed in French, German, Spanish and Portuguese, so the Chief chose
+112 (LT-219 comment, 2026-11-01 22:10 PT). The 64 kbps measurements are kept
+below as the reason.
+
+### Chrome cannot encode MP3 itself
+
+Probed in Chrome 156 on the page's own origin (WebCodecs needs a secure
+context; on `about:blank` `AudioEncoder` does not exist):
+
+- `AudioEncoder.isConfigSupported` says no to `mp3`, and to AAC
+  (`mp4a.40.2`, `mp4a.6B`, `mp4a.69`). It says yes to `opus`.
+- `MediaRecorder.isTypeSupported('audio/mpeg')` is false; WebM/Opus and MP4/AAC
+  are true. MediaRecorder also records in real time, so a minute of speech would
+  take a minute.
+
+### The encoder
+
+[lamejs](https://github.com/zhuker/lamejs) 1.2.1 from npm, a JavaScript port of
+LAME, licensed **LGPL-3.0**. It lives at `bench/phonon/listen/vendor/lamejs/`
+as the unmodified `lame.min.js` (156,043 bytes, 55,123 gzipped, sha256
+`15d285e2…ec6df4`); `serve-local.py` does not compress, so a reader downloads
+the full 156 KB once, on their first Save. It sits beside its LICENSE,
+COPYING.LESSER and COPYING, a `SHA256SUMS` that `stage.sh` checks before
+staging, and a README giving where it came from and how to replace it. No MIT code bundles it: a classic Worker
+(`mp3.worker.js`) loads it with `importScripts`, and the page starts that Worker
+on the first Save, so nobody downloads the encoder until they save. Save is off
+while a voice renders and Play is off while an MP3 is made. The render finishes
+before its audio does, so Save turns on while the end of the sentence may still
+be playing; "never while speaking" is read as never while the voice renders.
+
+### Results at 112 kbps
+
+`bench/phonon/lt219/check-save.mjs` drives the page in Chrome 156 (headless,
+`channel: 'chrome'`) the way a person would: type, Play, Save, keep the
+download. 12 items per language, the LT-216 set (English speaks the source
+sentences of s01–s11), 6–21 s each. The page was a side copy on :8821 of the
+one Johnny uses on :8820, over the same staged voices. Out:
+`/Users/Shared/LT-216/work/lt219-112/`.
+
+- Every saved file was named `phonon-<lang>.mp3`, and every frame of all 60
+  files (6,192–6,829 frames per language) was MPEG-2 Layer III, 24000 Hz,
+  112 kbps, mono. Each file is 0.05–0.06 s longer than its render (LAME's
+  1105-sample delay plus padding).
+- macOS `afinfo` reads each as 24000 Hz mono MP3 at 112,000 bits per second,
+  and `afplay` plays the first file of each language. Chrome decodes each, and
+  opened from disk it plays.
+- The encoder was fetched once per page, on the first Save, never before.
+
+| | MB per minute of speech |
+|---|---|
+| WAV (16-bit, what Save wrote before) | 2.880 |
+| MP3, 112 kbps (Save now) | 0.844 |
+| MP3, 64 kbps (first set, rejected) | 0.482 |
+
+Encode time per minute of speech, in Chrome, Worker warm:
+
+| Language | Per Save (12 short saves) | One long encode | Load avg |
+|---|---|---|---|
+| en | 0.66 s | 0.59 s | 2.9 |
+| fr | 0.67 s | 0.60 s | 12.6 |
+| de | 0.70 s | 0.56 s | 10.0 |
+| es | 0.72 s | 0.57 s | 10.1 |
+| pt | 0.74 s | 0.57 s | 10.3 |
+
+The "long encode" is all 12 renders together, 148–163 s of speech, in one
+Save. The first Save, which also fetches the encoder, took 0.19–0.23 s. These
+were taken on a less loaded Mac than the 64 kbps run below (load average 3–13
+against 7–42), which is likely most of why they are faster; the two rates were
+not timed under the same load.
+
+WER of each saved MP3 against the render it came from, both from the same run
+(`lt219/score.py`, scored as LT-216 scores):
+
+| Language | Raw | MP3 112 kbps | Δ | Words |
+|---|---|---|---|---|
+| en | 0.0092 | 0.0092 | 0 | 327 |
+| fr | 0.0128 | 0.0102 | −0.0026 | 392 |
+| de | 0.0065 | 0.0065 | 0 | 309 |
+| es | 0.0000 | 0.0027 | +0.0027 | 364 |
+| pt | 0.0000 | 0.0000 | 0 | 349 |
+
+The two items that differ are one word each: French "pièces" on the raw is
+heard as "pièce", the right word, on the MP3, and Spanish "solo" becomes
+"sólo". Phonon's renders vary
+from run to run, so these raw numbers differ from the 64 kbps run's below; each
+MP3 is compared only with its own render.
+
+### Why 64 kbps was rejected
+
+The first run saved at 64 kbps (out: `/Users/Shared/LT-216/work/lt219/`). Its
+format checks all passed, but French, German, Spanish and Portuguese lost
+0.04–0.06 WER:
+
+| Language | Raw | MP3 64 kbps | Δ |
+|---|---|---|---|
+| en | 0.0183 | 0.0183 | 0 |
+| fr | 0.0102 | 0.0485 | +0.0383 |
+| de | 0.0000 | 0.0485 | +0.0485 |
+| es | 0.0027 | 0.0632 | +0.0605 |
+| pt | 0.0287 | 0.0888 | +0.0601 |
+
+Re-encoding those renders in Node with the same `lame.min.js` at 112 and 128
+kbps kept every language within +0.003, which led to the choice; the 112 kbps
+page run above now stands in for those Node numbers.
+
+Encode time per minute of speech at 64 kbps, Worker warm, on a loaded Mac:
+
+| Language | Per Save (12 short saves) | One long encode | Load avg |
+|---|---|---|---|
+| en | 1.82 s (1.09 s quieter) | 1.93 s (0.88 s quieter) | 42.3 (7.4) |
+| fr | 1.65 s | 1.98 s | 41.5 |
+| de | 1.95 s (1.34 s quieter) | 1.56 s (0.83 s quieter) | 22.4 (10.2) |
+| es | 2.34 s | 1.11 s | 23.8 |
+| pt | 2.14 s | 1.90 s | 19.4 |
+
+### Why 64 kbps loses words
+
+On the 64 kbps MP3s, Whisper often switches to lowercase text without
+punctuation, and in that style it leaves numbers out: "en 1978" becomes "en",
+"el 63%" becomes "el", "Smith und Kollegen 2006" loses the year. To find the
+cause, the same renders were scored again:
+
+| | fr | de | es | pt |
+|---|---|---|---|---|
+| Raw | 0.0102 | 0.0000 | 0.0027 | 0.0287 |
+| Raw with LAME's 1105-sample delay added | 0.0128 | 0.0000 | 0.0055 | 0.0287 |
+| Raw with white noise at 40 dB SNR | 0.0128 | 0.0000 | 0.0027 | 0.0287 |
+| Saved MP3, decoded and lined back up | 0.0638 | 0.0680 | 0.0632 | 0.1003 |
+| Native LAME (ffmpeg libmp3lame), 64 kbps | 0.0638 | 0.0712 | 0.0082 | 0.0745 |
+| Native LAME, 96 kbps | 0.0128 | 0.0227 | 0.0055 | 0.0287 |
+| Native LAME, 128 kbps | 0.0128 | 0.0000 | 0.0027 | 0.0287 |
+| Raw, Whisper held to one style by a prompt | 0.0153 | 0.0000 | 0.0055 | 0.0287 |
+| Saved MP3, same prompt | 0.0408 | 0.0227 | 0.0385 | 0.0917 |
+
+The delay is not the cause: adding it to the raw changes almost nothing. The
+bitrate is the main cause. Native LAME at 64 kbps is as bad as lamejs for fr,
+de and pt, and both pass at 128. Spanish is the exception: native LAME at 64
+kbps passes there (+0.0055), so for es the encoder matters too. The noise
+control shows only that Whisper ignores mild noise. At 40 dB it is far milder
+than the MP3's change to the waveform, which measures about 21.7 dB SNR
+(waveform SNR overstates what a lossy codec does to the ear).
+
+Whisper is also touchy about the MP3 itself. The same file, decoded and cut to
+the render's length ("lined back up"), scores up to 0.02 away from the file as
+saved. Holding Whisper to one style with a prompt narrows the gap but does not
+close it, so at 64 kbps the audio itself is harder to transcribe in these
+languages. English loses nothing at any rate tried. Nobody has listened for a
+difference.
+
+The scripts and outputs behind this table are in
+`/Users/Shared/LT-216/work/lt219/why-64kbps/`, outside git.
+
+### Not verified (LT-219)
+
+- Anyone listening to the MP3s. WER is a machine's view.
+- Encode time on a quiet machine or on a reader's laptop.
+- Firefox and Safari: only Chrome was run.
+- `afplay` on every file: it played the first of each language.
 
 ## LT-222: a Male and a Female voice in every language
 

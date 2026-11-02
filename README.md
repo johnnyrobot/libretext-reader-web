@@ -351,6 +351,11 @@ a permissive licence. Like the voices, none of these weights is committed.
 Supertonic, which spoke the translations until LT-217, is gone from Listen mode entirely,
 with no fallback in any language.
 
+Nor does the MIT licence cover `bench/phonon/listen/vendor/lamejs/`: lamejs 1.2.1, the MP3 encoder
+behind the local listening page's Save button, is **LGPL-3.0**. It is kept as an
+unmodified file of its own with its licence texts beside it, pinned by sha256, and never
+bundled into this project's code; see the README in that folder.
+
 Equation speech is produced at build time by [Speech Rule Engine](https://github.com/Speech-Rule-Engine/speech-rule-engine)
 and [MathJax](https://github.com/mathjax/MathJax-src) (`mathjax-full`), both **Apache-2.0**.
 They run under Node in the pipeline only; nothing from either ships to the browser.
