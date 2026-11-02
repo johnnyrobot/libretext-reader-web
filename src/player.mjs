@@ -36,8 +36,9 @@ export function createPlayer({
   audioContext,
   onSentenceChange = () => {},
   onStateChange = () => {},
-  // A sentence the length guard gave up on (src/phonon-guard.mjs): silence,
-  // never nonsense, and the reader marks it so the silence is explained.
+  // A sentence the length guard gave up on (src/phonon-guard.mjs), or one
+  // rendered ahead that failed after streaming: silence, never nonsense, and the
+  // reader marks it so the silence is explained.
   onSentenceSkipped = () => {},
 }) {
   const context = audioContext ?? new (globalThis.AudioContext ?? globalThis.webkitAudioContext)();
@@ -166,7 +167,8 @@ export function createPlayer({
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
 
     request(position);
-    const stream = mayStream ? streams.get(sentence.id) : undefined;
+    const pending = streams.get(sentence.id);
+    const stream = mayStream ? pending : undefined;
     if (stream?.chunks.length) return { stream };
     // Cleared by whatever plays next, not here: a wait a seek has cancelled
     // would otherwise clear the seek's own "Preparing audio…".
@@ -176,6 +178,9 @@ export function createPlayer({
     await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
     if (stream?.chunks.length && streams.get(sentence.id) === stream) return { stream };
+    // Rendered ahead, streamed, then failed: what it streamed was never guarded
+    // whole, so none of it plays. Mark it, as the guard marks a skip.
+    if (!mayStream && pending?.chunks.length) return { buffer: null, skipped: true };
     return null;
   }
 
@@ -253,13 +258,7 @@ export function createPlayer({
 
     const entry = await waitFor(position, waitingToHear);
     if (mine !== generation || !playing) return;
-    // Synthesis failed. What a sentence rendered ahead streamed before failing
-    // was never guarded whole, so none of it plays: mark it, as for a skip.
-    if (!entry) {
-      onSentenceSkipped(sentences[position].id);
-      await playAt(position + 1);
-      return;
-    }
+    if (!entry) { await playAt(position + 1); return; }
     if (entry.stream) { playStream(position, mine, entry.stream); return; }
     if (!entry.buffer) {
       if (entry.skipped) onSentenceSkipped(sentences[position].id);

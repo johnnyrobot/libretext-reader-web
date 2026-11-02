@@ -255,9 +255,14 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     live(context).forEach((n) => n.end());
     await tick();
 
+    const nodesBefore = context.nodes.length;
     b.fail();
     await tick();
     expect(skipped).toEqual(['b']);
+    expect(context.nodes).toHaveLength(nodesBefore);   // none of b is played
+    engine.jobs.get('c').finish();
+    await tick();
+    expect(seen).toEqual(['a', 'c']);
   });
 
   // A seek while a sentence rendered ahead waits to be whole cancels it; the
