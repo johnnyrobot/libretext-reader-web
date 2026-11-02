@@ -94,6 +94,9 @@ def fetch(cache: Path = CACHE, files=FILES) -> None:
 
 def stage(cache: Path, target: Path, files=FILES) -> dict:
     """Copy the pinned files from `cache` to `target`, verify, write manifest.json."""
+    # Withdrawn first: from here until the new one is written, the target is
+    # plainly unstaged rather than an old manifest over half-replaced files.
+    (target / "manifest.json").unlink(missing_ok=True)
     entries = []
     for relative, pin in files.items():
         dest = target / relative

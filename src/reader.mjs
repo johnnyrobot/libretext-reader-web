@@ -45,9 +45,10 @@ async function loadSpeechManifest() {
 
 /** One language's entry in the menu. Its size includes the translation voice
  * until that is stored, and it says "downloaded" only once nothing is left to
- * fetch: the language's model AND the voice (LT-214). */
+ * fetch: the language's model AND the voice (LT-214). `voiceBytes` is null when
+ * the voice could not be sized: it is left out, and never reads as stored. */
 export function languageOption({ code, bytes }, modelStored, voiceBytes) {
-  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + voiceBytes, stored: modelStored && !voiceBytes };
+  return { code, label: LANGUAGE_LABELS[code], bytes: bytes + (voiceBytes ?? 0), stored: modelStored && voiceBytes === 0 };
 }
 
 /**
@@ -264,7 +265,9 @@ export async function enterReaderMode() {
     if (await modelsPresent(MANIFEST_URL)) return 0;
     return (await checkQuota(MANIFEST_URL)).required;
   }
-  let voiceBytes = pairs.length ? await translationVoiceBytes() : 0;
+  // Only the menu needs this now, so a manifest that will not load must not stop
+  // an English reader: the size is unknown (null) until consent asks again.
+  let voiceBytes = pairs.length ? await translationVoiceBytes().catch(() => null) : 0;
   const modelStored = new Set(pairs.filter((p, i) => stored[i]).map((p) => p.code));
 
   let translator = null;

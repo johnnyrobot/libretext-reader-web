@@ -150,4 +150,10 @@ describe('languageOption', () => {
   it('a model not stored is never downloaded', () => {
     expect(languageOption(es, false, 0)).toMatchObject({ bytes: 115_000_000, stored: false });
   });
+
+  // The voice could not be sized (its manifest did not load). The menu shows
+  // what it knows and never claims the language is ready; consent asks again.
+  it('an unknown voice size is left out and never reads as downloaded', () => {
+    expect(languageOption(es, true, null)).toMatchObject({ bytes: 115_000_000, stored: false });
+  });
 });

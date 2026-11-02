@@ -106,3 +106,15 @@ def test_a_corrupt_cached_file_is_fetched_again(tmp_path, monkeypatch):
     fetch_phonon.fetch(cache, pins)
     assert fetched == ["config.json"]
     assert (cache / "config.json").read_bytes() == good
+
+
+def test_a_failed_restage_leaves_no_old_manifest_over_mixed_files(tmp_path):
+    cache, pins = _fake_cache(tmp_path, ["config.json", "voices/abc.bin"])
+    target = tmp_path / "tts" / "phonon"
+    fetch_phonon.stage(cache, target, pins)
+    # The second staging copies config.json, then finds the voice corrupt. The
+    # old manifest must not stay to vouch for a half-replaced directory.
+    (cache / "voices" / "abc.bin").write_bytes(b"corrupt")
+    with pytest.raises(SystemExit, match="abc.bin"):
+        fetch_phonon.stage(cache, target, pins)
+    assert not (target / "manifest.json").exists()

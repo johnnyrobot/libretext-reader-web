@@ -189,4 +189,18 @@ test.describe('Reader Mode end to end', () => {
     expect(await page.locator('#main-content .tts-current').count()).toBe(0);
     await expect(page.locator('#tts-enter')).toBeVisible();
   });
+
+  // Supertonic's manifest only sizes the translation voice for the language
+  // menu. An English reader must not depend on it (LT-214, CodeRabbit).
+  test('English still plays when the translation voice cannot be sized', async ({ page }) => {
+    await page.route('**/_assets/tts/manifest.json', (route) => route.abort());
+    await enterAndWait(page);
+    await expect(page.locator('[data-act="provider"]')).not.toBeEmpty({ timeout: 120_000 });
+
+    await page.locator('[data-act="toggle"]').click();
+    await page.locator('.tts-current').waitFor();
+    const first = await page.locator('.tts-current').getAttribute('data-tts-id');
+    await page.waitForFunction(
+      (prev) => document.querySelector('.tts-current')?.dataset.ttsId !== prev, first);
+  });
 });

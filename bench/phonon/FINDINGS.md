@@ -539,7 +539,9 @@ prose at 14.3 a second, but counting digits and lone capitals as longer is what
 lets one rate fit both prose and formulas, and against that weighted length the
 fitted rate is 11.5. Past the cap the attempt is stopped and, in
 order, retried once, rendered split at punctuation, then skipped with a visible
-mark. It never plays nonsense, and it never falls back to Supertonic for English.
+mark. It never falls back to Supertonic for English. The guard limits
+overruns; it does not guarantee that nonsense is never heard, for the two
+reasons below.
 
 Frames are streamed only while an attempt is within its expected length;
 anything past that is held until the model ends the sentence itself. A runaway

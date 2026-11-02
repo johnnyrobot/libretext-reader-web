@@ -36,7 +36,10 @@ const VOICE = args.voice ?? 'default';
 const TEMPERATURE = args.temperature === undefined ? undefined : Number(args.temperature);
 const DURATION_DELTA = Number(args['duration-delta'] ?? 0);
 const ENGINE = `patha-${DEVICE}-${DTYPE}` + (TEMPERATURE === undefined ? '' : `-t${TEMPERATURE}`)
-  + (DURATION_DELTA ? `-d${DURATION_DELTA}` : '') + (VOICE === 'default' ? '' : `-${VOICE}`) + (args.run ? `-r${args.run}` : '') + (args.tag ? `-${args.tag}` : '');
+  + (DURATION_DELTA ? `-d${DURATION_DELTA}` : '') + (VOICE === 'default' ? '' : `-${VOICE}`) + (args.run ? `-r${args.run}` : '') + (args.tag ? `-${args.tag}` : '')
+  // A filtered run gets its own folder unless tagged, so it never overwrites
+  // part of a full run that a later score would then mix with it.
+  + (args.items && !args.tag ? `-items-${String(args.items).replaceAll(',', '+')}` : '');
 const OUT = join(HERE, 'out', ENGINE);
 // --items s16,s17,s18 renders only those.
 const ONLY = args.items ? new Set(String(args.items).split(',')) : null;
@@ -60,6 +63,8 @@ const poll = setInterval(() => { peak = Math.max(peak, treeRssMb(browserPid)); }
 await page.goto(`http://127.0.0.1:${PORT}/bench/phonon/path-a/index.html`, { waitUntil: 'load' });
 if (!(await page.evaluate(() => self.crossOriginIsolated))) throw new Error('page is not cross-origin isolated');
 mkdirSync(OUT, { recursive: true });
+// The set rendered, beside its WAVs: score.py scores against this, not the default set.
+writeFileSync(join(OUT, 'sentences.json'), JSON.stringify(items, null, 1));
 await page.exposeFunction('saveItem', (id, samples, rate) => writeFileSync(join(OUT, `${id}.wav`), wav(samples, rate)));
 
 const result = await page.evaluate(async ({ items, device, dtype, voice, temperature, durationDelta }) => {
