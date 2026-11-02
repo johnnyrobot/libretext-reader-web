@@ -41,4 +41,30 @@ test.describe('leaving and re-entering Reader Mode', () => {
     const secondCount = await page.locator('.tts-sentence').count();
     expect(secondCount).toBe(firstCount);
   });
+
+  // LT-223. A reader who presses the button again while the page is still loading
+  // got a second "Listen to this page" dialog stacked on the first. Accepting the
+  // top one opened Reader Mode and left the other on screen, over the page.
+  test('pressing Enter Reader Mode again while it loads opens one dialog', async ({ page }) => {
+    // Hold the reading list back so both presses land before the first dialog.
+    await page.route(/\/speech\.json$/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+      await route.continue();
+    });
+    await page.goto(IN_SCOPE);
+
+    await page.locator('#tts-enter').click();
+    await page.waitForTimeout(1_000);
+    await page.locator('#tts-enter').click();
+
+    await page.locator('.tts-dialog').first().waitFor({ state: 'visible', timeout: 30_000 });
+    // Long enough for a second flow, held back by the same delay, to catch up.
+    await page.waitForTimeout(4_000);
+    await expect(page.locator('.tts-dialog')).toHaveCount(1);
+
+    await page.locator('[data-act="accept"]').click();
+    await page.locator('.tts-bar').waitFor({ state: 'visible' });
+    await expect(page.locator('.tts-dialog')).toHaveCount(0);
+    await expect(page.locator('.tts-bar')).toHaveCount(1);
+  });
 });

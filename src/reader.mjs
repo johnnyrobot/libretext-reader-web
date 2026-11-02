@@ -48,6 +48,10 @@ export function offeredPairs(pairs, voices) {
 }
 
 let session = null;
+// The entry still in progress. `session` is set only at the very end of entering,
+// after the consent dialog and the download, so on its own it lets a second press
+// start a second entry and stack a second dialog (LT-223).
+let entering = null;
 
 async function loadSpeechManifest() {
   const res = await fetch(new URL('speech.json', location.href).pathname);
@@ -234,9 +238,15 @@ export async function switchLanguage(lang, {
   }
 }
 
-export async function enterReaderMode() {
-  if (session) return;
+export function enterReaderMode() {
+  if (session) return Promise.resolve();
+  // Cleared however entering ends -- declined, cancelled or failed -- so the
+  // button still works the next time it is pressed.
+  entering ??= enter().finally(() => { entering = null; });
+  return entering;
+}
 
+async function enter() {
   const manifest = await loadSpeechManifest();
   const root = document.getElementById('main-content');
   if (!root) return;
@@ -247,7 +257,7 @@ export async function enterReaderMode() {
   // scrolling them into the bibliography to reach the button.
   //
   // This still costs a visitor who never presses the button nothing: it runs
-  // only inside enterReaderMode, which only a click reaches.
+  // only while entering, which only a click reaches.
   ensureStylesheet();
 
   // A reader from before LT-217 may still hold Supertonic's ~380 MB.
