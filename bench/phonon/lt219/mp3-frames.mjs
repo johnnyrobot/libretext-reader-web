@@ -11,7 +11,7 @@ const RATES = {
   2.5: [11025, 12000, 8000],
 };
 // Layer III bitrates in kbps, by bitrate index 1-14.
-const KBPS = {
+const LAYER3_KBPS = {
   1: [32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320],
   2: [8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160],
 };
@@ -32,7 +32,7 @@ export function mp3Frames(bytes) {
     if (((b >> 1) & 0b11) !== 0b01) throw new Error(`not Layer III at byte ${at}`);
     const index = c >> 4;
     const sampleRate = RATES[version][(c >> 2) & 0b11];
-    const kbps = KBPS[version === 1 ? 1 : 2][index - 1];
+    const kbps = LAYER3_KBPS[version === 1 ? 1 : 2][index - 1];
     if (!kbps || !sampleRate) throw new Error(`bad bitrate or sample rate at byte ${at}`);
     const padding = (c >> 1) & 1;
     const samples = version === 1 ? 1152 : 576;

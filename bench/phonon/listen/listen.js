@@ -196,25 +196,27 @@ addEventListener('DOMContentLoaded', () => {
   $('lang').addEventListener('change', () => choose($('lang').value));
   $('play').addEventListener('click', async () => {
     const lang = $('lang').value;
-    $('play').disabled = true; $('stop').disabled = false;
+    // Save stays off while the voice renders: encoding never competes with speaking.
+    $('play').disabled = true; $('stop').disabled = false; $('save').disabled = true;
     status(`Speaking ${LANGS[lang].name}…`);
     try {
       const run = await speak(lang, $('text').value);
       if (run.outcome === 'stopped') { status('Stopped.'); return; }
       status(run.outcome === 'skipped' ? 'The voice could not finish this text.' : 'Done.');
       showStats(run);
-      $('save').disabled = false;
     } catch (error) {
       status(`Something went wrong: ${error.message}`);
     } finally {
       $('play').disabled = false;
+      $('save').disabled = !lt216.last;
     }
   });
   // The render finishes well before its audio does: after it, Stop just silences.
   $('stop').addEventListener('click', () => { (stopCurrent ?? stopAudio)(); $('stop').disabled = true; });
   $('save').addEventListener('click', async () => {
     const { samples, sampleRate, lang } = lt216.last;
-    $('save').disabled = true;
+    // And Play stays off while it encodes.
+    $('save').disabled = true; $('play').disabled = true;
     status('Making the MP3…');
     try {
       const { mp3, encodeMs } = await encodeMp3(samples, sampleRate);
@@ -228,7 +230,7 @@ addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       status(`Could not make the MP3: ${error.message}`);
     } finally {
-      $('save').disabled = false;
+      $('save').disabled = false; $('play').disabled = false;
     }
   });
 });

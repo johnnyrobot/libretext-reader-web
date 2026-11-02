@@ -13,6 +13,7 @@ import { mp3Frames, mp3Seconds } from '../bench/phonon/lt219/mp3-frames.mjs';
 const LISTEN = new URL('../bench/phonon/listen/', import.meta.url);
 const LAME = new URL('vendor/lamejs/lame.min.js', LISTEN);
 const RATE = 24000;
+const WITHIN = 0.1;   // seconds an MP3 may differ from its render (LT-219)
 
 /** mp3.worker.js in a context like a classic Worker's: replies come back as promises. */
 function startWorker() {
@@ -48,7 +49,7 @@ describe('the listening page MP3 encoder', { timeout: 60_000 }, () => {
     const encode = startWorker();
     const frames = mp3Frames(await bytesOf(await encode({ id: 'a', samples: tone(2.5), sampleRate: RATE })));
     for (const frame of frames) expect(frame).toMatchObject({ version: 2, sampleRate: 24000, kbps: 64, mono: true });
-    expect(Math.abs(mp3Seconds(frames) - 2.5)).toBeLessThan(0.1);
+    expect(Math.abs(mp3Seconds(frames) - 2.5)).toBeLessThan(WITHIN);
   });
 
   it('answers each Save with its own file, under the id it was asked with', async () => {
@@ -56,13 +57,13 @@ describe('the listening page MP3 encoder', { timeout: 60_000 }, () => {
     const long = await encode({ id: 'long', samples: tone(3), sampleRate: RATE });
     const short = await encode({ id: 'short', samples: tone(1), sampleRate: RATE });
     expect([long.id, short.id]).toEqual(['long', 'short']);
-    expect(Math.abs(mp3Seconds(mp3Frames(await bytesOf(short))) - 1)).toBeLessThan(0.1);
+    expect(Math.abs(mp3Seconds(mp3Frames(await bytesOf(short))) - 1)).toBeLessThan(WITHIN);
   });
 
   it('takes samples past full scale without failing', async () => {
     const encode = startWorker();
     const frames = mp3Frames(await bytesOf(await encode({ id: 'loud', samples: tone(1, 1.6), sampleRate: RATE })));
-    expect(Math.abs(mp3Seconds(frames) - 1)).toBeLessThan(0.1);
+    expect(Math.abs(mp3Seconds(frames) - 1)).toBeLessThan(WITHIN);
   });
 
   it('weighs about 0.48 MB a minute of speech', async () => {

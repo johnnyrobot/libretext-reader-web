@@ -13,6 +13,7 @@ import importlib.util
 import json
 import pathlib
 import sys
+import time
 
 import jiwer
 import mlx_whisper
@@ -24,9 +25,20 @@ spec.loader.exec_module(lt216)
 BAR = 0.01
 
 
+def transcribe(path, lang, tries=3):
+    # On a busy Mac, Metal can drop a command buffer ("Impacting Interactivity"); try again.
+    for attempt in range(tries):
+        try:
+            return mlx_whisper.transcribe(str(path), path_or_hf_repo=lt216.WHISPER, language=lang, temperature=0.0,
+                                          condition_on_previous_text=False)["text"].strip()
+        except RuntimeError as error:
+            if "METAL" not in str(error) or attempt == tries - 1:
+                raise
+            time.sleep(10)
+
+
 def errors(path, text, lang, norm, digits):
-    said = mlx_whisper.transcribe(str(path), path_or_hf_repo=lt216.WHISPER, language=lang, temperature=0.0,
-                                  condition_on_previous_text=False)["text"].strip()
+    said = transcribe(path, lang)
     ref, hyp = norm(text), norm(lt216.words_for_numerals(said, digits))
     w = jiwer.process_words(ref, hyp)
     return {"said": said, "hyp": hyp, "words": len(ref.split()), "errors": w.substitutions + w.deletions + w.insertions}
@@ -53,7 +65,7 @@ def score(directory, lang):
 
 def main():
     args = sys.argv[1:]
-    directory = pathlib.Path(args.pop(0) if args and "/" in args[0] else "/Users/Shared/LT-216/work/lt219")
+    directory = pathlib.Path(args.pop(0) if args and pathlib.Path(args[0]).is_dir() else "/Users/Shared/LT-216/work/lt219")
     langs = args or [p.name for p in sorted(directory.iterdir()) if (p / "texts.json").exists()]
     totals = []
     for lang in langs:

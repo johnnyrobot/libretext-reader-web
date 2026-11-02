@@ -1,0 +1,2 @@
+# Vendored third-party files are pinned by sha256: never rewrite their line endings.
+bench/phonon/listen/vendor/** -text

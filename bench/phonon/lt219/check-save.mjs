@@ -4,14 +4,16 @@
 //
 //   node bench/phonon/lt219/check-save.mjs [--base http://127.0.0.1:8820] [--out DIR] [en fr de es pt]
 //
-// Fails (exit 1) unless every saved file is phonon-<lang>.mp3, 24000 Hz mono 64 kbps
-// MPEG-2 Layer III within 0.1 s of its render, plays in Chrome and in afplay, and the
-// encoder was fetched once, on the first Save and not before.
+// Fails (exit 1) unless Save is off during a render and Play during a Save, and every
+// saved file is phonon-<lang>.mp3, 24000 Hz mono 64 kbps MPEG-2 Layer III within 0.1 s
+// of its render, plays in Chrome and in afplay, and the encoder was fetched once, on
+// the first Save and not before.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { mp3Frames, mp3Seconds } from './mp3-frames.mjs';
 
 const args = process.argv.slice(2);
@@ -20,7 +22,7 @@ const flag = (name, fallback) => {
   return at === -1 ? fallback : args.splice(at, 2)[1];
 };
 const base = flag('--base', 'http://127.0.0.1:8820');
-const out = flag('--out', '/Users/Shared/LT-216/work/lt219');
+const out = path.resolve(flag('--out', '/Users/Shared/LT-216/work/lt219'));
 const langs = args.length ? args : ['en', 'fr', 'de', 'es', 'pt'];
 
 // The LT-216 test set. Its English column has only p00; s01-s11 were translated from
@@ -73,6 +75,7 @@ try {
     for (const { id, text } of itemsFor(lang)) {
       await page.fill('#text', text);
       await page.click('#play');
+      check(await page.isDisabled('#save'), `${lang} ${id}: Save is off while the voice renders`);
       await page.waitForFunction(() => !document.getElementById('play').disabled
         && !/^Speaking|^Loading/.test(document.getElementById('status').textContent), null, { timeout: 600_000 });
       const said = await page.textContent('#status');
@@ -90,11 +93,17 @@ try {
       writeFileSync(path.join(dir, `${id}.wav`), wav(Buffer.from(raw.pcm, 'base64'), raw.sampleRate));
       await page.evaluate(() => { (window.lt219renders ??= []).push(window.lt216.last.samples); });
 
-      const [download] = await Promise.all([page.waitForEvent('download'), page.click('#save')]);
-      await page.waitForFunction(() => /^Saved|^Could not/.test(document.getElementById('status').textContent));
-      check(download.suggestedFilename() === `phonon-${lang}.mp3`, `${lang} ${id}: saved as ${download.suggestedFilename()}`);
+      // A Save that fails shows "Could not make the MP3" and downloads nothing.
+      const download = page.waitForEvent('download', { timeout: 120_000 }).catch(() => null);
+      await page.click('#save');
+      check(await page.isDisabled('#play'), `${lang} ${id}: Play is off while the MP3 is made`);
+      await page.waitForFunction(() => /^Saved|^Could not/.test(document.getElementById('status').textContent),
+        null, { timeout: 120_000 });
+      const saved = await download;
+      if (!saved) { check(false, `${lang} ${id}: ${await page.textContent('#status')}`); continue; }
+      check(saved.suggestedFilename() === `phonon-${lang}.mp3`, `${lang} ${id}: saved as ${saved.suggestedFilename()}`);
       const file = path.join(dir, `${id}.mp3`);
-      await download.saveAs(file);
+      await saved.saveAs(file);
       const save = await page.evaluate(() => window.lt216.saves.at(-1));
 
       const bytes = readFileSync(file);
@@ -114,7 +123,7 @@ try {
         return (await new OfflineAudioContext(1, 1, 24000).decodeAudioData(data.buffer)).duration;
       }, bytes.toString('base64'));
       const viewer = await browser.newPage();
-      await viewer.goto(`file://${file}`);
+      await viewer.goto(pathToFileURL(file).href);
       const chrome = await viewer.evaluate(async () => {
         const media = document.querySelector('video, audio');
         media.muted = true;
