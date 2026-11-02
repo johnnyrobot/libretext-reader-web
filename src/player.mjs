@@ -12,12 +12,12 @@
  * the sentence plays as one buffer as it always did.
  *
  * Only the sentence the reader is waiting on -- the first one heard after play or
- * a seek, or the next one when the guard skipped that -- plays as a stream. Every
- * sentence after it was rendered ahead, and plays only once it has finished and
- * the length guard (src/phonon-guard.mjs) has passed it, so a runaway is never
- * heard. Time to first sound is unchanged. The cost is a possible pause between
- * sentences: the worker renders one sentence at a time, in order, so a long
- * sentence after a short streamed one may not be whole by its turn.
+ * a seek -- plays as a stream. Every sentence after it was rendered ahead, and
+ * plays only once it has finished and the length guard (src/phonon-guard.mjs)
+ * has passed it, so a runaway there is never heard. Time to first sound is
+ * unchanged. The cost is a possible pause between sentences: the worker renders
+ * one sentence at a time, in order, so a long sentence after a short streamed one
+ * may not be whole by its turn, nor the one after a sentence the guard skipped.
  */
 
 import { createStreamPlayback } from './stream-playback.mjs';
@@ -58,9 +58,8 @@ export function createPlayer({
   let source = null;
   let streamPlayback = null;
   let awaitingFirstSound = false;
-  // Set by play() and seekTo(), cleared once a sentence starts playing, and set
-  // again when the guard skips one that was streaming: whether the sentence now
-  // awaited may play as a stream rather than whole.
+  // Set by play() and seekTo(), cleared once a sentence starts playing: whether
+  // the sentence now awaited may play as a stream rather than whole.
   let waitingToHear = false;
   let lookahead = BASE_LOOKAHEAD;
   let generation = 0;
@@ -206,8 +205,6 @@ export function createPlayer({
         if (entry?.skipped) {
           stopSource();
           onSentenceSkipped(id);
-          // All that was heard of it is withdrawn: the reader is waiting again.
-          waitingToHear = true;
           advance();
           return;
         }

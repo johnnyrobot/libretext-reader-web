@@ -121,9 +121,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen).toEqual(['a']);           // still the same sentence
   });
 
-  // The guard withdrew all the reader heard of a, so they are waiting again:
-  // the next sentence streams like the first one after play, not whole.
-  it('a skipped sentence is marked, nothing of it is left playing, and the next one streams', async () => {
+  it('a skipped sentence is marked, nothing of it is left playing, and the next one plays', async () => {
     player.play();
     await tick();
     const a = engine.jobs.get('a');
@@ -131,7 +129,7 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     a.reset();
     a.finish('skipped');
     await tick();
-    engine.jobs.get('b').chunk();
+    engine.jobs.get('b').finish();
     await tick();
 
     expect(skipped).toEqual(['a']);
@@ -281,27 +279,24 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
 
   // The guard withdrew what the next sentence had streamed and is rendering it
   // again. `first` had already resolved on the withdrawn chunk, so its turn
-  // found nothing to play and passed it over, unmarked. A sentence rendered
-  // ahead now waits to be whole anyway; this keeps it from being passed over.
+  // found nothing to play and passed it over, unmarked. a is skipped before a
+  // sound of it is heard, so b is the sentence the reader is waiting on, and
+  // may stream.
   it('a sentence reset before its turn waits for its retry instead of being passed over', async () => {
     player.play();
     await tick();
-    const a = engine.jobs.get('a');
-    a.chunk(); await tick();
-    a.finish();
     const b = engine.jobs.get('b');
     b.chunk();
     b.reset();
+    engine.jobs.get('a').finish('skipped');
     await tick();
-
-    live(context).forEach((n) => n.end());
-    await tick();
+    expect(seen).not.toContain('b');
     expect(seen).not.toContain('c');
 
-    b.chunk(); b.finish(); await tick();
-    expect(seen.at(-1)).toBe('b');
+    b.chunk(); await tick();
+    expect(seen).toEqual(['b']);
     expect(live(context)).toHaveLength(1);
-    expect(skipped).toEqual([]);
+    expect(skipped).toEqual(['a']);
   });
 });
 
