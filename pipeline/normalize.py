@@ -139,15 +139,15 @@ ABBREVIATIONS = [
     (re.compile(r"\bapprox\.", re.I), "approximately"),
 ]
 
-# Characters Supertonic's unicode_indexer.json cannot represent, folded to ones
-# it can. src/vendor/helper.js has a table like this but misses every entry here;
-# it is fixed on our side because src/vendor/README.md's upstream-diff procedure
-# depends on that file staying minimally changed.
+# Characters Supertonic's unicode_indexer.json could not represent, folded to
+# ones it could. Written for Supertonic, which LT-217 removed from Listen mode;
+# the fold stays because it only swaps typographic quotes, primes and invisible
+# characters for their plain forms.
 #
-# An unmapped character is not dropped by the engine -- helper.js maps it to -1,
-# and ONNX Gather wraps -1 onto the last row of an 8322-row table whose top real
-# index is 8320. That spare row is Supertonic's unknown-character embedding, so
-# the character is spoken as "unknown" rather than crashing. Audible, not fatal,
+# Supertonic did not drop an unmapped character: its text helper mapped it to
+# -1, and ONNX Gather wrapped -1 onto the last row of an 8322-row table whose top
+# real index is 8320. That spare row was its unknown-character embedding, so the
+# character was spoken as "unknown" rather than crashing. Audible, not fatal,
 # which is why this is a normalisation concern and not an exception.
 UNREPRESENTABLE = {
     "„": '"',   # „ German/Bulgarian/Hungarian/Lithuanian/Czech/Polish open quote

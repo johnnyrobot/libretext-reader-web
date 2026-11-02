@@ -33,7 +33,7 @@ const PORT = 8788;
 export default defineConfig({
   testDir: 'tests/e2e',
   // Synthesis is genuinely multi-second, and a cold session creation loads
-  // 380 MB from disk. These are real durations, not slack.
+  // the 155 MB English voice from disk. These are real durations, not slack.
   timeout: 300_000,
   expect: { timeout: 120_000 },
   fullyParallel: false,

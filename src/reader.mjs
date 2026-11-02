@@ -10,30 +10,42 @@ import {
 } from './consent.mjs';
 import { savePosition, loadPosition } from './position.mjs';
 import {
-  modelsPresent, deleteModels, checkQuota, checkQuotaFor, MT_CACHE_NAME, PHONON_CACHE_NAME,
+  modelsPresent, deleteModels, checkQuota, checkQuotaFor, removeRetiredCaches,
+  MT_CACHE_NAME, PHONON_CACHE_NAME,
 } from './models.mjs';
 import { createTranslator, hostedPairs, MT_ROOT } from './translator.mjs';
 import { createTranslationQueue, MIN_RATE } from './translate-queue.mjs';
 import { referenceSentenceIds } from './qa.mjs';
 import { substituteMathSpeech } from './math-speech.mjs';
 
-// Supertonic: the translation voice, downloaded only when a translation is
-// first picked (LT-214).
-const MANIFEST_URL = '/_assets/tts/manifest.json';
-// Phonon: the English voice, the one every reader downloads.
+// Phonon 31M: the English voice, the one every reader downloads.
 const PHONON_MANIFEST_URL = '/_assets/tts/phonon/manifest.json';
 const PHONON_WORKER_URL = '/_assets/tts/phonon.worker.js';
 
-// Endonyms: the reader who wants Spanish reads Spanish. Kept here rather than in
-// the manifest so a page built before a language existed still labels it.
-const LANGUAGE_LABELS = {
-  ar: 'العربية', bg: 'български', cs: 'čeština', da: 'dansk', de: 'Deutsch',
-  el: 'Ελληνικά', es: 'español', et: 'eesti', fi: 'suomi', fr: 'français',
-  hr: 'hrvatski', hu: 'magyar', id: 'Bahasa Indonesia', it: 'italiano',
-  ja: '日本語', ko: '한국어', lt: 'lietuvių', lv: 'latviešu', nl: 'Nederlands',
-  pl: 'polski', pt: 'português', ro: 'română', ru: 'русский', sk: 'slovenčina',
-  sl: 'slovenščina', sv: 'svenska', tr: 'Türkçe', uk: 'українська', vi: 'Tiếng Việt',
-};
+// The voices that speak translations: each language's own Phonon 40M (CC BY-NC
+// 4.0), exported from Johnny's Ollama copies and staged into phonon-<lang>/ by
+// scripts/stage-phonon-lang.py (LT-216), one voice each. Each is downloaded only
+// when its language is first picked, run by the same worker as English, and
+// cached beside it. Supertonic is gone, with no fallback (LT-217).
+export const TRANSLATION_VOICES = Object.freeze(Object.fromEntries(['fr', 'de', 'es', 'pt'].map((lang) => [
+  lang,
+  Object.freeze({
+    workerUrl: PHONON_WORKER_URL,
+    manifestUrl: `/_assets/tts/phonon-${lang}/manifest.json`,
+    cacheName: PHONON_CACHE_NAME,
+  }),
+])));
+
+// Endonyms: the reader who wants Spanish reads Spanish. Also the allowlist of
+// what Listen mode speaks besides English (LT-217): a hosted pair for any other
+// language is never offered.
+const LANGUAGE_LABELS = { es: 'español', fr: 'français', de: 'Deutsch', pt: 'português' };
+
+/** The hosted translations a reader is offered: those in LANGUAGE_LABELS that
+ * have a voice in `voices` to speak them. */
+export function offeredPairs(pairs, voices) {
+  return pairs.filter((p) => p.code in LANGUAGE_LABELS && p.code in voices);
+}
 
 let session = null;
 
@@ -151,6 +163,77 @@ export async function recoverToEnglish(player, engine, controls, error, reportEr
   }
 }
 
+/**
+ * The language menu's handler: put the page into `lang`, or back into English.
+ *
+ * ENGLISH STOPS FIRST. Left playing, its lookahead keeps synthesising on the same
+ * cores the translator needs for the whole wait: on the local copy German took
+ * over 100 s and ended on "Deutsch is slow on this device", against about 15 s
+ * paused. So the switch pauses and drops pending audio before anything prepares.
+ * That costs nothing: changeLanguage drops the English audio anyway, and the
+ * reader ended paused on every path before this too.
+ *
+ * A LATER PICK WINS. A cancelled download or voice load keeps running, so the
+ * menu is usable again before an earlier pick settles. `current()` says whether
+ * this pick is still the latest; once it is not, this call returns without
+ * touching the menu, the voice, the status line or the error box, all of which
+ * belong to the newer pick (LT-217).
+ *
+ * Exported so the order can be tested. See tests/reader-voice.test.js.
+ */
+export async function switchLanguage(lang, {
+  player, engine, controls, startTranslating, stopTranslating, startStreaming, reportError,
+  current = () => true,
+}) {
+  let superseded = false;
+  try {
+    // Whatever was being translated is for a language the reader has just
+    // left. Stopping FIRST also means a failure below cannot leave a queue
+    // running against a language nothing is listening to.
+    stopTranslating();
+
+    if (lang === 'en') {
+      await changeLanguage(player, engine, 'en', {});
+      if (!current()) superseded = true;
+      return;
+    }
+
+    player.pause();
+    player.flushAudio();
+    const ready = await startTranslating(lang, current);
+    if (!current()) { superseded = true; return; }
+    if (ready === null) {
+      // Declined, or cancelled mid-download, or told the device is too slow
+      // and picked English. Not an error: they answered the question. Put
+      // the page and the menu back in the language that is actually playing,
+      // silently.
+      //
+      // Stopped HERE rather than at each of the three places that return
+      // null, because only the slow-device one has a queue running by then
+      // and the next one added might too -- and a queue left running
+      // translates a book nobody is listening to, which is the exact battery
+      // cost the window bound exists to avoid.
+      stopTranslating();
+      await changeLanguage(player, engine, 'en', {});
+      if (!current()) { superseded = true; return; }
+      controls.setLang('en');
+      return;
+    }
+    await changeLanguage(player, engine, lang, ready);
+    if (!current()) { superseded = true; return; }
+    startStreaming();
+  } catch (error) {
+    // Most likely the newer pick tore this one's queue or voice down.
+    if (!current()) { superseded = true; return; }
+    stopTranslating();
+    await recoverToEnglish(player, engine, controls, error, reportError);
+  } finally {
+    // Clear the progress line on BOTH paths. Leaving "Translating into
+    // español…" up after a failure says the opposite of what the error says.
+    if (!superseded) controls.setState({ playing: false, buffering: false, message: '' });
+  }
+}
+
 export async function enterReaderMode() {
   if (session) return;
 
@@ -166,6 +249,9 @@ export async function enterReaderMode() {
   // This still costs a visitor who never presses the button nothing: it runs
   // only inside enterReaderMode, which only a click reaches.
   ensureStylesheet();
+
+  // A reader from before LT-217 may still hold Supertonic's ~380 MB.
+  removeRetiredCaches().catch(() => {});
 
   if (!(await modelsPresent(PHONON_MANIFEST_URL, PHONON_CACHE_NAME))) {
     const { required, sufficient } = await checkQuota(PHONON_MANIFEST_URL);
@@ -208,10 +294,10 @@ export async function enterReaderMode() {
     return;
   }
 
-  // English on Phonon; Supertonic is created only when a translation is picked.
+  // English on Phonon 31M; a language's voice is created only when it is picked.
   const engine = createListenEngine({
     english: createEngine({ workerUrl: PHONON_WORKER_URL, manifestUrl: PHONON_MANIFEST_URL }),
-    createOther: () => createEngine({ manifestUrl: MANIFEST_URL }),
+    createOther: (lang) => createEngine(TRANSLATION_VOICES[lang]),
   });
   const progress = showProgress();
   let provider = 'wasm';
@@ -244,7 +330,7 @@ export async function enterReaderMode() {
   // Which languages this DEPLOYMENT can translate into, not which tracks this
   // PAGE has: with translation client-side there are no tracks on disk, so
   // manifest.languages describes something that no longer exists.
-  const pairs = await hostedPairs();
+  const pairs = offeredPairs(await hostedPairs(), TRANSLATION_VOICES);
 
   const mtManifestUrl = (pair) => `${MT_ROOT}${pair}/manifest.json`;
 
@@ -257,17 +343,18 @@ export async function enterReaderMode() {
   const stored = await Promise.all(pairs.map((p) =>
     modelsPresent(mtManifestUrl(p.pair), MT_CACHE_NAME)));
 
-  /** The translation voice's download, 0 once it is stored. Every language's
-   * size includes it until then, in the menu and in the dialog alike. Asked only
-   * when this deployment hosts a translation: it fetches Supertonic's manifest
-   * (a few KB), never its weights. */
-  async function translationVoiceBytes() {
-    if (await modelsPresent(MANIFEST_URL)) return 0;
-    return (await checkQuota(MANIFEST_URL)).required;
+  /** A language's voice download, 0 once it is stored. That language's size
+   * includes it until then, in the menu and in the dialog alike. It fetches the
+   * voice's manifest (a few KB), never its weights. */
+  async function translationVoiceBytes(lang) {
+    const { manifestUrl, cacheName } = TRANSLATION_VOICES[lang];
+    if (await modelsPresent(manifestUrl, cacheName)) return 0;
+    return (await checkQuota(manifestUrl)).required;
   }
-  // Only the menu needs this now, so a manifest that will not load must not stop
-  // an English reader: the size is unknown (null) until consent asks again.
-  let voiceBytes = pairs.length ? await translationVoiceBytes().catch(() => null) : 0;
+  // Only the menu needs these now, so a manifest that will not load must not
+  // stop an English reader: that size is unknown (null) until consent asks again.
+  const voiceBytes = Object.fromEntries(await Promise.all(pairs.map(async (p) =>
+    [p.code, await translationVoiceBytes(p.code).catch(() => null)])));
   const modelStored = new Set(pairs.filter((p, i) => stored[i]).map((p) => p.code));
 
   let translator = null;
@@ -294,19 +381,19 @@ export async function enterReaderMode() {
   async function consentToDownload(hosted) {
     // modelsPresent must not create the cache just by asking (models.mjs's
     // invariant, tested): a reader who declines leaves nothing behind.
-    voiceBytes = await translationVoiceBytes();
-    if (!voiceBytes && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
+    const voice = voiceBytes[hosted.code] = await translationVoiceBytes(hosted.code);
+    if (!voice && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
 
     // The translation model's size is stated even in the rare case it is stored
     // and only the voice is missing (a reader who deleted the voice): it then
     // over-states, never under-states, what is fetched.
-    const { sufficient } = await checkQuotaFor(hosted.bytes + voiceBytes);
+    const { sufficient } = await checkQuotaFor(hosted.bytes + voice);
     const accepted = await requestTranslationConsent({
       language: LANGUAGE_LABELS[hosted.code],
       requiredBytes: hosted.bytes,
       quotaSufficient: sufficient,
       licence: hosted.licence ?? 'a permissive licence',
-      voiceBytes,
+      voiceBytes: voice,
     });
     if (accepted) await navigator.storage?.persist?.();
     return accepted;
@@ -325,13 +412,17 @@ export async function enterReaderMode() {
    *
    * Playback does not start in English and improve. A reader who picked Spanish
    * and hears five English sentences reads that as broken, not as loading.
+   *
+   * Also returns null once `current()` says the reader has picked again, at
+   * each wait, so a superseded pick neither replaces the newer pick's voice
+   * nor starts a queue for it.
    */
-  async function startTranslating(lang) {
+  async function startTranslating(lang, current = () => true) {
     const hosted = pairs.find((p) => p.code === lang);
     if (!hosted) throw new Error(`This reader has no ${LANGUAGE_LABELS[lang] ?? lang} translation.`);
     const label = LANGUAGE_LABELS[hosted.code];
 
-    if (!(await consentToDownload(hosted))) return null;
+    if (!(await consentToDownload(hosted)) || !current()) return null;
 
     // TWO waits, told apart deliberately. A 121 MB download gets the same modal
     // progress bar the voice gets, because it is the same kind of wait and can
@@ -349,29 +440,27 @@ export async function enterReaderMode() {
     // Repainted rather than rebuilt: the reader is looking at this select right
     // now, and rebuilding it would drop their selection.
     modelStored.add(hosted.code);
-    controls.setLanguageStored(hosted.code, !voiceBytes);
+    controls.setLanguageStored(hosted.code, !voiceBytes[hosted.code]);
     // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
-    if (download.cancelled()) return null;
+    if (download.cancelled() || !current()) return null;
 
-    // The voice that speaks translations (Supertonic), loaded the first time
-    // one is picked and kept for the rest of the visit.
-    if (!engine.prepared()) {
-      const voiceLoad = showProgress({ title: 'Preparing the translation voice' });
+    // This language's voice, loaded when it is picked and kept until another
+    // language replaces it.
+    if (!engine.prepared(lang)) {
+      const voiceLoad = showProgress({ title: `Preparing the ${label} voice` });
       try {
         await engine.prepare(lang, { onProgress: (p) => voiceLoad.update(p) });
       } finally {
         voiceLoad.close();
       }
-      if (voiceBytes) {
-        voiceBytes = 0;
-        for (const p of pairs) {
-          controls.setLanguageBytes(p.code, p.bytes);
-          if (modelStored.has(p.code)) controls.setLanguageStored(p.code, true);
-        }
+      if (voiceBytes[lang]) {
+        voiceBytes[lang] = 0;
+        controls.setLanguageBytes(lang, hosted.bytes);
+        if (modelStored.has(lang)) controls.setLanguageStored(lang, true);
       }
-      if (voiceLoad.cancelled()) return null;
+      if (voiceLoad.cancelled() || !current()) return null;
     }
 
     const report = (p) => controls.setState({
@@ -382,7 +471,9 @@ export async function enterReaderMode() {
 
     controls.setState({ playing: false, buffering: true, message: `Translating into ${label}…` });
 
-    queue = createTranslationQueue({
+    // Kept local: a newer pick can replace or clear the shared `queue` while
+    // this one is still starting.
+    const q = createTranslationQueue({
       sentences,
       // A bibliography is not translated: author surnames, journal titles and
       // years are proper nouns, and the real checkpoint renamed a journal
@@ -440,18 +531,20 @@ export async function enterReaderMode() {
       },
     });
 
-    await queue.start();
+    queue = q;
+    await q.start();
+    if (!current()) return null;
 
     // The prefix wait was a real measurement of THIS device on THIS page, and it
     // is the only one available before a word is spoken. A device that cannot
     // keep up is told so now rather than three sentences into a reading that
     // will keep stopping -- refusing to start beats starting and stalling.
-    const measured = queue.status();
+    const measured = q.status();
     if (measured.rate !== null && measured.rate < MIN_RATE
         && await chooseWhenSlow({ language: label, rate: measured.rate }) === 'english') {
       return null;
     }
-    return queue.textById();
+    return q.textById();
   }
 
   /**
@@ -482,6 +575,8 @@ export async function enterReaderMode() {
     }
     if (resume) await player.play();
   }
+
+  let langTurn = 0;
 
   function stopTranslating() {
     streaming = false;
@@ -522,60 +617,25 @@ export async function enterReaderMode() {
     onVoice: (voice) => changeVoice(player, engine, voice),
     onRate: (rate) => player.setRate(rate),
     onExit: () => exitReaderMode(),
-    // The SOURCE changed in step 4; the filter did not, and must not. It is
-    // still untrusted data reaching controls.mjs's unescaped bar.innerHTML, and
-    // an unknown code is still a menu entry that makes helper.js throw "Invalid
-    // language" on every synth after the switch. LANGUAGE_LABELS is the 29-code
-    // allowlist that closes both at once -- pairs.json is written by our own
-    // script today, which is exactly the kind of assumption that stops being
-    // true quietly.
-    languages: pairs
-      .filter((p) => p.code in LANGUAGE_LABELS)
-      .map((p) => languageOption(p, modelStored.has(p.code), voiceBytes)),
-    onLang: async (lang) => {
-      try {
-        // Whatever was being translated is for a language the reader has just
-        // left. Stopping FIRST also means a failure below cannot leave a queue
-        // running against a language nothing is listening to.
-        stopTranslating();
-
-        if (lang === 'en') {
-          await changeLanguage(player, engine, 'en', {});
-          return;
-        }
-
-        const ready = await startTranslating(lang);
-        if (ready === null) {
-          // Declined, or cancelled mid-download, or told the device is too slow
-          // and picked English. Not an error: they answered the question. Put
-          // the page and the menu back in the language that is actually playing,
-          // silently.
-          //
-          // Stopped HERE rather than at each of the three places that return
-          // null, because only the slow-device one has a queue running by then
-          // and the next one added might too -- and a queue left running
-          // translates a book nobody is listening to, which is the exact battery
-          // cost the window bound exists to avoid.
-          stopTranslating();
-          await changeLanguage(player, engine, 'en', {});
-          controls.setLang('en');
-          return;
-        }
-        await changeLanguage(player, engine, lang, ready);
+    // `pairs` is already offeredPairs(): only codes in LANGUAGE_LABELS reach
+    // controls.mjs's unescaped bar.innerHTML, and only languages a voice can
+    // speak reach the menu. pairs.json is written by our own script today,
+    // which is exactly the kind of assumption that stops being true quietly.
+    languages: pairs.map((p) => languageOption(p, modelStored.has(p.code), voiceBytes[p.code])),
+    // Each pick is numbered so an earlier one still loading knows it has been
+    // replaced (see switchLanguage).
+    onLang: (lang) => {
+      const turn = ++langTurn;
+      return switchLanguage(lang, {
+        player, engine, controls, startTranslating, stopTranslating,
+        current: () => turn === langTurn,
         // Only now may batches reach the player: before the swap the engine is
-        // still tagged English.
-        streaming = true;
-        // Anything that landed during the swap is in the queue but not in the
-        // player. One catch-up call rather than a race to get the ordering right.
-        player.updateSpeechText(queue.textById());
-      } catch (error) {
-        stopTranslating();
-        await recoverToEnglish(player, engine, controls, error, showError);
-      } finally {
-        // Clear the progress line on BOTH paths. Leaving "Translating into
-        // español…" up after a failure says the opposite of what the error says.
-        controls.setState({ playing: false, buffering: false, message: '' });
-      }
+        // still tagged English. Anything that landed during the swap is in the
+        // queue but not in the player, so one catch-up call rather than a race to
+        // get the ordering right.
+        startStreaming: () => { streaming = true; player.updateSpeechText(queue.textById()); },
+        reportError: showError,
+      });
     },
   });
   controls.setProvider(provider);

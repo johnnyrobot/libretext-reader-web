@@ -116,7 +116,7 @@ def _hard_wrap(text: str, offset: int, max_chars: int) -> list[tuple[int, int]]:
     and the tail "loafing."
 
     That stub is not an internal fragment, it IS a sentence to everything
-    downstream -- Supertonic speaks it as its own utterance, and the translator
+    downstream -- the voice speaks it as its own utterance, and the translator
     has to translate it with no context (opus-mt-en-it rendered "loafing." as
     "Paffuto.", "chubby"). 312 of the shipped book's 14,418 sentences were cut
     this way, and four of them landed in the QA gate's 472-sentence sample, where

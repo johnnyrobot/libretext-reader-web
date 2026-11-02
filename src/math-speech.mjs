@@ -5,7 +5,7 @@
  * the token as MATH, the checkpoint never sees it, and restore() puts the token
  * back -- so without this a Spanish track would read base64 aloud. The words are
  * the ENGLISH Clearspeak from speech.json, by rule (spec §6): SRE has no locale
- * for three of the nine shipped languages and falls back to English silently,
+ * for some languages and falls back to English silently,
  * and one explicit rule beats a silent one.
  */
 export const FALLBACK_SPEECH = 'an equation';

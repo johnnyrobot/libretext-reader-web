@@ -194,8 +194,9 @@ CONDITION_RE = re.compile(r"\bsub open paren ([a-z ]+?) K close paren")
 # "P of open paren C O close paren". Algebra keeps them, where they are the
 # whole point of "(x + 1)(x - 1)".
 # Once "sub s y s" is joined to "sub sys", the listener is no better off:
-# Supertonic has no entry for "sys" and guesses from spelling, so it says
-# "subsidiz"; "univ" comes out "subunit". Both were audible on chem_4b 5.7.
+# Supertonic, the voice before LT-217, had no entry for "sys" and guessed from
+# spelling, so it said "subsidiz"; "univ" came out "subunit". Both were audible
+# on chem_4b 5.7.
 #
 # An EXPLICIT LIST, for the same reason UNITS is one: an arbitrary multi-letter
 # subscript is a variable name and must stay read as one. These are the standard

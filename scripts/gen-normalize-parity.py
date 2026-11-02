@@ -30,10 +30,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from pipeline.lang_normalize import (  # noqa: E402
-    normalize_es_for_speech, normalize_fr_for_speech, normalize_it_for_speech,
-    normalize_nl_for_speech, normalize_hu_for_speech, normalize_da_for_speech,
-    normalize_sv_for_speech, normalize_de_for_speech,
-    normalize_cs_for_speech,
+    normalize_es_for_speech, normalize_fr_for_speech, normalize_de_for_speech,
+    normalize_pt_for_speech,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,124 +58,6 @@ SYNTHETIC_FR = [
     "Jost et al. ont trouvé",             # no rule earned; must pass through
     "doi: 10.1177 et la salle 007",
     "aucun nombre dans cette phrase",
-]
-
-SYNTHETIC_IT = [
-    # Italian inverts BOTH marks relative to English, so its cases are not
-    # translations of either of the sets above -- they are the shapes the en-it
-    # checkpoint was measured emitting, plus the irregular spine.
-    "1.200 casi e 1.000.000 di casi",     # DOT-grouped thousands
-    "costa $ 1.200 in totale",            # sign LEADING with a space
-    "costa $ 15,50 a sessione",
-    "ha cancellato $ 8,3 trilioni",       # scale word: NOT dollars and cents
-    "il 68% poi il 68 % dei partecipanti",
-    "la soglia p 0,05 ovunque",
-    # The dot ambiguity, both sides of it in one line: 1.200 is a thousand,
-    # 7.5 and 2.0 are not. This is the single most load-bearing case here.
-    "Figura 7.5 e Tabella 12.2 e CC BY 2.0 e 1.200 casi",
-    "nel 1961 2010",                      # two years, NOT one grouped number
-    "20, 21, 22, 23, 28, 31, 33, 38 casi",  # the elision spine
-    "68, 80, 91, 99 casi",
-    "100, 101, 108, 180, 200, 201 casi",
-    "21.000 e 2.000 e 1.000 casi",
-    "Jost et al. hanno trovato",          # no rule earned; must pass through
-    "pagine 4064412 e 007",
-    "nel 1500, 1499, 2099 e 2100",        # the year window's four corners
-    "nessun numero in questa frase",
-]
-
-SYNTHETIC_NL = [
-    # Dutch takes Italian's DOT thousands and keeps English's DOT decimal, so
-    # one mark does two jobs and only GROUP SIZE separates them. These are the
-    # shapes the en-nl checkpoint was measured emitting, plus the two spines a
-    # port gets wrong: the unit-before-ten join (with its trema) and the
-    # read-a-year-by-hundreds rule.
-    "8.000 en 100.000 en 1.000.000 gevallen",   # DOT-grouped thousands
-    "kost $50 en $ 400 en $30.000",             # sign LEADING, tight and spaced
-    "kost $15,50 per sessie",
-    "wiste $8,3 triljoen aan rijkdom",          # scale word: NOT dollars and cents
-    "20% en dan 20 % van de jongeren",
-    "de drempel p 0,05 overal",
-    # The dot ambiguity, both sides of it in one line.
-    "Figuur 7.5 en Tabel 12.2 en CC BY 2.0 en 8.000 gevallen",
-    "in 1961 2010",                             # two years, NOT one grouped number
-    "21, 22, 23, 24, 33, 68, 99 gevallen",      # the -en- join and its trema
-    "100, 101, 156, 200, 512 gevallen",
-    "2.000 en 2.500 en 40.320 gevallen",
-    "Jost et al. vonden",                       # no rule earned; must pass through
-    "pagina 4064412 en 007",
-    "in 1500, 1499, 2099 en 2100",              # the year window's four corners
-    "geen getallen in deze zin",
-]
-
-SYNTHETIC_HU = [
-    # Hungarian is the first agglutinative language here, and the hyphenated
-    # case suffix is the mechanism nothing else has. These are the shapes the
-    # en-hu checkpoint was measured emitting, plus the 2000 rule and the
-    # kettő/két choice.
-    "a serdülők 20%-a és a rablások 90%-át és csak 1%-ot",   # suffix on a percent
-    "várhatóan 2042-ig, 2050-re, 1990-ben, a 2010-es évek",  # suffix on a number
-    "20% felett és 100% alatt",                              # bare percent
-    "8000 és 20 000 és 40 320 és 100 000 eset",              # solid four, spaced five
-    "1999 és 2000 és 2001 és 2500 eset",                     # the 2000 rule
-    "2 csoport, 2 és 3 között, 22 résztvevő, 22 és 23",      # kettő/két
-    "11, 15, 19, 20, 21, 29, 30, 31 eset",                   # tizen-/huszon-
-    "100, 101, 300, 512 eset",
-    "8,3 trillió dollárt és a küszöb p 0,05",                # comma decimal
-    "az érték 40,320 volt",                                  # leaked English comma
-    "kapott $4 kezdeni és egy $30-os díjért",                # currency, bare and suffixed
-    "1.3 ábra és CC BY-NC 2.0",                              # dot stays a section number
-    "406-412 oldal",                                         # a range is not a suffix
-    "Jost et al. megállapította",                            # no rule earned
-    "oldal 4064412 és 007",
-    "nincs szám ebben a mondatban",
-]
-
-SYNTHETIC_DA = [
-    # Danish matches Dutch's FORMATS and none of its words. These are the shapes
-    # the en-da checkpoint was measured emitting, plus the three spines a port
-    # from Dutch gets wrong: the vigesimal tens, where "og" goes, and the plural
-    # measure word.
-    "8.000 og 100.000 og 1.000.000 sager",      # DOT-grouped thousands
-    "koster $50 og $ 400 og $30.000",           # sign LEADING, PLURAL word
-    "koster $15,50 og $0,25 per gang",
-    "slettet $8,3 billioner i rigdom",          # scale word, LONG scale
-    "20% og så 20 % af de unge",
-    "tærsklen p 0,05 overalt",
-    "figur 7.5 og tabel 12.2 og CC BY 2.0 og 8.000 sager",   # the dot, both sides
-    "i 1961 2010",                              # two years, NOT one grouped number
-    "50, 55, 60, 68, 70, 80, 90, 99 sager",     # the vigesimal spine
-    "20, 21, 22, 31, 42 sager",
-    "100, 101, 512 sager og 2.042 og 2.500",    # where "og" goes
-    "det 20. århundrede og den 26. marts og hvert 10. sekund",   # ordinals
-    "Svaret var 20. Det næste spørgsmål.",      # NOT an ordinal
-    "Jost et al. fandt",                        # no rule earned
-    "side 4064412 og 007",
-    "i 1500, 1499, 2099 og 2100",               # the year window's four corners
-    "ingen tal i denne sætning",
-]
-
-SYNTHETIC_SV = [
-    # Swedish agrees with Danish on almost nothing despite being its neighbour.
-    # These are the shapes the en-sv checkpoint was measured emitting, plus the
-    # spine a port from Danish gets wrong: the tens come FIRST with no joiner.
-    "8.000 och 20 000 och 1.000.000 fall",       # BOTH thousands separators
-    "20 % och sedan 35% av ungdomarna",          # BOTH percent spacings
-    "99 procent av rånen",                       # already the word
-    "för $50 och $ 30.000 och 50 dollar",        # sign LEADING, word INVARIABLE
-    "kostar $15,50 och $0,25 styck",
-    "8,3 biljoner dollar i förmögenhet",         # scale word, LONG scale
-    "tröskeln p 0,05 överallt",
-    "figur 7.5 och tabell 12.2 och CC BY 2.0 och 8.000 fall",  # the dot, both sides
-    "r = .30 och omkring .7 av",                 # leading-dot decimals
-    "år 1961 2010",                              # two years, NOT one grouped number
-    "20, 21, 22, 35, 68, 99 fall",               # the tens-first spine
-    "100, 101, 512 fall och 2500 och 40 320",
-    "under 1900-talet och på 1960-talet och 5-åriga barn",   # hyphen suffixes
-    "Schwarz m.fl., 1991 och McGregor et al. (1998)",        # one rule, not the other
-    "sida 4064412 och 007",
-    "år 1500, 1499, 2099 och 2100",              # the year window's four corners
-    "inga siffror i denna mening",
 ]
 
 SYNTHETIC_DE = [
@@ -210,35 +90,18 @@ SYNTHETIC_DE = [
     "keine Zahlen in diesem Satz",
 ]
 
-SYNTHETIC_CS = [
-    # Czech is the sixth convention and the first that needs no dot rule at all:
-    # en-cs writes ZERO thousands dots, so every dot between digits is a section
-    # number. What it does need is Hungarian's SPACE separator, the English
-    # comma that leaked past it three times, and a decimal joiner that INFLECTS.
-    "8 000 a 100 000 a 1 000 000 případů",   # SPACE-grouped thousands
-    "stálo ($20) a ($1) a $4",               # the three surviving dollar signs
-    "50,000 lidí a 1,424 chodců a 1 k 5 000,000",  # the leaked English comma
-    "20% a 54% a 1% a 2% a 82% účastníků",   # the counted-noun paradigm
-    "vymazal 8,3 bilionu a prahu 1,5 a 2,0", # comma decimal, "celá/celé/celých"
-    "42, 9",                                 # a whole-line spaced decimal
-    "oblasti 1, 2, 4 a 5",                   # the SAME shape that must NOT be one
-    "(28, 5%)",                              # ...and the one that must, guarded by %
-    "Obrázek 7.5 a Tabulka 12.2 a CC BY 2.0",   # every dot is a section number
-    "r = .30 a asi .7 z",                    # leading-dot decimals
-    "v roce 1961 2010",                      # two years, NOT one grouped number
-    "20, 21, 22, 35, 68, 99 případů",        # the ten-first spine
-    "100, 101, 200, 300, 500, 512 případů",  # sto / dvě stě / tři sta / pět set
-    "1000 a 2500 a 40 320 případů",          # tisíc / dva tisíce / genitive plural
-    "asi 100 miliard a 7 milionů lidí",      # LONG scale, passed through
-    "ve 20. století a 26. března a 21. prosincem",   # ordinals: RECORDED GAP
-    "Odpověď byla 20. Další otázka.",        # NOT an ordinal -- same shape
-    "Berman et al. (2009) a Huston a kol., 1992",    # no rule earned
-    "tři 10sekundové klipy a 12-gauge a 29letý",     # glued vs hyphenated
-    "strana 4064412 a 007",
-    "v roce 1500, 1499, 2099 a 2100",        # the year window's four corners
-    "žádná čísla v této větě",
+SYNTHETIC_PT = [
+    # Brazilian Portuguese (LT-217): the shapes the en-pt export was measured
+    # emitting one sentence at a time, plus the cardinal spine ("cem" against
+    # "cento e", "mil" never "um mil", and where "e" joins a scale word).
+    "Em 1776, 13 colônias declararam independência.",
+    "Cerca de 37,5% dos 1.200 alunos concordaram em 2019.",
+    "O bilhete custava 12,50 dólares e o livro custava 1,250 dólares.",
+    "Pesa 0,5 kg e 45% de US$ 3 milhões foram gastos.",
+    "custou US $ 1.200, depois $0,50 e por fim US$ 2,5 bilhões.",
+    "A Tabela 1.3 e a seção 4.2 mostram 100, 101, 999 e 1250 casos.",
+    "(Kirsch et al., 2005) e 1246120 na década de 1990.",
 ]
-
 
 SYNTHETIC = [
     "la 3ª edición",                      # Unicode word char: Python leaves it alone
@@ -282,25 +145,19 @@ LANGUAGES = [
     ("es", normalize_es_for_speech, SYNTHETIC,
      ("python-tcbig-raw.json", "python-small-raw.json")),
     ("fr", normalize_fr_for_speech, SYNTHETIC_FR, ("python-fr-raw.json",)),
-    ("it", normalize_it_for_speech, SYNTHETIC_IT, ("python-it-raw.json",)),
-    # nl's raw corpus was generated from bench/retranslate -- the DEPLOYED
-    # post-splitter manifests -- not from bench/oracle's own speech.json files,
-    # which still hold the pre-splitter text (626 of 9,430 sentences differ under
-    # the same positional id). The es/fr/it corpora above predate that fix and
-    # were built from bench/oracle as it stood. Regenerate with:
-    #   scripts/oracle_reference.py --only nl --corpus bench/retranslate --out bench/oracle
-    ("nl", normalize_nl_for_speech, SYNTHETIC_NL, ("python-nl-raw.json",)),
-    ("hu", normalize_hu_for_speech, SYNTHETIC_HU, ("python-hu-raw.json",)),
-    ("da", normalize_da_for_speech, SYNTHETIC_DA, ("python-da-raw.json",)),
-    ("sv", normalize_sv_for_speech, SYNTHETIC_SV, ("python-sv-raw.json",)),
-    # de, like nl/hu/da/sv, is generated from bench/retranslate rather than
-    # bench/oracle's own pre-splitter manifests:
+    # de is generated from bench/retranslate -- the DEPLOYED post-splitter
+    # manifests -- not from bench/oracle's own speech.json files, which still
+    # hold the pre-splitter text (626 of 9,430 sentences differ under the same
+    # positional id). The es/fr corpora above predate that fix and were built
+    # from bench/oracle as it stood. Regenerate with:
     #   scripts/oracle_reference.py --only de --corpus bench/retranslate --out bench/oracle
     ("de", normalize_de_for_speech, SYNTHETIC_DE, ("python-de-raw.json",)),
-    # cs, like nl/hu/da/sv/de, is generated from bench/retranslate rather than
-    # bench/oracle's own pre-splitter manifests:
-    #   scripts/oracle_reference.py --only cs --corpus bench/retranslate --out bench/oracle
-    ("cs", normalize_cs_for_speech, SYNTHETIC_CS, ("python-cs-raw.json",)),
+    # pt has no deployed track and no ct2 checkpoint run (LT-217). Its corpus is
+    # 146 social_psychology sentences translated in Node by the export the
+    # browser loads, Douglasrambo/opus-mt-tc-big-en-pt-onnx@738ee4c, ONE AT A
+    # TIME as src/translate.worker.mjs does, written as {id: line} to
+    # bench/oracle/transformersjs-pt-raw.json on 2026-11-01.
+    ("pt", normalize_pt_for_speech, SYNTHETIC_PT, ("transformersjs-pt-raw.json",)),
 ]
 
 

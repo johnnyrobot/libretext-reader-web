@@ -31,9 +31,18 @@ import { test, expect } from '@playwright/test';
 // fast, and that a seek into untranslated ground is served in the target
 // language rather than in English.
 
+// LT-217: Supertonic is gone with no fallback. French, German, Spanish and
+// Portuguese are each spoken by their own Phonon 40M, staged at
+// /_assets/tts/phonon-<lang>/ (LT-216), and a stage without a language's voice
+// does not offer that language. Build the stage with scripts/stage-local.sh and
+// STAGE outside the repo, then serve it with TTS_BASE_URL set.
+
 const PAGE = '/social_psychology/13:_Competition_and_Cooperation_in_Our_Social_Worlds/'
   + '13.01:_Conflict_Cooperation_Morality_and_Fairness/';
+const MOODS = '/social_psychology/03:_Social_Affect/'
+  + '3.02:_Moods_and_Emotions_in_Our_Social_Lives/';
 const PAIRS = '/_assets/tts/mt/pairs.json';
+const voiceOf = (code) => `/_assets/tts/phonon-${code}/`;
 
 /** Enter Reader Mode from a cold cache and wait for the engine (see reentry.spec.js
  * and playback.spec.js). The real entry point is #tts-enter ("Enter Reader Mode"),
@@ -106,13 +115,18 @@ test.describe('client-side translation', () => {
 
       // On a cold cache, before the reader commits to anything: the menu already
       // says what picking each language will cost. That is the whole difference
-      // between an informed choice and a surprise. Since LT-214 English plays on
-      // Phonon, so the first translation also brings Supertonic's 380 MB voice:
-      // 115 + 380 for Spanish, 109 + 380 for French.
+      // between an informed choice and a surprise. Each language brings its own
+      // 190 MB Phonon voice (LT-217): 115 + 190 for Spanish, 109 + 190 for
+      // French, 108 + 190 for German, and 495 + 190 for Portuguese, whose only
+      // ONNX export is the big Opus-MT.
       await expect(select.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (495 MB download)');
+        .toHaveText('español — machine translation (306 MB download)');
       await expect(select.locator('option[value="fr"]'))
-        .toHaveText('français — machine translation (489 MB download)');
+        .toHaveText('français — machine translation (300 MB download)');
+      await expect(select.locator('option[value="de"]'))
+        .toHaveText('Deutsch — machine translation (298 MB download)');
+      await expect(select.locator('option[value="pt"]'))
+        .toHaveText('português — machine translation (685 MB download)');
     });
 
   // EVERY OTHER HOSTED LANGUAGE, one test each. The Spanish test below is the
@@ -125,9 +139,9 @@ test.describe('client-side translation', () => {
   //      or missing `forward_token`, a mispackaged export, or a tokenizer that
   //      silently falls back all produce fluent output in some language.
   //   2. `pipeline/lang_normalize.py`'s port is WIRED for that code. The pair is
-  //      "en-nl" and the normaliser is keyed on "nl", and a mistake there is
-  //      silent: untouched text is still perfectly good Dutch. It just says
-  //      "twee punt nul" as "2.0".
+  //      "en-de" and the normaliser is keyed on "de", and a mistake there is
+  //      silent: untouched text is still perfectly good German. It just says
+  //      "zwei Komma null" as "2,0".
   //
   // Markers are function words that cannot appear in the English source, so
   // "different from English" (which a mangled sentence also satisfies) is not
@@ -138,33 +152,15 @@ test.describe('client-side translation', () => {
     // reads a dot with its own dot-word even where a comma would be "virgule" /
     // "komma" / "egész". Getting that backwards was this table's first bug.
     fr: { markers: /\b(les|des|que|pour|dans|une)\b/, decimal: 'point' },
-    it: { markers: /\b(che|della|per|non|sono|dei)\b/, decimal: 'punto' },
-    nl: { markers: /\b(van|het|een|dat|niet|worden)\b/, decimal: 'punt' },
-    hu: { markers: /\b(hogy|nem|egy|volt|meg|azt)\b/, decimal: 'pont' },
-    // "og"/"af"/"ikke" cannot appear in the English source; "for" and "der"
-    // would have been the obvious picks and are both English words too.
-    da: { markers: /\b(og|det|af|ikke|blev|som)\b/, decimal: 'punktum' },
-    // "och"/"att"/"och" are Swedish-only; "av" and "som" would also match
-    // Danish, which does not matter here but is why they are not the picks.
-    sv: { markers: /\b(och|att|för|inte|är|från)\b/, decimal: 'punkt' },
     // Every marker here is German-only. "der" and "die" would have been the
     // obvious picks and are both readable as English words, which is the trap
     // this table's comments keep warning about. "Punkt" is CAPITALISED because
     // it is a German noun and the normaliser emits it that way -- the assertion
     // below is case-sensitive.
     de: { markers: /\b(und|nicht|sich|auch|eine|werden)\b/, decimal: 'Punkt' },
-    // EVERY MARKER HERE IS ASCII, and that is not an aesthetic choice: `\b` in
-    // JavaScript is defined over `[A-Za-z0-9_]` only, so `\bže\b` can never
-    // match — there is no boundary between a space and `ž`. The first version
-    // of this row was `že|které|není|při` and failed against perfectly good
-    // Czech. src/lang-normalize.mjs documents the same trap and spells `\b`
-    // out as a Unicode lookaround for exactly this reason; this table cannot,
-    // because every other row depends on the ASCII one.
-    //
-    // These six are also Czech-only. "pro", "a", "na" and "ale" are all Czech
-    // words and all readable as English, which is the trap this table's
-    // comments keep warning about.
-    cs: { markers: /\b(jsou|nebo|jako|bylo|tedy|velmi)\b/, decimal: 'tečka' },
+    // ASCII only: `\b` in JavaScript is defined over `[A-Za-z0-9_]`, so a marker
+    // such as "não" could never match. None of these is an English word.
+    pt: { markers: /\b(uma|para|dos|pelo|como|mais)\b/, decimal: 'ponto' },
   };
 
   test('every hosted language has an expectation here', async ({ request }) => {
@@ -184,10 +180,21 @@ test.describe('client-side translation', () => {
 
         await page.addInitScript(() => {
           window.__synth = [];
+          window.__inits = [];
+          window.__audio = [];
           const RealWorker = window.Worker;
           window.Worker = class extends RealWorker {
+            constructor(...args) {
+              super(...args);
+              // What came BACK: text reaching a voice proves nothing about
+              // whether that voice can speak it.
+              this.addEventListener('message', ({ data }) => {
+                if (data?.type === 'audio') window.__audio.push({ outcome: data.outcome, samples: data.samples.length });
+              });
+            }
             postMessage(message, transfer) {
               if (message?.type === 'synth') window.__synth.push(message.text);
+              if (message?.type === 'init') window.__inits.push({ lang: message.lang, manifestUrl: message.manifestUrl });
               return super.postMessage(message, transfer);
             }
           };
@@ -206,6 +213,10 @@ test.describe('client-side translation', () => {
         await select.selectOption(code);
         await acceptTranslation(page, label);
 
+        // There is a moment between the consent dialog and the downloads with no
+        // dialog and no status: wait for this language's voice to exist first.
+        await expect.poll(() => page.evaluate(() => window.__inits.map((i) => i.lang)),
+          { timeout: 180_000 }).toContain(code);
         await expect(page.locator('.tts-dialog')).toHaveCount(0, { timeout: 180_000 });
         await expect(page.locator('.tts-status')).toHaveText('', { timeout: 180_000 });
         await expect(select).toHaveValue(code);
@@ -218,9 +229,9 @@ test.describe('client-side translation', () => {
         await numeric.click();
         await expect(page.locator('.tts-status')).toHaveText('', { timeout: 180_000 });
 
-        await page.evaluate(() => { window.__synth.length = 0; });
+        await page.evaluate(() => { window.__synth.length = 0; window.__audio.length = 0; });
         await page.locator('[data-act="toggle"]').click();
-        await expect.poll(() => page.evaluate(() => window.__synth.length),
+        await expect.poll(() => page.evaluate(() => window.__audio.filter((a) => a.outcome === 'ok' && a.samples > 0).length),
           { timeout: 180_000 }).toBeGreaterThan(0);
         await page.locator('[data-act="toggle"]').click();  // pause
 
@@ -229,6 +240,10 @@ test.describe('client-side translation', () => {
         expect(spoken[0], 'a bare digit reached the voice').not.toMatch(/\d/);
         expect(spoken.some((t) => markers.test(t)),
           `spoken: ${JSON.stringify(spoken.slice(0, 2))}`).toBe(true);
+
+        // Spoken by this language's own Phonon model, loaded for this language.
+        const inits = await page.evaluate(() => window.__inits.slice());
+        expect(inits).toContainEqual({ lang: code, manifestUrl: `${voiceOf(code)}manifest.json` });
       });
   }
 
@@ -258,15 +273,15 @@ test.describe('client-side translation', () => {
         };
       });
 
-      // LT-214: English is Phonon; a translation is Supertonic, whose weights
-      // are fetched only once one is picked.
-      const supertonic = [];
-      page.on('request', (r) => { if (r.url().includes('/_assets/tts/onnx/')) supertonic.push(r.url()); });
+      // English is Phonon 31M; Spanish has its own Phonon 40M, whose weights are
+      // fetched only once Spanish is picked (LT-217).
+      const spanishVoice = [];
+      page.on('request', (r) => { if (r.url().includes(`${voiceOf('es')}onnx/`)) spanishVoice.push(r.url()); });
 
       await page.goto(PAGE);
       await enterAndWait(page);
       await expect(page.locator('[data-act="lang"]')).toBeVisible({ timeout: 120_000 });
-      expect(supertonic, 'English loaded the translation voice').toEqual([]);
+      expect(spanishVoice, 'English loaded the Spanish voice').toEqual([]);
 
       const firstSentence = page.locator('.tts-sentence').first();
       const englishBefore = await firstSentence.textContent();
@@ -298,7 +313,7 @@ test.describe('client-side translation', () => {
       // Nothing failed on the way.
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
       await expect(page.locator('[data-act="lang"]')).toHaveValue('es');
-      expect(supertonic.length, 'Spanish did not load the translation voice').toBeGreaterThan(0);
+      expect(spanishVoice.length, 'Spanish did not load its voice').toBeGreaterThan(0);
 
       // The page is never rewritten. Only the audio changes -- highlighting runs
       // off the English manifest and must keep matching the visible text.
@@ -307,7 +322,7 @@ test.describe('client-side translation', () => {
       // TWO caches, which is why deleting a language cannot cost a reader the
       // voice. This is step 2's invariant observed end to end rather than mocked.
       expect(await page.evaluate(() => Promise.all([
-        caches.has('libretexts-mt-v1'), caches.has('libretexts-tts-v1'),
+        caches.has('libretexts-mt-v1'), caches.has('libretexts-tts-phonon-v1'),
       ]))).toEqual([true, true]);
 
       // Now play, and read what the speech engine was asked to say.
@@ -430,14 +445,13 @@ test.describe('client-side translation', () => {
       await expect(page.locator('.tts-status')).toHaveText('');
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
 
-      // The menu said "495 MB download" before, and it is no longer true. It is
+      // The menu said "306 MB download" before, and it is no longer true. It is
       // repainted rather than rebuilt, so the reader's selection survives.
       await expect(page.locator('option[value="es"]'))
         .toHaveText('español — machine translation (downloaded)');
-      // The translation voice is stored now, so every other language costs only
-      // its own model (LT-214).
+      // French has a voice of its own, still to fetch (LT-217).
       await expect(page.locator('option[value="fr"]'))
-        .toHaveText('français — machine translation (109 MB download)');
+        .toHaveText('français — machine translation (300 MB download)');
 
       // And back to Spanish asks NOTHING: the model is already stored, so the
       // gate is about downloading, not about translating. Being asked to consent
@@ -473,8 +487,9 @@ test.describe('client-side translation', () => {
       // because its output is cc-by-nc-4.0 and cannot ship inside an MIT product.
       const dialog = page.locator('.tts-dialog');
       await expect(dialog.locator('h2')).toHaveText('Listen in español');
-      // The model and the translation voice, since neither is stored yet (LT-214).
-      await expect(dialog).toContainText(/\b4\d\d MB\b/);
+      // The model and the Spanish voice, since neither is stored yet (LT-217).
+      await expect(dialog).toContainText('306 MB');
+      await expect(dialog).toContainText('Phonon by Gradium, CC BY-NC 4.0');
       await expect(dialog).toContainText('apache-2.0');
       await expect(dialog).toContainText(/delete/i);
 
@@ -482,7 +497,7 @@ test.describe('client-side translation', () => {
 
       // Still marked as a download, because it still is one.
       await expect(page.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (495 MB download)');
+        .toHaveText('español — machine translation (306 MB download)');
 
       // Nothing downloaded, and no cache entry -- not even an empty one. Asking
       // whether the models are present must not create the cache, which is why
@@ -494,6 +509,107 @@ test.describe('client-side translation', () => {
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
       await expect(page.locator('[data-act="lang"]')).toHaveValue('en');
       await expect(page.locator('.tts-status')).toHaveText('');
+    });
+
+  test('switching language mid-sentence stops English and finishes without the slow-device box',
+    async ({ page }) => {
+      // LT-217. The 3.02 Moods page is the one that showed "Deutsch is slow on
+      // this device" on the local copy: English kept playing through the switch
+      // and competed for the cores, and German's batches ran on to the length
+      // limit. Both are fixed; this is the page that caught them.
+      await page.addInitScript(() => {
+        window.__starts = [];
+        const start = AudioBufferSourceNode.prototype.start;
+        AudioBufferSourceNode.prototype.start = function (...args) {
+          window.__starts.push(performance.now());
+          return start.apply(this, args);
+        };
+      });
+      await page.goto(MOODS);
+      await enterAndWait(page);
+      const select = page.locator('[data-act="lang"]');
+      await expect(select).toBeVisible({ timeout: 120_000 });
+
+      const toggle = page.locator('[data-act="toggle"]');
+      await toggle.click();
+      await expect.poll(() => page.evaluate(() => window.__starts.length),
+        { timeout: 60_000 }).toBeGreaterThan(0);
+
+      // Counted from the pick, not from the consent: English must already be
+      // silent while the download question is open.
+      await select.selectOption('de');
+      const picked = await page.evaluate(() => performance.now());
+      await expect(toggle).toHaveAttribute('aria-label', 'Play');
+      await acceptTranslation(page, 'Deutsch');
+
+      // Ready, or the box: whichever comes first is the answer.
+      const outcome = await page.waitForFunction(() => {
+        const heading = document.querySelector('.tts-dialog h2')?.textContent ?? '';
+        if (heading.includes('slow on this device')) return 'slow';
+        const status = document.querySelector('.tts-status')?.textContent ?? '';
+        return !document.querySelector('.tts-dialog') && status === '' ? 'ready' : false;
+      }, null, { timeout: 180_000, polling: 250 });
+      expect(await outcome.jsonValue()).toBe('ready');
+
+      await expect(toggle).toHaveAttribute('aria-label', 'Play');
+      const spokenWhileWaiting = await page.evaluate(
+        (t) => window.__starts.filter((s) => s > t).length, picked);
+      expect(spokenWhileWaiting, 'English kept playing through the switch').toBe(0);
+      await expect(select).toHaveValue('de');
+    });
+
+  test('another language replaces the voice, and the first one comes back from the cache',
+    async ({ page }) => {
+      // LT-217. Each 40M speaks one language and is ~200 MB of wasm memory, so
+      // the reader holds one: French, then German, then French again.
+      test.setTimeout(600_000);
+      await page.addInitScript(() => {
+        window.__voices = [];
+        const RealWorker = window.Worker;
+        window.Worker = class extends RealWorker {
+          postMessage(message, transfer) {
+            // A voice's init names its language; the translator's names a pair.
+            if (message?.type === 'init' && message.lang) window.__voices.push({ worker: this, lang: message.lang, live: true });
+            return super.postMessage(message, transfer);
+          }
+          terminate() {
+            for (const v of window.__voices) if (v.worker === this) v.live = false;
+            return super.terminate();
+          }
+        };
+      });
+      const fetched = [];
+      page.on('request', (r) => { if (/phonon-(fr|de)\/onnx\//.test(r.url())) fetched.push(r.url()); });
+
+      await page.goto(PAGE);
+      await enterAndWait(page);
+      const select = page.locator('[data-act="lang"]');
+      await expect(select).toBeVisible({ timeout: 120_000 });
+      const live = () => page.evaluate(() => window.__voices.filter((v) => v.live).map((v) => v.lang));
+      // The voice first: between the consent dialog closing and the downloads
+      // opening there is a moment with no dialog and no status, and a check made
+      // then sees English alone. Once the voice is created its progress dialog is
+      // already up, so the dialog going after that means it has loaded.
+      const ready = async (code, label) => {
+        await select.selectOption(code);
+        if (label) await acceptTranslation(page, label);
+        await expect.poll(live, { timeout: 180_000 }).toEqual(['en', code]);
+        await expect(page.locator('.tts-dialog')).toHaveCount(0, { timeout: 180_000 });
+        await expect(page.locator('.tts-status')).toHaveText('', { timeout: 180_000 });
+        await expect(select).toHaveValue(code);
+      };
+
+      await ready('fr', 'français');
+      expect(await live()).toEqual(['en', 'fr']);
+      await ready('de', 'Deutsch');
+      expect(await live()).toEqual(['en', 'de']);
+      const downloads = fetched.length;
+
+      // Both are stored now, so French asks nothing and downloads nothing.
+      await ready('fr');
+      expect(await live()).toEqual(['en', 'fr']);
+      expect(fetched.slice(downloads).filter((url) => url.includes('phonon-fr/')).length,
+        'French was downloaded twice').toBe(0);
     });
 
   test('a translation that cannot load puts the reader back in English, once',

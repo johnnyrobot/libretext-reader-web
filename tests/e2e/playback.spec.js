@@ -26,8 +26,8 @@ test.describe('Reader Mode end to end', () => {
     await expect(card.locator('h2')).toHaveText('Listen to this page');
     await expect(card).toContainText('MB');
     await expect(card).toContainText('Nothing you read or hear is sent anywhere');
-    // LT-214: English is Phonon, Apache 2.0. Supertonic's OpenRAIL-M is named
-    // only when a translation would download it.
+    // LT-214: English is Phonon, Apache 2.0. LT-217: Supertonic and its
+    // OpenRAIL-M are gone from every dialog.
     await expect(card.locator('a[href*="phonon-31m-en"]')).toHaveText('Phonon by Gradium, Apache 2.0');
     await expect(card).not.toContainText('Supertonic');
     await expect(card).not.toContainText('OpenRAIL-M');
@@ -94,12 +94,17 @@ test.describe('Reader Mode end to end', () => {
     expect(order.indexOf(second)).toBe(order.indexOf(first) + 1);
   });
 
-  test('English plays on Phonon, streamed, and never downloads Supertonic', async ({ page }) => {
-    // LT-214: an English-only listener fetches Phonon's 155 MB and nothing of
-    // Supertonic's weights, which load only for a translation track.
+  test('English plays on Phonon, streamed, and requests nothing of Supertonic', async ({ page }) => {
+    // LT-214: an English listener fetches Phonon's 155 MB. LT-217: Supertonic is
+    // gone, so no request may reach any path it was served from.
+    const RETIRED = ['/_assets/tts/onnx/', '/_assets/tts/voice_styles/', '/_assets/tts/ort/',
+      '/_assets/tts/engine.worker.js', '/_assets/tts/manifest.json'];
     const supertonic = [];
     let phononBytes = 0;
-    page.on('request', (r) => { if (r.url().includes('/_assets/tts/onnx/')) supertonic.push(r.url()); });
+    page.on('request', (r) => {
+      const { pathname } = new URL(r.url());
+      if (RETIRED.some((path) => pathname.startsWith(path))) supertonic.push(r.url());
+    });
     page.on('response', async (r) => {
       if (r.url().includes('/_assets/tts/phonon/') && !r.url().endsWith('manifest.json')) {
         phononBytes += Number(r.headers()['content-length'] ?? 0);
@@ -190,10 +195,10 @@ test.describe('Reader Mode end to end', () => {
     await expect(page.locator('#tts-enter')).toBeVisible();
   });
 
-  // Supertonic's manifest only sizes the translation voice for the language
-  // menu. An English reader must not depend on it (LT-214, CodeRabbit).
-  test('English still plays when the translation voice cannot be sized', async ({ page }) => {
-    await page.route('**/_assets/tts/manifest.json', (route) => route.abort());
+  // Each translation voice's manifest only sizes it for the language menu. An
+  // English reader must not depend on one (LT-214, CodeRabbit; LT-217).
+  test('English still plays when a translation voice cannot be sized', async ({ page }) => {
+    await page.route(/\/_assets\/tts\/phonon-[a-z]+\/manifest\.json$/, (route) => route.abort());
     await enterAndWait(page);
     await expect(page.locator('[data-act="provider"]')).not.toBeEmpty({ timeout: 120_000 });
 

@@ -8,7 +8,7 @@
  *   5. Copy the JSON it prints.
  *
  * Nothing is downloaded that the reader would not download anyway, and nothing is
- * written to the page. First run fetches ~380 MB of model weights, so use a
+ * written to the page. First run fetches ~155 MB of model weights, so use a
  * connection you do not mind and expect a wait before the first number appears.
  *
  * It drives the DEPLOYED worker, unmodified, on real sentences from the page's
@@ -28,7 +28,7 @@ window.rtf = async function rtf(n = 6) {
     .filter((s) => s.speech && s.speech.length > 60).slice(0, n);
   if (!sents.length) throw new Error('no sentences on this page - is it an in-scope page?');
 
-  const w = new Worker('/_assets/tts/engine.worker.js', { type: 'module' });
+  const w = new Worker('/_assets/tts/phonon.worker.js', { type: 'module' });
   const rows = [];
   await new Promise((resolve, reject) => {
     let i = 0, started = 0;
@@ -45,7 +45,7 @@ window.rtf = async function rtf(n = 6) {
       next();
     };
     w.onerror = (e) => reject(new Error(e.message || 'worker failed'));
-    w.postMessage({ type: 'init', voice: 'M1', lang: man.lang || 'en', manifestUrl: '/_assets/tts/manifest.json' });
+    w.postMessage({ type: 'init', voice: 'M1', lang: man.lang || 'en', manifestUrl: '/_assets/tts/phonon/manifest.json' });
   });
   w.terminate();
 

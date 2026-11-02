@@ -30,7 +30,8 @@ const PAGES = [
     // carries 30 token OCCURRENCES but only 13 DISTINCT spans, and math.spoken
     // counts distinct ones (pipeline/tts_manifest.py). 10 is the honest floor.
     minSpoken: 10,
-    mustSay: 'Delta U sub sys equals q plus w',
+    // pipeline/math_phrasing.py reads the subscript "sys" as "of the system".
+    mustSay: 'Delta U of the system equals q plus w',
   },
 ];
 

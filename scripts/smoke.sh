@@ -56,21 +56,21 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
   && good "the page is cross-origin isolated" \
   || bad "the page is cross-origin isolated" "without it RTF doubles and playback stalls"
 
-worker=$(curl -sSI --max-time 30 "$BASE/_assets/tts/engine.worker.js" || true)
+worker=$(curl -sSI --max-time 30 "$BASE/_assets/tts/phonon.worker.js" || true)
 grep -qi 'cross-origin-embedder-policy: require-corp' <<<"$worker" \
   && good "the worker carries its own COEP" \
   || bad "the worker carries its own COEP" "the browser will refuse to instantiate it"
 
 # The cache policy is SPLIT, and both halves are load-bearing. Models are
-# content-addressed and immutable, or 380 MB re-downloads per visit. The code is
+# content-addressed and immutable, or 155 MB re-downloads per visit. The code is
 # NOT: reader.js is imported on click, which a hard refresh does not bypass, so an
 # immutable reader.js kept two verified fixes from ever reaching a reporter
 # (2026-08-23). This check used to assert immutable on the worker and failed on
 # every run after the split -- a red that accused the deploy for doing the right thing.
-model=$(curl -sSI --max-time 30 "$BASE/_assets/tts/onnx/tts.json" || true)
+model=$(curl -sSI --max-time 30 "$BASE/_assets/tts/phonon/onnx/mimi_decoder.onnx" || true)
 grep -qi 'cache-control: public.*immutable' <<<"$model" \
   && good "the models are immutable" \
-  || bad "the models are immutable" "380 MB would re-download on every page view"
+  || bad "the models are immutable" "155 MB would re-download on every page view"
 
 grep -qi 'cache-control: .*must-revalidate' <<<"$worker" \
   && good "the code revalidates" \

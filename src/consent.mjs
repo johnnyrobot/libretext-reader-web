@@ -1,16 +1,16 @@
 /**
  * The consent gate. Nothing may fetch a model byte before this resolves true.
  *
- * English is spoken by Phonon (Apache 2.0); the translations by Supertonic,
- * which is downloaded only when a reader first picks one (LT-214). The
- * OpenRAIL-M link is deliberately here rather than in a repository file: it is
- * a use-restricted license and the person accepting the download is the person
- * it binds, so it is shown in the dialog that downloads Supertonic.
+ * English is spoken by Phonon 31M (Apache 2.0); each translation by its own
+ * Phonon 40M under CC BY-NC 4.0, downloaded only when a reader first picks that
+ * language (LT-217). The noncommercial licence is linked here rather than only in a
+ * repository file: the person accepting the download is the person it binds, so
+ * it is shown in the dialog that downloads that voice.
  */
 
 const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ONNX';
 
-const MODEL_LICENSE_URL = 'https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE';
+const TRANSLATION_VOICE_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/';
 
 // The Opus-MT checkpoint the ONNX export is quantized from. Linked rather than
 // the export itself because the export carries no licence tag of its own -- see
@@ -94,20 +94,20 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
  */
 export function requestTranslationConsent({ language, requiredBytes, quotaSufficient, licence, voiceBytes = 0 }) {
   return new Promise((resolve) => {
-    // `voiceBytes` is Supertonic, when it is not downloaded yet: translations are
-    // spoken by it, and an English-only reader has never fetched it (LT-214).
+    // `voiceBytes` is this language's own voice, when it is not downloaded yet:
+    // an English-only reader has never fetched it (LT-217).
     // One total, rounded once, so the parts never disagree with the sum.
     const size = formatBytes(requiredBytes + voiceBytes);
+    const name = escapeHtml(language);
     const voice = voiceBytes
-      ? `<p>That includes the <strong>${formatBytes(voiceBytes)}</strong> voice that reads
-         translations aloud, downloaded once for every language.</p>`
+      ? `<p>That includes the <strong>${formatBytes(voiceBytes)}</strong> voice that reads ${name}
+         aloud, downloaded once and kept.</p>`
       : '';
     const voiceCredit = voiceBytes
-      ? `<p><small>Translation voice: Supertonic 3 by Supertone, licensed under
-        <a href="${MODEL_LICENSE_URL}" target="_blank" rel="noopener">OpenRAIL-M</a>
-        (a licence with use restrictions).</small></p>`
+      ? `<p><small>Translation voice: Phonon by Gradium,
+        <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>
+        (noncommercial use only).</small></p>`
       : '';
-    const name = escapeHtml(language);
     const terms = escapeHtml(licence);
     const warning = quotaSufficient
       ? ''

@@ -151,6 +151,36 @@ describe('translateBatch', () => {
     expect(runs.reduce((a, b) => a + b, 0)).toBe(20);
   });
 
+  it('translates Portuguese one sentence at a time', async () => {
+    // LT-217: the en-pt export (Douglasrambo/opus-mt-tc-big-en-pt-onnx) runs on
+    // past the sentence when it is batched with padding -- 21 of 146 lines
+    // ended in "))))))" or "......" in batches of 8, none one at a time. So
+    // Portuguese never batches.
+    const runs = [];
+    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
+    // No digits: the Portuguese Speech Text pass would rewrite them.
+    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.', 'Sentence d.', 'Sentence e.'];
+
+    const out = await translateBatch(spy, lines, () => {}, 'pt');
+
+    expect(out).toEqual(lines.map((l) => SPANISH + l));
+    expect(runs).toEqual([1, 1, 1, 1, 1]);
+  });
+
+  it('translates German one sentence at a time', async () => {
+    // LT-217: the Xenova en-de export runs on past the sentence in batches too.
+    // On the 3.02 Moods page both batches of 8 came back with every line trailed
+    // by dozens of dots, and each took 25 s, against 24 s for all 16 one at a
+    // time. 13.01 did it once in two batches; 1.02 not at all.
+    const runs = [];
+    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
+    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.'];
+
+    await translateBatch(spy, lines, () => {}, 'de');
+
+    expect(runs).toEqual([1, 1, 1]);
+  });
+
   it('reports how far through the page it is, chunk by chunk', async () => {
     const seen = [];
     const lines = Array.from({ length: 20 }, (_, i) => `Sentence ${i}.`);
@@ -188,6 +218,18 @@ describe('the worker protocol', () => {
     expect(of('progress')[0]).toEqual({
       type: 'progress', file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download',
     });
+  });
+
+  it('says which batch its translation progress belongs to', async () => {
+    const lines = Array.from({ length: 9 }, (_, i) => `Sentence ${i}.`);
+    const { handle, of } = handlerWith(async () => echoUpper);
+    await handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es' });
+
+    await handle({ type: 'translate', id: 7, lines });
+
+    const batch = of('progress').filter((p) => p.phase === 'translate');
+    expect(batch.length).toBeGreaterThan(0);
+    expect(batch.every((p) => p.id === 7)).toBe(true);
   });
 
   it('round-trips the id, and the lines in order', async () => {
@@ -237,6 +279,51 @@ describe('the worker protocol', () => {
 
     expect(of('error')).toHaveLength(0);
     expect(of('translated')[0]).toEqual({ type: 'translated', id: 1, lines: ['ES: one.'] });
+  });
+
+  it('keeps the LATEST init when an earlier one finishes last (LT-217)', async () => {
+    // A cancelled French download keeps loading while the reader picks German,
+    // which is cached and ready first. French finishing afterwards must not
+    // become the model German batches run on.
+    let releaseFrench;
+    const french = new Promise((resolve) => { releaseFrench = resolve; });
+    const { handle, of } = handlerWith(async ({ pair }) => (pair === 'en-fr'
+      ? (await french, session((lines) => lines.map((l) => `FR: ${l}`)))
+      : session((lines) => lines.map((l) => `DE: ${l}`))));
+
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    await handle({ type: 'init', manifestUrl: '/de.json', pair: 'en-de' });
+    releaseFrench();
+    await fr;
+    await handle({ type: 'translate', id: 1, lines: ['one.'] });
+
+    expect(of('ready')).toHaveLength(1);
+    expect(of('translated')[0].lines[0]).toMatch(/^DE: /);
+  });
+
+  it('does not report a replaced init that fails', async () => {
+    let failFrench;
+    const french = new Promise((resolve, reject) => { failFrench = reject; });
+    const { handle, of } = handlerWith(async ({ pair }) => (pair === 'en-fr'
+      ? french : echoUpper));
+
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    await handle({ type: 'init', manifestUrl: '/de.json', pair: 'en-de' });
+    failFrench(new Error('network'));
+    await fr;
+
+    expect(of('error')).toHaveLength(0);
+    expect(of('ready')).toHaveLength(1);
+  });
+
+  it('says which init its ready and its failure answer', async () => {
+    const ok = handlerWith(async () => echoUpper);
+    await ok.handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es', initId: 3 });
+    expect(ok.of('ready')[0]).toEqual({ type: 'ready', initId: 3 });
+
+    const bad = handlerWith(async () => { throw new Error('404'); });
+    await bad.handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es', initId: 4 });
+    expect(bad.of('error')[0]).toMatchObject({ initId: 4, message: '404' });
   });
 
   it('says so when a batch arrives before any init', async () => {
