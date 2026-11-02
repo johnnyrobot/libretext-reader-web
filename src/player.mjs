@@ -168,11 +168,12 @@ export function createPlayer({
     request(position);
     const stream = mayStream ? streams.get(sentence.id) : undefined;
     if (stream?.chunks.length) return { stream };
+    // Cleared by whatever plays next, not here: a wait a seek has cancelled
+    // would otherwise clear the seek's own "Preparing audio…".
     state(true, 'Preparing audio…');
     // Whichever comes first: the first streamed chunk, if it may stream, or the
     // whole sentence.
     await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
-    state(false);
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
     if (stream?.chunks.length && streams.get(sentence.id) === stream) return { stream };
     return null;
@@ -252,7 +253,13 @@ export function createPlayer({
 
     const entry = await waitFor(position, waitingToHear);
     if (mine !== generation || !playing) return;
-    if (!entry) { await playAt(position + 1); return; }
+    // Synthesis failed. What a sentence rendered ahead streamed before failing
+    // was never guarded whole, so none of it plays: mark it, as for a skip.
+    if (!entry) {
+      onSentenceSkipped(sentences[position].id);
+      await playAt(position + 1);
+      return;
+    }
     if (entry.stream) { playStream(position, mine, entry.stream); return; }
     if (!entry.buffer) {
       if (entry.skipped) onSentenceSkipped(sentences[position].id);

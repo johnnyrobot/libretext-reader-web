@@ -241,6 +241,48 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(live(context)[0].buffer.length).toBe(3 * 1920);
   });
 
+  // Nothing of b was heard, and what it streamed was never guarded whole, so it
+  // is not played: it is marked, like a sentence the guard skipped.
+  it('a sentence rendered ahead that fails after streaming is marked skipped', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    const b = engine.jobs.get('b');
+    b.chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    b.fail();
+    await tick();
+    expect(skipped).toEqual(['b']);
+  });
+
+  // A seek while a sentence rendered ahead waits to be whole cancels it; the
+  // cancelled wait must not clear the "Preparing audio…" the seek has shown.
+  it('a seek during a wait keeps showing that the sentence sought is preparing', async () => {
+    const states = [];
+    player = createPlayer({
+      engine, sentences: SENTENCES(), audioContext: context,
+      onStateChange: (s) => states.push(s),
+    });
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    engine.jobs.get('b').chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    player.seekTo('c');
+    await tick();
+    expect(states.at(-1)).toMatchObject({ buffering: true, message: 'Preparing audio…' });
+  });
+
   // Next onto a sentence still rendering. seekTo cancels every request, and the
   // cancelled one used to stay tracked until its promise settled: the re-request
   // was swallowed, so the sentence played only what it had streamed, or nothing.
