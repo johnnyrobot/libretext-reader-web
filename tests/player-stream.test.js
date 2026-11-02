@@ -265,6 +265,22 @@ describe('player.mjs streaming (Phonon, LT-214)', () => {
     expect(seen).toEqual(['a', 'c']);
   });
 
+  it('a sentence rendered ahead that a flush cancels is not marked skipped', async () => {
+    player.play();
+    await tick();
+    const a = engine.jobs.get('a');
+    a.chunk(); await tick();
+    a.finish();
+    engine.jobs.get('b').chunk();
+    await tick();
+    live(context).forEach((n) => n.end());
+    await tick();
+
+    player.flushAudio();
+    await tick();
+    expect(skipped).toEqual([]);
+  });
+
   // A seek while a sentence rendered ahead waits to be whole cancels it; the
   // cancelled wait must not clear the "Preparing audio…" the seek has shown.
   it('a seek during a wait keeps showing that the sentence sought is preparing', async () => {

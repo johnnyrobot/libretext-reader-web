@@ -37,8 +37,8 @@ export function createPlayer({
   onSentenceChange = () => {},
   onStateChange = () => {},
   // A sentence the length guard gave up on (src/phonon-guard.mjs), or one
-  // rendered ahead that failed after streaming: silence, never nonsense, and the
-  // reader marks it so the silence is explained.
+  // rendered ahead that streamed and then failed while the reader waited on it:
+  // silence, never nonsense, and the reader marks it so the silence is explained.
   onSentenceSkipped = () => {},
 }) {
   const context = audioContext ?? new (globalThis.AudioContext ?? globalThis.webkitAudioContext)();
@@ -167,8 +167,9 @@ export function createPlayer({
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
 
     request(position);
-    const pending = streams.get(sentence.id);
-    const stream = mayStream ? pending : undefined;
+    const epoch = audioEpoch;
+    const rendering = streams.get(sentence.id);
+    const stream = mayStream ? rendering : undefined;
     if (stream?.chunks.length) return { stream };
     // Cleared by whatever plays next, not here: a wait a seek has cancelled
     // would otherwise clear the seek's own "Preparing audio…".
@@ -178,9 +179,12 @@ export function createPlayer({
     await Promise.race([inFlight.get(sentence.id), stream?.first].filter(Boolean));
     if (buffers.has(sentence.id)) return buffers.get(sentence.id);
     if (stream?.chunks.length && streams.get(sentence.id) === stream) return { stream };
-    // Rendered ahead, streamed, then failed: what it streamed was never guarded
-    // whole, so none of it plays. Mark it, as the guard marks a skip.
-    if (!mayStream && pending?.chunks.length) return { buffer: null, skipped: true };
+    // Rendered ahead, streamed, then failed while the reader waited on it: what
+    // it streamed was never guarded whole, so none of it plays. Mark it, as the
+    // guard marks a skip. Not after a flush: that cancelled it, it did not fail.
+    if (!mayStream && epoch === audioEpoch && rendering?.chunks.length) {
+      return { buffer: null, skipped: true };
+    }
     return null;
   }
 
