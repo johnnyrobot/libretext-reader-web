@@ -24,6 +24,8 @@ const flag = (name, fallback) => {
 const base = flag('--base', 'http://127.0.0.1:8820');
 const out = path.resolve(flag('--out', '/Users/Shared/LT-216/work/lt219'));
 const langs = args.length ? args : ['en', 'fr', 'de', 'es', 'pt'];
+const WITHIN = 0.1;          // seconds an MP3 may differ from its render (LT-219)
+const SAVE_MS = 120_000;     // longest a Save may take
 
 // The LT-216 test set. Its English column has only p00; s01-s11 were translated from
 // the prose, numbers and dates items of bench/phonon/out/sentences.json, in order, so
@@ -72,15 +74,17 @@ try {
     await page.goto(`${base}/social_psychology/listen-lt216/?lang=${lang}`);
     check(await page.textContent('#save') === 'Save MP3', `${lang}: the button reads "Save MP3"`);
     const rows = [];
+    let savesTried = 0;
     for (const { id, text } of itemsFor(lang)) {
       await page.fill('#text', text);
-      await page.click('#play');
-      check(await page.isDisabled('#save'), `${lang} ${id}: Save is off while the voice renders`);
+      // Click and read the other button in one go, so a fast step cannot finish first.
+      const saveOff = await page.evaluate(() => { document.getElementById('play').click(); return document.getElementById('save').disabled; });
+      check(saveOff, `${lang} ${id}: Save is off while the voice renders`);
       await page.waitForFunction(() => !document.getElementById('play').disabled
         && !/^Speaking|^Loading/.test(document.getElementById('status').textContent), null, { timeout: 600_000 });
       const said = await page.textContent('#status');
       if (said !== 'Done.') { check(false, `${lang} ${id}: render ended "${said}"`); continue; }
-      check(encoderFetches.length === (rows.length ? 1 : 0), `${lang} ${id}: encoder fetched ${encoderFetches.length} times before Save`);
+      check(encoderFetches.length === (savesTried ? 1 : 0), `${lang} ${id}: encoder fetched ${encoderFetches.length} times before Save`);
       const raw = await page.evaluate(() => {
         const { samples, sampleRate } = window.lt216.last;
         const pcm = new Int16Array(samples.length);
@@ -94,13 +98,18 @@ try {
       await page.evaluate(() => { (window.lt219renders ??= []).push(window.lt216.last.samples); });
 
       // A Save that fails shows "Could not make the MP3" and downloads nothing.
-      const download = page.waitForEvent('download', { timeout: 120_000 }).catch(() => null);
-      await page.click('#save');
-      check(await page.isDisabled('#play'), `${lang} ${id}: Play is off while the MP3 is made`);
+      const download = page.waitForEvent('download', { timeout: SAVE_MS }).catch(() => null);
+      const playOff = await page.evaluate(() => { document.getElementById('save').click(); return document.getElementById('play').disabled; });
+      savesTried++;
+      check(playOff, `${lang} ${id}: Play is off while the MP3 is made`);
       await page.waitForFunction(() => /^Saved|^Could not/.test(document.getElementById('status').textContent),
-        null, { timeout: 120_000 });
+        null, { timeout: SAVE_MS });
+      if (/^Could not/.test(await page.textContent('#status'))) {
+        check(false, `${lang} ${id}: ${await page.textContent('#status')}`);
+        continue;
+      }
       const saved = await download;
-      if (!saved) { check(false, `${lang} ${id}: ${await page.textContent('#status')}`); continue; }
+      if (!saved) { check(false, `${lang} ${id}: no download`); continue; }
       check(saved.suggestedFilename() === `phonon-${lang}.mp3`, `${lang} ${id}: saved as ${saved.suggestedFilename()}`);
       const file = path.join(dir, `${id}.mp3`);
       await saved.saveAs(file);
@@ -111,9 +120,9 @@ try {
       const seconds = mp3Seconds(frames);
       check(frames.every((f) => f.version === 2 && f.sampleRate === 24000 && f.kbps === 64 && f.mono),
         `${lang} ${id}: every frame MPEG-2, 24000 Hz, 64 kbps, mono`);
-      check(Math.abs(seconds - raw.seconds) <= 0.1, `${lang} ${id}: MP3 ${seconds.toFixed(3)} s vs render ${raw.seconds.toFixed(3)} s`);
+      check(Math.abs(seconds - raw.seconds) <= WITHIN, `${lang} ${id}: MP3 ${seconds.toFixed(3)} s vs render ${raw.seconds.toFixed(3)} s`);
       const mac = afinfo(file);
-      check(mac.format && mac.mono24k && mac.bitRate === 64000 && Math.abs(mac.seconds - raw.seconds) <= 0.1,
+      check(mac.format && mac.mono24k && mac.bitRate === 64000 && Math.abs(mac.seconds - raw.seconds) <= WITHIN,
         `${lang} ${id}: afinfo ${JSON.stringify(mac)}`);
 
       // Chrome plays it back: the page decodes it, and the file opened in Chrome, as a
@@ -134,7 +143,7 @@ try {
       });
       await viewer.close();
       chrome.decodedSeconds = decodedSeconds;
-      check(Math.abs(chrome.decodedSeconds - raw.seconds) <= 0.1 && chrome.played > 0,
+      check(Math.abs(chrome.decodedSeconds - raw.seconds) <= WITHIN && chrome.played > 0,
         `${lang} ${id}: Chrome ${JSON.stringify(chrome)}`);
 
       rows.push({ id, text, seconds: raw.seconds, mp3Seconds: seconds, mp3Bytes: bytes.length,
@@ -143,6 +152,7 @@ try {
         `encoded in ${save.encodeMs.toFixed(0)} ms${rows.length === 1 ? ' (first Save: includes fetching the encoder)' : ''}`);
     }
     check(encoderFetches.length === 1, `${lang}: encoder fetched ${encoderFetches.length} times in all`);
+    if (!rows.length) { await page.close(); continue; }
 
     // A minute or more of this language's speech, encoded in one go by the warm Worker.
     const long = await page.evaluate(async () => {

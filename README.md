@@ -285,15 +285,15 @@ This project's own code is **MIT**, see `LICENSE`. That covers everything in `sr
 
 It does **not** cover the voices. `src/vendor/helper.js` is vendored from
 `supertone-inc/supertonic` and carries an intact licence header naming its origin; that
-sample code is MIT.
+sample code is MIT. Supertonic's **model weights are OpenRAIL-M**, which carries behavioural-use
+restrictions that propagate to anyone who receives them, and they are not distributed
+here — you fetch them yourself. Whether those terms suit a given distribution is a legal
+question, not a code one, and it is not settled by this repository being MIT.
 
 Nor does it cover `bench/phonon/listen/vendor/lamejs/`: lamejs 1.2.1, the MP3 encoder
 behind the local listening page's Save button, is **LGPL-3.0**. It is kept as an
 unmodified file of its own with its licence texts beside it, pinned by sha256, and never
-bundled into this project's code; see the README in that folder. Supertonic's **model weights are OpenRAIL-M**, which carries behavioural-use
-restrictions that propagate to anyone who receives them, and they are not distributed
-here — you fetch them yourself. Whether those terms suit a given distribution is a legal
-question, not a code one, and it is not settled by this repository being MIT.
+bundled into this project's code; see the README in that folder.
 
 Equation speech is produced at build time by [Speech Rule Engine](https://github.com/Speech-Rule-Engine/speech-rule-engine)
 and [MathJax](https://github.com/mathjax/MathJax-src) (`mathjax-full`), both **Apache-2.0**.

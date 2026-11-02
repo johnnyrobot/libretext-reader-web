@@ -196,7 +196,9 @@ addEventListener('DOMContentLoaded', () => {
   $('lang').addEventListener('change', () => choose($('lang').value));
   $('play').addEventListener('click', async () => {
     const lang = $('lang').value;
-    // Save stays off while the voice renders: encoding never competes with speaking.
+    // Save stays off while the voice renders: encoding never competes with speaking. And
+    // it saves only what was just spoken, so a render that stops or fails leaves it off.
+    lt216.last = null;
     $('play').disabled = true; $('stop').disabled = false; $('save').disabled = true;
     status(`Speaking ${LANGS[lang].name}…`);
     try {
@@ -215,7 +217,7 @@ addEventListener('DOMContentLoaded', () => {
   $('stop').addEventListener('click', () => { (stopCurrent ?? stopAudio)(); $('stop').disabled = true; });
   $('save').addEventListener('click', async () => {
     const { samples, sampleRate, lang } = lt216.last;
-    // And Play stays off while it encodes.
+    // Play stays off while the MP3 is made.
     $('save').disabled = true; $('play').disabled = true;
     status('Making the MP3…');
     try {

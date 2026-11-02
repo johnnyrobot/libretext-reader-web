@@ -65,7 +65,10 @@ def score(directory, lang):
 
 def main():
     args = sys.argv[1:]
-    directory = pathlib.Path(args.pop(0) if args and pathlib.Path(args[0]).is_dir() else "/Users/Shared/LT-216/work/lt219")
+    # DIR holds a folder per language; a language folder (with texts.json) is not one.
+    first = pathlib.Path(args[0]) if args else None
+    is_dir = first is not None and first.is_dir() and not (first / "texts.json").exists()
+    directory = pathlib.Path(args.pop(0) if is_dir else "/Users/Shared/LT-216/work/lt219")
     langs = args or [p.name for p in sorted(directory.iterdir()) if (p / "texts.json").exists()]
     totals = []
     for lang in langs:
