@@ -645,6 +645,9 @@ def test_portuguese_years_are_plain_cardinals():
     ("1.000.000 casos", "um milhão casos"),
     ("1246120 e", "um dois quatro seis um dois zero e"),
     ("pesa 1.234,5 kg", "pesa mil duzentos e trinta e quatro vírgula cinco kg"),
+    # The English form leaked through: still one amount, its dot the decimal.
+    ("pesa 1,250.5 kg", "pesa mil duzentos e cinquenta vírgula cinco kg"),
+    ("cresceu 1,250.5%", "cresceu mil duzentos e cinquenta vírgula cinco por cento"),
 ])
 def test_portuguese_separators(source, expected):
     assert normalize_pt_for_speech(source) == expected

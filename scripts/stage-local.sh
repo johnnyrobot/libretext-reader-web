@@ -40,10 +40,19 @@ ASSETS_ONLY="${ASSETS_ONLY:-}"
 
 if [ -n "$PAGES_FROM" ]; then
   [ -d "$PAGES_FROM/_assets" ] || { echo "PAGES_FROM=$PAGES_FROM is not a stage (no _assets/)" >&2; exit 1; }
-  # STAGE is deleted below, so it must not be the stage being copied from.
+  # STAGE is deleted below and then filled from PAGES_FROM, so neither may hold
+  # the other: the same directory, or one inside the other, would delete the
+  # source or copy the stage into itself. The trailing slash keeps a sibling
+  # such as stage2 from passing for stage.
+  [ -d "$STAGE" ] || created_stage=1
   mkdir -p "$STAGE"
-  if [ "$(cd "$PAGES_FROM" && pwd -P)" = "$(cd "$STAGE" && pwd -P)" ]; then
-    echo "PAGES_FROM and STAGE are the same directory; staging would delete its own source" >&2
+  from="$(cd "$PAGES_FROM" && pwd -P)/"
+  to="$(cd "$STAGE" && pwd -P)/"
+  case "$from" in "$to"*) overlap=1;; esac
+  case "$to" in "$from"*) overlap=1;; esac
+  if [ -n "${overlap:-}" ]; then
+    [ -z "${created_stage:-}" ] || rmdir "$STAGE"
+    echo "PAGES_FROM ($from) and STAGE ($to) overlap; staging would delete or copy into its own source" >&2
     exit 1
   fi
 fi
@@ -238,7 +247,10 @@ echo
 echo "staged:"
 du -sh "$TTS" "$BOOK"
 [ -f "$BOOK/$PAGE_DIR/index.html" ] && grep -c 'tts-enter' "$BOOK/$PAGE_DIR/index.html" | sed 's/^/  tts-enter occurrences: /'
-if [ "$(shasum -a 256 "$STAGE/chem101/$PAGE_DIR/index.html" | cut -d' ' -f1)" = "$(cat "$STAGE/chem101/.sha256-before")" ]; then
+# A stage copied with PAGES_FROM carries its own out-of-scope book, or none.
+if [ ! -f "$STAGE/chem101/.sha256-before" ]; then
+  echo "  out-of-scope book: none in this stage (not checked)"
+elif [ "$(shasum -a 256 "$STAGE/chem101/$PAGE_DIR/index.html" | cut -d' ' -f1)" = "$(cat "$STAGE/chem101/.sha256-before")" ]; then
   echo "  out-of-scope book: byte-identical (correct)"
 else
   echo "  out-of-scope book: MODIFIED -- scope guard failed" >&2

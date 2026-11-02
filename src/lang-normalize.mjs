@@ -761,12 +761,16 @@ const PT_GROUPED_ONLY_RE = new RegExp(`^(?:${PT_GROUPED})$`, 'u');
 // leaked "1,250.50") is ONE amount: read apart, the head became a number and
 // the ",50" was left behind.
 const PT_WHOLE = `(?:${PT_GROUPED}|\\d+)`;
-const PT_GROUPED_DECIMAL_RE = new RegExp(`${B}([1-9]\\d{0,2}(?:\\.\\d{3})+),(\\d+)${B}`, 'gu');
+// The English form leaks through as well: "1,250.5", its dot the decimal.
+const PT_EN_DECIMAL = '[1-9]\\d{0,2}(?:,\\d{3})+\\.\\d+';
+const PT_EN_DECIMAL_ONLY_RE = new RegExp(`^${PT_EN_DECIMAL}$`, 'u');
+const PT_GROUPED_DECIMAL_RE = new RegExp(
+  `${B}([1-9]\\d{0,2}(?:\\.\\d{3})+),(\\d+)${B}|${B}([1-9]\\d{0,2}(?:,\\d{3})+)\\.(\\d+)${B}`, 'gu');
 const PT_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
 // A short dot is KEPT from English, as in German: "Tabela 1.3", "3.14", "2.0".
 const PT_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
 const PT_INTEGER_RE = new RegExp(`${B}\\d+${B}`, 'gu');
-const PT_AMOUNT = `(?:${PT_GROUPED}|\\d+)(?:,\\d+)?`;
+const PT_AMOUNT = `(?:${PT_EN_DECIMAL}|(?:${PT_GROUPED}|\\d+)(?:,\\d+)?)`;
 
 // The sign was measured three ways: "US$ 3 milhões", "US $" and a bare "$".
 const PT_SIGN = `(?:${B}US\\s?)?\\$\\s?`;
@@ -788,6 +792,10 @@ const PT_ET_AL_RE = new RegExp(`${B}et\\s+al\\.`, 'gu');
 const ptFraction = (whole, part, joiner) => `${ptIntToWords(Number(whole))} ${joiner} ${ptDigitsToWords(part)}`;
 
 function ptAmount(amount) {
+  if (PT_EN_DECIMAL_ONLY_RE.test(amount)) {
+    const dot = amount.lastIndexOf('.');
+    return ptFraction(amount.slice(0, dot).replace(/,/gu, ''), amount.slice(dot + 1), 'vírgula');
+  }
   if (PT_GROUPED_ONLY_RE.test(amount) || !amount.includes(',')) return ptNumberPhrase(amount);
   const cut = amount.lastIndexOf(',');
   return ptFraction(amount.slice(0, cut).replace(/\./gu, ''), amount.slice(cut + 1), 'vírgula');
@@ -820,7 +828,7 @@ export function normalizePtForSpeech(text) {
   out = out.replace(PT_CURRENCY_WORD_RE, ptCurrencyCents);
   out = out.replace(PT_PERCENT_RE, (_m, amount) => `${ptAmount(amount)} por cento`);
   out = out.replace(PT_GROUPED_DECIMAL_RE,
-    (_m, whole, fraction) => ptFraction(ptStrip(whole), fraction, 'vírgula'));
+    (_m, whole, fraction, enWhole, enFraction) => ptFraction(ptStrip(whole ?? enWhole), fraction ?? enFraction, 'vírgula'));
   // Groups before the comma decimal, so "1,250" is never "um vírgula dois...".
   out = out.replace(PT_GROUPED_RE, (m) => ptNumberPhrase(m));
   out = out.replace(PT_COMMA_DECIMAL_RE,

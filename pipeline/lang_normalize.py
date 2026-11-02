@@ -801,12 +801,15 @@ _PT_GROUPED_RE = re.compile(rf"\b(?:{_PT_GROUPED})")
 # leaked "1,250.50") is ONE amount: read apart, the head became a number and
 # the ",50" was left behind.
 _PT_WHOLE = rf"(?:{_PT_GROUPED}|\d+)"
-_PT_GROUPED_DECIMAL_RE = re.compile(r"\b([1-9]\d{0,2}(?:\.\d{3})+),(\d+)\b")
+# The English form leaks through as well: "1,250.5", its dot the decimal.
+_PT_EN_DECIMAL = r"[1-9]\d{0,2}(?:,\d{3})+\.\d+"
+_PT_GROUPED_DECIMAL_RE = re.compile(
+    r"\b([1-9]\d{0,2}(?:\.\d{3})+),(\d+)\b|\b([1-9]\d{0,2}(?:,\d{3})+)\.(\d+)\b")
 _PT_COMMA_DECIMAL_RE = re.compile(r"\b(\d+),(\d+)\b")
 # A short dot is KEPT from English, as in German: "Tabela 1.3", "3.14", "2.0".
 _PT_SECTION_DOT_RE = re.compile(r"\b(\d+)\.(\d{1,2})(?!\d)")
 _PT_INTEGER_RE = re.compile(r"\b\d+\b")
-_PT_AMOUNT = rf"(?:{_PT_GROUPED}|\d+)(?:,\d+)?"
+_PT_AMOUNT = rf"(?:{_PT_EN_DECIMAL}|(?:{_PT_GROUPED}|\d+)(?:,\d+)?)"
 
 # The sign was measured three ways: "US$ 3 milhões", "US $" and a bare "$".
 _PT_SIGN = r"(?:\bUS\s?)?\$\s?"
@@ -826,6 +829,9 @@ _PT_ET_AL_RE = re.compile(r"\bet\s+al\.")
 
 
 def _pt_amount(amount: str) -> str:
+    if re.fullmatch(_PT_EN_DECIMAL, amount):
+        whole, part = amount.rsplit(".", 1)
+        return _pt_fraction(whole.replace(",", ""), part, "vírgula")
     if re.fullmatch(_PT_GROUPED, amount) or "," not in amount:
         return _pt_number_phrase(amount)
     whole, part = amount.rsplit(",", 1)
@@ -868,7 +874,8 @@ def normalize_pt_for_speech(text: str) -> str:
     out = _PT_CURRENCY_WORD_RE.sub(_pt_currency_cents, out)
     out = _PT_PERCENT_RE.sub(lambda m: _pt_amount(m.group(1)) + " por cento", out)
     out = _PT_GROUPED_DECIMAL_RE.sub(
-        lambda m: _pt_fraction(m.group(1).replace(".", ""), m.group(2), "vírgula"), out)
+        lambda m: _pt_fraction(re.sub(r"[.,]", "", m.group(1) or m.group(3)),
+                               m.group(2) or m.group(4), "vírgula"), out)
     # Groups before the comma decimal, so "1,250" is never "um vírgula dois...".
     out = _PT_GROUPED_RE.sub(lambda m: _pt_number_phrase(m.group(0)), out)
     out = _PT_COMMA_DECIMAL_RE.sub(
