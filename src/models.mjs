@@ -80,7 +80,14 @@ export async function ensureModels(manifestUrl, onProgress = () => {}, cacheName
       throw new Error(`integrity check failed for ${file.path}`);
     }
 
-    await cache.put(url, new Response(buffer));
+    // A private window keeps Cache Storage in memory and can refuse one large
+    // entry outright (Portuguese's 383 MB decoder). The bytes are verified, so
+    // use them now; the next visit downloads again rather than failing this one.
+    try {
+      await cache.put(url, new Response(buffer));
+    } catch (err) {
+      console.warn(`not cached, used for this visit only: ${file.path}`, err);
+    }
     out[file.name] = buffer;
   }
 

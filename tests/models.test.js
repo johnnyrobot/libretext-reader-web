@@ -123,6 +123,25 @@ describe('models.mjs', () => {
     await expect(ensureModels('/_assets/tts/phonon/manifest.json')).rejects.toThrow(/integrity/i);
   });
 
+  // Chrome's private windows keep Cache Storage in memory and refuse one entry
+  // as big as Portuguese's 383 MB decoder ("Unexpected internal error"). The
+  // file is already downloaded and verified, so this visit can still use it.
+  it('still uses a verified file the browser refuses to store', async () => {
+    const body = new Uint8Array([1, 2, 3]);
+    vi.stubGlobal('fetch', vi.fn(async (url) => {
+      if (String(url).endsWith('manifest.json')) return Response.json(manifest());
+      return new Response(body);
+    }));
+    caches_.api.open = async () => ({
+      async match() { return undefined; },
+      async put() { throw new DOMException('Unexpected internal error.', 'UnknownError'); },
+    });
+
+    const out = await ensureModels('/_assets/tts/phonon/manifest.json');
+
+    expect(new Uint8Array(out['onnx/flow_lm_main.onnx'])).toEqual(body);
+  });
+
   it('does not create the cache just by asking whether models are present', async () => {
     // caches.open() creates the cache. Checking presence must not, or a reader
     // who declines the download is left with a named cache entry -- a hard
