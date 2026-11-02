@@ -60,16 +60,27 @@ describe('the listening page MP3 encoder', { timeout: 60_000 }, () => {
     expect(Math.abs(mp3Seconds(mp3Frames(await bytesOf(short))) - 1)).toBeLessThan(WITHIN);
   });
 
-  it('takes samples past full scale without failing', async () => {
+  it('clips samples past full scale, the same as samples already clipped', async () => {
     const encode = startWorker();
-    const frames = mp3Frames(await bytesOf(await encode({ id: 'loud', samples: tone(1, 1.6), sampleRate: RATE })));
-    expect(Math.abs(mp3Seconds(frames) - 1)).toBeLessThan(WITHIN);
+    const loud = tone(1, 1.6);
+    const clipped = loud.map((x) => Math.max(-1, Math.min(1, x)));
+    const fromLoud = await bytesOf(await encode({ id: 'loud', samples: loud, sampleRate: RATE }));
+    const fromClipped = await bytesOf(await encode({ id: 'clipped', samples: clipped, sampleRate: RATE }));
+    expect(Math.abs(mp3Seconds(mp3Frames(fromLoud)) - 1)).toBeLessThan(WITHIN);
+    expect(Buffer.from(fromLoud).equals(Buffer.from(fromClipped))).toBe(true);
   });
 
   it('weighs about 0.84 MB a minute of speech (112 kbps)', async () => {
     const encode = startWorker();
     const bytes = await bytesOf(await encode({ id: 'ten', samples: tone(10), sampleRate: RATE }));
     expect((bytes.length * 6) / 1e6).toBeCloseTo(0.84, 2);
+  });
+});
+
+describe('the MP3 frame reader', () => {
+  it('rejects a file whose last frame is cut short', async () => {
+    const bytes = await bytesOf(await startWorker()({ id: 'cut', samples: tone(1), sampleRate: RATE }));
+    expect(() => mp3Frames(bytes.subarray(0, bytes.length - 10))).toThrow(/truncated frame/);
   });
 });
 

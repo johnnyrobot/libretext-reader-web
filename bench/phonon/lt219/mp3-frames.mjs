@@ -37,6 +37,7 @@ export function mp3Frames(bytes) {
     const padding = (c >> 1) & 1;
     const samples = version === 1 ? 1152 : 576;
     const length = Math.floor((samples / 8) * kbps * 1000 / sampleRate) + padding;
+    if (at + length > bytes.length) throw new Error(`truncated frame at byte ${at}`);
     frames.push({ version, sampleRate, kbps, mono: d >> 6 === 0b11, samples, length });
     at += length;
   }

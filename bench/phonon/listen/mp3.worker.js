@@ -15,7 +15,7 @@
 // LAME writes as MPEG-2 Layer III), mono, constant 112 kbps, with no resampling.
 importScripts('vendor/lamejs/lame.min.js');
 
-const KBPS = 112;   // the lowest rate tested that keeps WER within 0.01 of raw in every language (LT-219)
+const KBPS = 112;   // lamejs at 64 kbps lost 0.04-0.06 WER in fr/de/es/pt; 112 keeps every language within 0.01 (LT-219)
 const BLOCK = 1152;   // samples handed to LAME at a time, as lamejs's own examples do
 
 self.onmessage = ({ data: { id, samples, sampleRate } }) => {

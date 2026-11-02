@@ -811,9 +811,9 @@ context; on `about:blank` `AudioEncoder` does not exist):
 LAME, licensed **LGPL-3.0**. It lives at `bench/phonon/listen/vendor/lamejs/`
 as the unmodified `lame.min.js` (156,043 bytes, 55,123 gzipped, sha256
 `15d285e2…ec6df4`); `serve-local.py` does not compress, so a reader downloads
-the full 156 KB once, on their first Save. It sits beside its LICENSE, COPYING.LESSER and COPYING beside it, a
-`SHA256SUMS` that `stage.sh` checks before staging, and a README giving where
-it came from and how to replace it. No MIT code bundles it: a classic Worker
+the full 156 KB once, on their first Save. It sits beside its LICENSE,
+COPYING.LESSER and COPYING, a `SHA256SUMS` that `stage.sh` checks before
+staging, and a README giving where it came from and how to replace it. No MIT code bundles it: a classic Worker
 (`mp3.worker.js`) loads it with `importScripts`, and the page starts that Worker
 on the first Save, so nobody downloads the encoder until they save. Save is off
 while a voice renders and Play is off while an MP3 is made. The render finishes
@@ -825,14 +825,17 @@ be playing; "never while speaking" is read as never while the voice renders.
 `bench/phonon/lt219/check-save.mjs` drives the page in Chrome 156 (headless,
 `channel: 'chrome'`) the way a person would: type, Play, Save, keep the
 download. 12 items per language, the LT-216 set (English speaks the source
-sentences of s01–s11), 6–21 s each. Out: `/Users/Shared/LT-216/work/lt219-112/`.
+sentences of s01–s11), 6–21 s each. The page was a side copy on :8821 of the
+one Johnny uses on :8820, over the same staged voices. Out:
+`/Users/Shared/LT-216/work/lt219-112/`.
 
 - Every saved file was named `phonon-<lang>.mp3`, and every frame of all 60
   files (6,192–6,829 frames per language) was MPEG-2 Layer III, 24000 Hz,
   112 kbps, mono. Each file is 0.05–0.06 s longer than its render (LAME's
   1105-sample delay plus padding).
-- macOS `afinfo` reads each as 24000 Hz mono MP3 at 112,000 bits per second;
-  `afplay` plays it. Chrome decodes it, and opened from disk it plays.
+- macOS `afinfo` reads each as 24000 Hz mono MP3 at 112,000 bits per second,
+  and `afplay` plays the first file of each language. Chrome decodes each, and
+  opened from disk it plays.
 - The encoder was fetched once per page, on the first Save, never before.
 
 | | MB per minute of speech |
@@ -854,8 +857,8 @@ Encode time per minute of speech, in Chrome, Worker warm:
 The "long encode" is all 12 renders together, 148–163 s of speech, in one
 Save. The first Save, which also fetches the encoder, took 0.19–0.23 s. These
 were taken on a less loaded Mac than the 64 kbps run below (load average 3–13
-against 7–42), which is most of why they are faster; 112 kbps does not encode
-faster than 64.
+against 7–42), which is likely most of why they are faster; the two rates were
+not timed under the same load.
 
 WER of each saved MP3 against the render it came from, both from the same run
 (`lt219/score.py`, scored as LT-216 scores):
@@ -868,8 +871,9 @@ WER of each saved MP3 against the render it came from, both from the same run
 | es | 0.0000 | 0.0027 | +0.0027 | 364 |
 | pt | 0.0000 | 0.0000 | 0 | 349 |
 
-The two items that differ are one word each: French "pièces" on the raw becomes
-"pièce" on the MP3, and Spanish "solo" becomes "sólo". Phonon's renders vary
+The two items that differ are one word each: French "pièces" on the raw is
+heard as "pièce", the right word, on the MP3, and Spanish "solo" becomes
+"sólo". Phonon's renders vary
 from run to run, so these raw numbers differ from the 64 kbps run's below; each
 MP3 is compared only with its own render.
 
@@ -877,17 +881,19 @@ MP3 is compared only with its own render.
 
 The first run saved at 64 kbps (out: `/Users/Shared/LT-216/work/lt219/`). Its
 format checks all passed, but French, German, Spanish and Portuguese lost
-0.04–0.06 WER. The 112 and 128 kbps columns here re-encode that run's raw
-renders with the same `lame.min.js` in Node, as the Worker does; they are what
-led to the choice, and the 112 kbps page run above confirms them.
+0.04–0.06 WER:
 
-| Language | Raw | MP3 64 kbps | Δ | lamejs 112 kbps, Node | lamejs 128 kbps, Node |
-|---|---|---|---|---|---|
-| en | 0.0183 | 0.0183 | 0 | 0.0183 (0) | not run |
-| fr | 0.0102 | 0.0485 | +0.038 | 0.0128 (+0.003) | 0.0128 (+0.003) |
-| de | 0.0000 | 0.0485 | +0.049 | 0.0000 | 0.0000 |
-| es | 0.0027 | 0.0632 | +0.061 | 0.0055 (+0.003) | 0.0055 (+0.003) |
-| pt | 0.0287 | 0.0888 | +0.060 | 0.0287 | 0.0287 |
+| Language | Raw | MP3 64 kbps | Δ |
+|---|---|---|---|
+| en | 0.0183 | 0.0183 | 0 |
+| fr | 0.0102 | 0.0485 | +0.0383 |
+| de | 0.0000 | 0.0485 | +0.0485 |
+| es | 0.0027 | 0.0632 | +0.0605 |
+| pt | 0.0287 | 0.0888 | +0.0601 |
+
+Re-encoding those renders in Node with the same `lame.min.js` at 112 and 128
+kbps kept every language within +0.003, which led to the choice; the 112 kbps
+page run above now stands in for those Node numbers.
 
 Encode time per minute of speech at 64 kbps, Worker warm, on a loaded Mac:
 
@@ -939,8 +945,9 @@ The scripts and outputs behind this table are in
 ### Not verified (LT-219)
 
 - Anyone listening to the MP3s. WER is a machine's view.
-- Encode time on a reader's laptop.
+- Encode time on a quiet machine or on a reader's laptop.
 - Firefox and Safari: only Chrome was run.
+- `afplay` on every file: it played the first of each language.
 
 ## Listening test
 

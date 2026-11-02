@@ -6,7 +6,7 @@
 //
 // Fails (exit 1) unless Save is off during a render and Play during a Save, and every
 // saved file is phonon-<lang>.mp3, 24000 Hz mono 112 kbps MPEG-2 Layer III within 0.1 s
-// of its render, plays in Chrome and in afplay, and the encoder was fetched once, on
+// of its render, plays in Chrome (and p00 of each language in afplay), and the encoder was fetched once, on
 // the first Save and not before.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -22,10 +22,10 @@ const flag = (name, fallback) => {
   return at === -1 ? fallback : args.splice(at, 2)[1];
 };
 const base = flag('--base', 'http://127.0.0.1:8820');
-const out = path.resolve(flag('--out', '/Users/Shared/LT-216/work/lt219'));
+const out = path.resolve(flag('--out', '/Users/Shared/LT-216/work/lt219-112'));
 const langs = args.length ? args : ['en', 'fr', 'de', 'es', 'pt'];
 const WITHIN = 0.1;          // seconds an MP3 may differ from its render (LT-219)
-const KBPS = 112;            // what Save writes (LT-219: the Chief's 22:10 PT decision)
+const KBPS = 112;            // what Save writes (LT-219: the Chief's decision, 2026-11-01 22:10 PT)
 const SAVE_MS = 120_000;     // longest a Save may take
 
 // The LT-216 test set. Its English column has only p00; s01-s11 were translated from

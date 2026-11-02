@@ -2,7 +2,7 @@
 
     HF_HUB_OFFLINE=1 bench/phonon/.venv/bin/python bench/phonon/lt219/score.py [DIR] [lang ...]
 
-DIR is what check-save.mjs wrote (default /Users/Shared/LT-216/work/lt219): per
+DIR is what check-save.mjs wrote (default /Users/Shared/LT-216/work/lt219-112): per
 language, <id>.wav (the raw 16-bit render), <id>.mp3 (what Save downloaded) and
 texts.json (what was spoken). Both files of a sentence are transcribed and scored
 the way bench/phonon/lt216/score.py scores, so the only difference between the
@@ -68,7 +68,7 @@ def main():
     # DIR holds a folder per language; a language folder (with texts.json) is not one.
     first = pathlib.Path(args[0]) if args else None
     is_dir = first is not None and first.is_dir() and not (first / "texts.json").exists()
-    directory = pathlib.Path(args.pop(0) if is_dir else "/Users/Shared/LT-216/work/lt219")
+    directory = pathlib.Path(args.pop(0) if is_dir else "/Users/Shared/LT-216/work/lt219-112")
     langs = args or [p.name for p in sorted(directory.iterdir()) if (p / "texts.json").exists()]
     totals = []
     for lang in langs:
