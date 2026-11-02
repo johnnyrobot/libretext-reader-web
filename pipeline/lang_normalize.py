@@ -821,8 +821,8 @@ _PT_CURRENCY_SCALE_RE = re.compile(
 _PT_CURRENCY_CENTS_RE = re.compile(
     rf"{_PT_SIGN}({_PT_WHOLE})[.,](\d{{1,2}})(?!\d)(?!\s+{_PT_SCALE}\b)")
 _PT_CURRENCY_SIGN_RE = re.compile(rf"{_PT_SIGN}({_PT_GROUPED}|\d+)")
-# And spelled out after the amount: "12,50 dólares".
-_PT_CURRENCY_WORD_RE = re.compile(rf"\b({_PT_WHOLE}),(\d{{1,2}})\s+dólares\b")
+# And spelled out after the amount: "12,50 dólares", or English "1,250.50 dólares".
+_PT_CURRENCY_WORD_RE = re.compile(rf"\b({_PT_WHOLE})[.,](\d{{1,2}})\s+dólares\b")
 _PT_PERCENT_RE = re.compile(rf"\b({_PT_AMOUNT})\s?%")
 # en-pt kept "et al." three times in four; the voice would read the Latin.
 _PT_ET_AL_RE = re.compile(r"\bet\s+al\.")

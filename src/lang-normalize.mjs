@@ -783,8 +783,8 @@ const PT_CURRENCY_SCALE_RE = new RegExp(
 const PT_CURRENCY_CENTS_RE = new RegExp(
   `${PT_SIGN}(${PT_WHOLE})[.,](\\d{1,2})(?!\\d)(?!\\s+${PT_SCALE}${B})`, 'gu');
 const PT_CURRENCY_SIGN_RE = new RegExp(`${PT_SIGN}(${PT_GROUPED}|\\d+)`, 'gu');
-// And spelled out after the amount: "12,50 dólares".
-const PT_CURRENCY_WORD_RE = new RegExp(`${B}(${PT_WHOLE}),(\\d{1,2})\\s+dólares${B}`, 'gu');
+// And spelled out after the amount: "12,50 dólares", or English "1,250.50 dólares".
+const PT_CURRENCY_WORD_RE = new RegExp(`${B}(${PT_WHOLE})[.,](\\d{1,2})\\s+dólares${B}`, 'gu');
 const PT_PERCENT_RE = new RegExp(`${B}(${PT_AMOUNT})\\s?%`, 'gu');
 // en-pt kept "et al." three times in four; the voice would read the Latin.
 const PT_ET_AL_RE = new RegExp(`${B}et\\s+al\\.`, 'gu');

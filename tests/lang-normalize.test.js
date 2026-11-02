@@ -632,6 +632,7 @@ describe('Portuguese', () => {
     // English form; English-dot cents and scales too.
     ['custou US$ 1.250,50.', 'custou mil duzentos e cinquenta dólares e cinquenta centavos.'],
     ['custava 1.250,50 dólares', 'custava mil duzentos e cinquenta dólares e cinquenta centavos'],
+    ['custava 1,250.50 dólares', 'custava mil duzentos e cinquenta dólares e cinquenta centavos'],
     ['custou $1,250.50.', 'custou mil duzentos e cinquenta dólares e cinquenta centavos.'],
     ['custou $3.50.', 'custou três dólares e cinquenta centavos.'],
     ['US$ 1.5 bilhão', 'um vírgula cinco bilhão de dólares'],
