@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url';
 
 // At the top level, where Supertonic lived. Phonon has its own manifest.json
 // and onnx/ one level down, so these names are not searched for below it.
-const FILES = new Set(['engine.worker.js', 'manifest.json']);
-const DIRS = new Set(['onnx', 'voice_styles', 'ort']);
+const FILES = new Set(['manifest.json']);
+const DIRS = new Set(['onnx', 'ort']);
 // Supertonic's alone, so a copy anywhere in the tree is named: its worker,
 // its four networks and its voice styles. Phonon's networks are flow_lm and
 // mimi_decoder, the translator's encoder_model and decoder_model.

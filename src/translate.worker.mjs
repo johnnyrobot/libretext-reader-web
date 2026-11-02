@@ -11,7 +11,7 @@
  * Protocol, deliberately the same shape as the speech worker's:
  *
  *   -> { type: 'init', manifestUrl, pair, initId }
- *   <- { type: 'progress', file, loaded, total, phase }
+ *   <- { type: 'progress', initId, file, loaded, total, phase }   initId while loading
  *   <- { type: 'ready', initId }          only for the latest init
  *   -> { type: 'translate', id, lines: string[] }
  *   <- { type: 'translated', id, lines: string[] }
@@ -237,20 +237,20 @@ export function createHandler({ post, load = loadTranslator }) {
       if (data.type === 'init') {
         code = String(data.pair ?? '').split('-')[1] ?? null;
         translate = null;
-        const mine = load({
+        const loadingNow = load({
           manifestUrl: data.manifestUrl,
           pair: data.pair,
           onProgress: (p) => post({
-            type: 'progress', file: p.file, loaded: p.loaded, total: p.total, phase: p.phase,
+            type: 'progress', initId: data.initId, file: p.file, loaded: p.loaded, total: p.total, phase: p.phase,
           }),
         });
-        loading = mine;
+        loading = loadingNow;
         try {
-          const loadedSession = await mine;
-          if (loading !== mine) return;
+          const loadedSession = await loadingNow;
+          if (loading !== loadingNow) return;
           translate = loadedSession;
         } catch (error) {
-          replaced = loading !== mine;
+          replaced = loading !== loadingNow;
           throw error;
         }
         post({ type: 'ready', initId: data.initId });

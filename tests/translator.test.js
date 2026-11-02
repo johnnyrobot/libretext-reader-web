@@ -14,8 +14,8 @@ class FakeWorker {
     queueMicrotask(() => {
       if (message.type === 'init') {
         return this.reply(this.failInit
-          ? { type: 'error', message: 'model unavailable (404)' }
-          : { type: 'ready' });
+          ? { type: 'error', initId: message.initId, message: 'model unavailable (404)' }
+          : { type: 'ready', initId: message.initId });
       }
       if (message.type === 'translate') {
         this.reply({ type: 'translated', id: message.id, lines: message.lines.map((l) => `ES: ${l}`) });
@@ -96,7 +96,7 @@ describe('translator.mjs', () => {
     const translator = createTranslator({ createWorker: () => worker });
     const french = translator.init({ pair: 'en-fr' });
     const german = translator.init({ pair: 'en-de' });
-    worker.onmessage({ data: { type: 'ready' } });
+    worker.onmessage({ data: { type: 'ready', initId: worker.sent[1].initId } });
 
     await expect(german).resolves.toBeUndefined();
     await expect(french).rejects.toThrow(/cancelled/);
@@ -122,6 +122,19 @@ describe('translator.mjs', () => {
 
     worker.onmessage({ data: { type: 'ready', initId: de } });
     await expect(german).resolves.toBeUndefined();
+  });
+
+  it('shows only the current load\'s download progress, and every batch\'s', () => {
+    const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
+    const translator = createTranslator({ createWorker: () => worker });
+    translator.init({ pair: 'en-fr' }).catch(() => {});
+    const seen = [];
+    translator.init({ pair: 'en-de', onProgress: (p) => seen.push(p.loaded) });
+    const [fr, de] = worker.sent.map((m) => m.initId);
+    worker.onmessage({ data: { type: 'progress', initId: fr, loaded: 1, total: 9 } });
+    worker.onmessage({ data: { type: 'progress', initId: de, loaded: 2, total: 9 } });
+    worker.onmessage({ data: { type: 'progress', loaded: 3, total: 9, phase: 'translate' } });
+    expect(seen).toEqual([2, 3]);
   });
 
   it('forwards download progress while loading', async () => {
@@ -154,7 +167,7 @@ describe('translator.mjs', () => {
     worker.postMessage = function (message) {
       this.sent.push(message);
       queueMicrotask(() => this.reply(message.type === 'init'
-        ? { type: 'ready' }
+        ? { type: 'ready', initId: message.initId }
         : { type: 'error', id: message.id, message: 'translator returned 1 lines for 2 sentences' }));
     };
     const translator = createTranslator({ createWorker: () => worker });

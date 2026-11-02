@@ -50,12 +50,14 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   // Each init is numbered and the worker echoes the number, so a reply still in
   // transit from a load the reader has replaced cannot settle the newer one.
   let initSerial = 0;
-  const latest = (data) => data.initId === undefined || data.initId === initSerial;
+  const latest = (data) => data.initId === initSerial;
 
   worker.onmessage = ({ data }) => {
     switch (data.type) {
       case 'progress':
-        onProgress(data);
+        // A replaced load's download must not move the new one's bar. Batch
+        // progress carries no load number.
+        if (data.initId === undefined || latest(data)) onProgress(data);
         break;
       case 'ready':
         if (latest(data)) readyResolve?.();

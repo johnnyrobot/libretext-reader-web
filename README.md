@@ -123,8 +123,9 @@ reference for the copy order, including how it picks the right `ort-mt/` binarie
 they must be the version transformers.js bundles, because another version's wasm
 aborts inside its JS with no readable error. It ends by running
 `node scripts/check-no-supertonic.mjs` on the staged directory, which fails if any file
-Supertonic used (its worker, root `manifest.json`, `onnx/`, `voice_styles/`, `ort/`) or
-any code pointing at one is still there; CI runs the same check on the build. Listen mode
+Supertonic used (its root `manifest.json`, `onnx/` and `ort/`; its worker, its four
+networks and `voice_styles/` at any depth) or any code pointing at one is still there;
+CI runs the same check on the build. Listen mode
 runs Phonon only (LT-217), so a mirror that served Supertonic should delete those paths
 when it deploys this.
 
@@ -132,7 +133,8 @@ Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (mu
 download, ~120 MB served per pair) and copy its output to `mt/`, then stage each
 language's voice. Serve a pair only with its `phonon-<lang>/`: no other engine speaks
 a translation, and the reader offers every language in `mt/pairs.json` that it has a
-voice entry for, without fetching the voice first. `stage-local.sh`
+voice entry for. It reads each voice's manifest only to size the download, and still
+offers a language whose manifest does not load. `stage-local.sh`
 stages the four voices when `STAGE` is outside the repository (it skips them for the
 default `.stage/`, which is inside it), leaves out a language whose voice fails to
 build, and prunes `mt/pairs.json` to the languages that have one. Without `mt/` the
@@ -141,9 +143,10 @@ language menu does not appear.
 `PAGES_FROM=<dir>` makes `stage-local.sh` copy the books from an existing stage instead
 of fetching them from the mirror, and rebuild only `_assets/tts/`.
 
-`ASSETS_ONLY=1` stages only `_assets/tts/` and stops, fetching nothing. Like every run,
-it deletes `STAGE` first, books included, so point it at a directory of its own. The deploy
-uses it, so what it uploads is this layout.
+`ASSETS_ONLY=1` stages only `_assets/tts/` and stops: no books, nothing fetched from the
+mirror (it still builds, and fetches English Phonon from the Hub). Like every run, it
+deletes `STAGE` first, books included, so point it at a directory of its own. The
+mirror's deploy script, kept outside this repo, uses it, so what it uploads is this layout.
 
 `PHONON_LANGS` picks which translation voices to stage (default `fr de es pt`; an
 empty value stages none). A language left out is pruned from `mt/pairs.json` too.

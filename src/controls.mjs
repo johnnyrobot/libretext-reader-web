@@ -83,9 +83,9 @@ export function mountControls(host, {
   });
   el('voice').addEventListener('change', (e) => onVoice(e.target.value));
   el('rate').addEventListener('change', (e) => onRate(Number(e.target.value)));
-  const showVoicesFor = (lang) => { el('voice').disabled = lang !== 'en'; };
+  const enableVoicesFor = (lang) => { el('voice').disabled = lang !== 'en'; };
   if (languages.length) {
-    el('lang').addEventListener('change', (e) => { showVoicesFor(e.target.value); onLang(e.target.value); });
+    el('lang').addEventListener('change', (e) => { enableVoicesFor(e.target.value); onLang(e.target.value); });
   }
 
   const onKey = (event) => {
@@ -111,7 +111,7 @@ export function mountControls(host, {
     setLang(lang) {
       const select = el('lang');
       if (select) select.value = lang;
-      showVoicesFor(lang);
+      enableVoicesFor(lang);
     },
 
     /** Repaint one language after its model arrives.
