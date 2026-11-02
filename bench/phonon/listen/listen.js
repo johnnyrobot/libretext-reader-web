@@ -109,6 +109,7 @@ export async function speak(lang, text, { mute = false, voice = 'M1' } = {}) {
   const { worker, loadMs, bytes } = engine;
   if (stoppedLoading) return { lang, text, outcome: 'stopped' };
   await useVoice(engine, voice);
+  if (stoppedLoading) return { lang, text, outcome: 'stopped' };
   stopAudio();
   const id = `lt216-${nextId++}`;
   const sent = performance.now();

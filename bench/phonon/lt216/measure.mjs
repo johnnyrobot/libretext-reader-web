@@ -12,7 +12,7 @@
 // first sound), the second is the warm figure the bar is about.
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { loadavg } from 'node:os';
 import path from 'node:path';
 
@@ -59,6 +59,8 @@ for (const lang of langs) {
   const items = set.items.filter((item) => item[lang] && (!only || only.includes(item.id)));
   const dir = path.join(out, lang);
   mkdirSync(dir, { recursive: true });
+  // score.py scores every WAV here, so an earlier run's must not outlive this one.
+  for (const f of readdirSync(dir)) if (f.endsWith('.wav')) rmSync(path.join(dir, f));
   // Tagged so its process tree can be found: Playwright does not expose the pid.
   const tag = `--lt216-measure=${lang}-${process.pid}`;
   const browser = await chromium.launch({ channel: 'chrome', headless: true, args: [tag] });

@@ -8,8 +8,8 @@ Three of these matter and none is cosmetic:
   without, against a 0.500 gate. Without these headers playback stalls.
 * **`application/wasm`** -- Python's http.server does not know the type, and
   ONNX Runtime refuses to stream-compile anything else.
-* **immutable on /_assets/tts/** mirrors the Caddy exemption, so a reload does
-  not re-fetch 155 MB.
+* **immutable on Phonon's weights and voices** mirrors the Caddy exemption, so
+  a reload does not re-fetch 155 MB; the rest of /_assets/tts/ revalidates.
 
 Usage: scripts/serve-local.py [--root DIR] [--port 8788]
 """
@@ -18,6 +18,7 @@ import argparse
 import functools
 import http.server
 import mimetypes
+import re
 import socketserver
 
 mimetypes.add_type("application/wasm", ".wasm")
@@ -46,6 +47,12 @@ CSP = (
 )
 
 
+# The README's @ttsmodels: Phonon's weights and voices. Everything else under
+# /_assets/tts/ revalidates, as @ttscode does, and a manifest most of all: one
+# cached for a year outlives a restage (LT-222 gave each language M1 and F1).
+IMMUTABLE = re.compile(r"/_assets/tts/phonon(-(fr|de|es|pt))?/(onnx|voices)/")
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         # Header scoping matches the live Caddyfile exactly. This used to send
@@ -56,7 +63,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # /_assets/tts/. A local harness more permissive than the real server is
         # worse than no harness for exactly this class of bug.
         if self.path.startswith("/_assets/tts/"):
-            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable" if IMMUTABLE.match(self.path)
+                             else "public, max-age=0, must-revalidate")
             self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
             self.send_header("Cross-Origin-Resource-Policy", "same-origin")
         else:
