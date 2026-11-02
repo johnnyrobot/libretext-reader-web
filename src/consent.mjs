@@ -110,8 +110,7 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
       ? `<p><small>Male voice: Phonon by Gradium,
         <a href="${TRANSLATION_VOICE_LICENSE_URL}" target="_blank" rel="noopener">CC BY-NC 4.0</a>.
         Female voice: Phonon by Gradium, phonon-voices,
-        <a href="${APACHE_LICENSE_URL}" target="_blank" rel="noopener">Apache 2.0</a>.
-        The Male voice is for noncommercial use only.</small></p>`
+        <a href="${APACHE_LICENSE_URL}" target="_blank" rel="noopener">Apache 2.0</a>.</small></p>`
       : '';
     const terms = escapeHtml(licence);
     const warning = quotaSufficient

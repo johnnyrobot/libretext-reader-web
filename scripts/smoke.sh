@@ -66,59 +66,71 @@ grep -qi 'cross-origin-opener-policy: same-origin' <<<"$headers" \
 
 # Caddy sets these headers on any path, a 404 included, so every asset check also
 # requires a 200: against the retired Supertonic paths they were green on nothing.
-worker=$(curl -sSI --max-time 30 "$BASE/_assets/tts/phonon.worker.js" || true)
-if [ "$(status "$worker")" != 200 ]; then
-  bad "the worker carries its own COEP" "phonon.worker.js: HTTP $(status "$worker")"
-elif grep -qi 'cross-origin-embedder-policy: require-corp' <<<"$worker"; then
-  good "the worker carries its own COEP"
-else
-  bad "the worker carries its own COEP" "the browser will refuse to instantiate it"
-fi
+# served PATH HEADER-PATTERN WHY-NOT: prints nothing when PATH answers 200 with a
+# header matching the pattern, and otherwise why not.
+served() {
+  local h s
+  h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$1" || true)
+  s=$(status "$h")
+  if [ "$s" != 200 ]; then echo "$1: HTTP $s"
+  elif ! grep -qi "$2" <<<"$h"; then echo "$1 $3"
+  fi
+}
 
-# The cache policy is SPLIT, and both halves are load-bearing. Models are
-# content-addressed and immutable, or 155 MB re-downloads per visit. The code is
-# NOT: reader.js is imported on click, which a hard refresh does not bypass, so an
-# immutable reader.js kept two verified fixes from ever reaching a reporter
-# (2026-08-23). This check used to assert immutable on the worker and failed on
-# every run after the split -- a red that accused the deploy for doing the right thing.
-# Every model and voice file each Phonon manifest names, English and the four
-# translations: each must be there and cached for a year, or ~200 MB per language
-# re-downloads on every page view. HEAD only, so this costs nothing to run.
-for voice in phonon phonon-fr phonon-de phonon-es phonon-pt; do
-  check="$voice: its models and voices are served, immutable"
-  code=$(curl -sS --max-time 30 -o "$tmp/$voice.json" -w '%{http_code}' "$BASE/_assets/tts/$voice/manifest.json" || true)
-  if [ "$code" != 200 ]; then bad "$check" "manifest.json: HTTP ${code:-none}"; continue; fi
-  if ! files=$(python3 - "$tmp/$voice.json" <<'PY'
+why=$(served phonon.worker.js 'cross-origin-embedder-policy: require-corp' "lacks COEP, so the browser will refuse to instantiate it")
+if [ -z "$why" ]; then good "the worker carries its own COEP"; else bad "the worker carries its own COEP" "$why"; fi
+
+# The cache policy is SPLIT, and both halves are load-bearing. Every model and voice
+# file each Phonon manifest names must be there and cached for a year, or ~200 MB
+# per language re-downloads on every page view. The code is NOT immutable: reader.js
+# is imported on click, which a hard refresh does not bypass, so an immutable
+# reader.js kept two verified fixes from ever reaching a reporter (2026-08-23).
+# HEAD only, so this costs nothing to run.
+#
+# SMOKE_VOICES names the language folders the host serves: English and the four
+# translations by default, as on the mirror. The translations stay off a public
+# host until Gradium confirms the use (README), so such a host sets SMOKE_VOICES=phonon.
+VOICES="${SMOKE_VOICES:-phonon phonon-fr phonon-de phonon-es phonon-pt}"
+for lang_dir in $VOICES; do
+  check="$lang_dir: its models and voices are served, immutable"
+  code=$(curl -sS --max-time 30 -o "$tmp/$lang_dir.json" -w '%{http_code}' "$BASE/_assets/tts/$lang_dir/manifest.json" || true)
+  if [ "$code" != 200 ]; then bad "$check" "$lang_dir/manifest.json: HTTP ${code:-none}"; continue; fi
+  if ! files=$(python3 - "$tmp/$lang_dir.json" <<'PY'
 import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    paths = [e["path"] for e in json.load(f)["files"] if e["path"].startswith(("onnx/", "voices/"))]
+try:
+    with open(sys.argv[1], encoding="utf-8") as f:
+        paths = [e["path"] for e in json.load(f)["files"] if e["path"].startswith(("onnx/", "voices/"))]
+except Exception as e:
+    print(f"manifest.json is not a manifest ({type(e).__name__}: {e})"); raise SystemExit(1)
 if not any(p.startswith("onnx/") for p in paths) or not any(p.startswith("voices/") for p in paths):
-    raise SystemExit(1)
+    print("manifest.json names no model or no voice"); raise SystemExit(1)
 print("\n".join(paths))
 PY
   ); then
-    bad "$check" "manifest.json names no model or no voice"; continue
+    bad "$check" "$files"; continue
   fi
   why=""
   while IFS= read -r path; do
-    h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$voice/$path" || true)
-    if [ "$(status "$h")" != 200 ]; then why="$path: HTTP $(status "$h")"; break; fi
-    grep -qi 'cache-control: public.*immutable' <<<"$h" || { why="$path is not immutable"; break; }
+    why=$(served "$lang_dir/$path" 'cache-control: public.*immutable' "is not immutable")
+    [ -z "$why" ] || break
   done <<<"$files"
   if [ -z "$why" ]; then good "$check"; else bad "$check" "$why"; fi
 done
 
 # The code, and each manifest: one cached for a year outlives a restage, and a
 # browser holding a manifest from before LT-222 could not find the voices it names.
-why=""
-for path in reader.js phonon.worker.js phonon/manifest.json phonon-fr/manifest.json \
-            phonon-de/manifest.json phonon-es/manifest.json phonon-pt/manifest.json; do
-  h=$(curl -sSI --max-time 30 "$BASE/_assets/tts/$path" || true)
-  if [ "$(status "$h")" != 200 ]; then why="$path: HTTP $(status "$h")"; break; fi
-  grep -qi 'cache-control: .*must-revalidate' <<<"$h" || { why="$path does not revalidate"; break; }
+# Every path that fails is named, so one run shows them all.
+stale=""
+for path in reader.js phonon.worker.js; do
+  why=$(served "$path" 'cache-control: .*must-revalidate' "does not revalidate")
+  [ -z "$why" ] || stale="${stale:+$stale; }$why"
 done
-if [ -z "$why" ]; then good "the code and the manifests revalidate"
-else bad "the code and the manifests revalidate" "$why: returning readers stay on old code for a year"
+for lang_dir in $VOICES; do
+  why=$(served "$lang_dir/manifest.json" 'cache-control: .*must-revalidate' "does not revalidate")
+  [ -z "$why" ] || stale="${stale:+$stale; }$why"
+done
+if [ -z "$stale" ]; then good "the code and the manifests revalidate"
+else bad "the code and the manifests revalidate" "$stale: returning readers stay on old code for a year"
 fi
 
 grep -qi "script-src 'self' 'wasm-unsafe-eval' blob:" <<<"$headers" \

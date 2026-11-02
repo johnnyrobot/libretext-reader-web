@@ -968,7 +968,9 @@ The catalogue is Gradium's phonon-voices (da6c9ec0, Apache 2.0), as carried by
 the `phonon:40m-<lang>` Ollama copy of each language, pinned by its ID the same
 way as the model. Only its voice tensors are read; no Hugging Face. The Female
 voices are credited "Voices: Phonon by Gradium, phonon-voices, Apache 2.0" next
-to the model's CC BY-NC credit. The Male voice is the model's own default, so it
+to the model's CC BY-NC credit (LT-231 later named each: "Male voice: Phonon by
+Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache
+2.0."). The Male voice is the model's own default, so it
 stays under that CC BY-NC licence; the staged manifest records each file's source
 and licence. None of them is committed.
 

@@ -9,7 +9,7 @@
 // names none. Save (LT-219) writes an MP3; mp3.worker.js says how.
 
 const WORKER = '/_assets/tts/phonon.worker.js';
-const NC = 'Male voice: Phonon by Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
+const TRANSLATION_CREDIT = 'Male voice: Phonon by Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium, phonon-voices, Apache 2.0. Demo use only.';
 
 // The opening sentence of Social Psychology, chapter 1, as the Chief's
 // reference clips (rendered by Ollama, 2026-11-01 17:58 PT) speak it.
@@ -17,13 +17,13 @@ export const LANGS = {
   en: { name: 'English (Phonon 31M)', manifest: '/_assets/tts/phonon/manifest.json',
     credit: 'Phonon 31M by Gradium, Apache 2.0.',
     text: 'Social psychology is the scientific study of how we feel about, think about, and behave toward the other people around us, and how those people influence our thoughts, feelings, and behavior.' },
-  fr: { name: 'Français (Phonon 40M)', manifest: '/_assets/tts/phonon-fr/manifest.json', credit: NC,
+  fr: { name: 'Français (Phonon 40M)', manifest: '/_assets/tts/phonon-fr/manifest.json', credit: TRANSLATION_CREDIT,
     text: "La psychologie sociale est l'étude scientifique de la manière dont nous ressentons, pensons et nous comportons envers les personnes qui nous entourent et de la manière dont ces personnes influencent nos pensées, nos sentiments et notre comportement." },
-  de: { name: 'Deutsch (Phonon 40M)', manifest: '/_assets/tts/phonon-de/manifest.json', credit: NC,
+  de: { name: 'Deutsch (Phonon 40M)', manifest: '/_assets/tts/phonon-de/manifest.json', credit: TRANSLATION_CREDIT,
     text: 'Die Sozialpsychologie ist die wissenschaftliche Untersuchung dessen, wie wir gegenüber den Menschen um uns herum fühlen, denken und uns verhalten und wie diese Menschen unsere Gedanken, Gefühle und unser Verhalten beeinflussen.' },
-  es: { name: 'Español (Phonon 40M)', manifest: '/_assets/tts/phonon-es/manifest.json', credit: NC,
+  es: { name: 'Español (Phonon 40M)', manifest: '/_assets/tts/phonon-es/manifest.json', credit: TRANSLATION_CREDIT,
     text: 'La psicología social es el estudio científico de cómo sentimos, pensamos y nos comportamos hacia las demás personas que nos rodean, y de cómo esas personas influyen en nuestros pensamientos, sentimientos y comportamiento.' },
-  pt: { name: 'Português (Phonon 40M)', manifest: '/_assets/tts/phonon-pt/manifest.json', credit: NC,
+  pt: { name: 'Português (Phonon 40M)', manifest: '/_assets/tts/phonon-pt/manifest.json', credit: TRANSLATION_CREDIT,
     text: 'A psicologia social é o estudo científico de como sentimos, pensamos e nos comportamos em relação às outras pessoas ao nosso redor e de como essas pessoas influenciam nossos pensamentos, sentimentos e comportamento.' },
 };
 

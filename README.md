@@ -261,7 +261,8 @@ node scripts/math-audit.mjs --url https://<host>/<book>/<a page with equations>/
 `smoke.sh` checks the things above (button, `speech.json` offsets, every header, scope),
 and that the worker, each language's manifest and every model and voice file that manifest
 names answer 200 with the right cache header (a header alone proves nothing: Caddy sends it on
-a 404 too). It prints `SMOKE_OK`, or one line per check that failed. Then open a page, press
+a 404 too). It checks English and the four translations; a host that serves English only
+sets `SMOKE_VOICES=phonon`. It prints `SMOKE_OK`, or one line per check that failed. Then open a page, press
 *Enter Reader Mode*, accept the download, press ▶, and listen — see *Checking that it
 sounds right* for why that last step is not optional.
 

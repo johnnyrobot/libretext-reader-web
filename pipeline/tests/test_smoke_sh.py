@@ -11,9 +11,11 @@ import importlib.util
 import json
 import os
 import re
+import shutil
 import subprocess
 import threading
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -88,14 +90,13 @@ def mirror(tmp_path):
 
     server = serve_local.Server(("127.0.0.1", 0), functools.partial(Live, directory=str(tmp_path)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield type("Mirror", (), {"root": tmp_path, "immutable": immutable,
-                              "base": f"http://127.0.0.1:{server.server_address[1]}"})
+    yield SimpleNamespace(root=tmp_path, immutable=immutable, base=f"http://127.0.0.1:{server.server_address[1]}")
     server.shutdown()
     server.server_close()
 
 
-def smoke(mirror):
-    env = {**os.environ, "SMOKE_BASE": mirror.base, "SMOKE_PAGE": PAGE, "SMOKE_OUT_OF_SCOPE": "/chem101/"}
+def smoke(mirror, **extra):
+    env = {**os.environ, "SMOKE_BASE": mirror.base, "SMOKE_PAGE": PAGE, "SMOKE_OUT_OF_SCOPE": "/chem101/", **extra}
     run = subprocess.run(["bash", str(ROOT / "scripts" / "smoke.sh")], env=env, capture_output=True,
                          text=True, timeout=120)
     return run.returncode, run.stdout + run.stderr
@@ -111,6 +112,19 @@ def test_a_good_mirror_passes(mirror):
     assert code == 0, out
     assert "SMOKE_OK" in out
     assert failed(out) == []
+
+
+# The translations stay off a public host until Gradium confirms the use (README),
+# so a host that serves English only says so, and stays green.
+def test_a_host_that_serves_english_only_passes_when_it_says_so(mirror):
+    for name in VOICES[1:]:
+        shutil.rmtree(mirror.root / "_assets/tts" / name)
+    code, out = smoke(mirror, SMOKE_VOICES="phonon")
+    assert code == 0, out
+    assert failed(out) == []
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert "phonon-fr: its models and voices are served, immutable" in failed(out)
 
 
 def test_a_speech_json_whose_offsets_do_not_round_trip_fails(mirror):
@@ -136,11 +150,20 @@ def test_a_404_model_voice_or_manifest_fails(mirror, missing):
     (mirror.root / "_assets/tts" / missing).unlink()
     code, out = smoke(mirror)
     assert code == 1, out
-    voice = missing.split("/")[0]
-    expected = [f"{voice}: its models and voices are served, immutable"]
+    lang_dir = missing.split("/")[0]
+    expected = [f"{lang_dir}: its models and voices are served, immutable"]
     if missing.endswith("manifest.json"):   # nor can it be shown to revalidate
         expected.append("the code and the manifests revalidate")
     assert failed(out) == expected
+
+
+def test_a_manifest_that_is_not_json_says_so(mirror):
+    (mirror.root / "_assets/tts/phonon-es/manifest.json").write_text("<html>Not found</html>", encoding="utf-8")
+    code, out = smoke(mirror)
+    assert code == 1, out
+    assert failed(out) == ["phonon-es: its models and voices are served, immutable"]
+    assert "manifest.json is not a manifest (JSONDecodeError" in out
+    assert "Traceback" not in out
 
 
 # A manifest cached for a year outlives a restage (LT-222); an immutable reader.js
