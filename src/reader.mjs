@@ -322,9 +322,9 @@ async function runEntry() {
   } catch (error) {
     progress.close();
     engine.terminate();
-    // Put the page back on these exits too, as exitReaderMode does: wrapped
-    // sentences left behind fail the next entry with "Nothing on this page could
-    // be matched to the reading list" (LT-223).
+    // Put the page back here and on a cancel below, as exitReaderMode does:
+    // wrapped sentences left behind fail the next entry with "Nothing on this
+    // page could be matched to the reading list" (LT-223).
     unmountSentences(elements);
     closeOverlay();
     showError(String(error?.message ?? error));

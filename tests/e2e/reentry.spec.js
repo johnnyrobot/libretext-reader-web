@@ -2,6 +2,18 @@ import { test, expect } from '@playwright/test';
 
 const IN_SCOPE = '/social_psychology/13:_Competition_and_Cooperation_in_Our_Social_Worlds/13.01:_Conflict_Cooperation_Morality_and_Fairness/';
 
+// How long a held request waits. The double-press test's waits are measured
+// against it, so they move together.
+const HOLD_MS = 3_000;
+
+/** Holds every request matching `pattern` for HOLD_MS before letting it through. */
+async function holdRequests(page, pattern) {
+  await page.route(pattern, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, HOLD_MS));
+    await route.continue();
+  });
+}
+
 async function enterAndWait(page) {
   await page.locator('#tts-enter').click();
   const dialog = page.locator('.tts-dialog');
@@ -47,21 +59,18 @@ test.describe('leaving and re-entering Reader Mode', () => {
   // top one opened Reader Mode and left the other on screen, over the page.
   test('pressing Enter Reader Mode again while it loads opens one dialog', async ({ page }) => {
     // Hold the reading list back so both presses land before the first dialog.
-    await page.route(/\/speech\.json$/, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 3_000));
-      await route.continue();
-    });
+    await holdRequests(page, /\/speech\.json$/);
     await page.goto(IN_SCOPE);
 
     await page.locator('#tts-enter').click();
     // A fixed wait, not a condition: the bug is a press that lands while nothing
     // visible has happened yet, so there is nothing on the page to wait for.
-    await page.waitForTimeout(1_000);
+    await page.waitForTimeout(HOLD_MS / 3);
     await page.locator('#tts-enter').click();
 
     await page.locator('.tts-dialog').first().waitFor({ state: 'visible', timeout: 30_000 });
     // Long enough for a second flow, held back by the same delay, to catch up.
-    await page.waitForTimeout(4_000);
+    await page.waitForTimeout(HOLD_MS + 1_000);
     await expect(page.locator('.tts-dialog')).toHaveCount(1);
 
     await page.locator('[data-act="accept"]').click();
@@ -88,10 +97,7 @@ test.describe('leaving and re-entering Reader Mode', () => {
   // reading list" -- the same leftover the exit path already cleans up.
   test('after Cancel, pressing Enter Reader Mode opens Reader Mode', async ({ page }) => {
     // Slow the voice download so there is time to press Cancel during it.
-    await page.route(/\/phonon\/onnx\//, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 3_000));
-      await route.continue();
-    });
+    await holdRequests(page, /\/phonon\/onnx\//);
     await page.goto(IN_SCOPE);
 
     await page.locator('#tts-enter').click();
