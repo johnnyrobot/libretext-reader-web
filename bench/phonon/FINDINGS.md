@@ -761,7 +761,8 @@ that it helps English.
 runs at <http://127.0.0.1:8820/social_psychology/listen-lt216/>, on the stage
 built by `bench/phonon/listen/stage.sh` (port 8820, because 8812–8814 were taken
 by LT-217's servers). The page picks a language, plays the text in the box,
-shows first sound, RTF and download size, and saves a WAV.
+shows first sound, RTF and download size, and saves an MP3 (LT-219; it saved a
+WAV until then).
 
 ### Not verified (LT-216)
 

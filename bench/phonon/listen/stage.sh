@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # THROWAWAY SPIKE (LT-216). Stage the listening page: the built reader's Phonon
 # worker, English Phonon 31M, and fr/de/es/pt Phonon 40M exported from the
-# Ollama copies.
+# Ollama copies. Save on the page writes an MP3 with the vendored lamejs (LT-219).
 # Everything lands in STAGE (default /Users/Shared/LT-216/stage), outside git.
 #
 #   bench/phonon/listen/stage.sh
@@ -20,6 +20,10 @@ TTS="$STAGE/_assets/tts"
 PAGE="$STAGE/social_psychology/listen-lt216"
 
 cd "$ROOT"
+# Save's MP3 encoder, lamejs, is LGPL: it is staged unmodified, as its own file,
+# with its licence texts. Checked first, before the long model staging.
+(cd bench/phonon/listen/vendor/lamejs && shasum -a 256 -c --quiet SHA256SUMS)
+
 echo "==> building"
 npx vite build >/dev/null
 
@@ -56,5 +60,8 @@ for lang in ${LANGS:-fr de es pt}; do
 done
 
 echo "==> staging the page"
-cp bench/phonon/listen/index.html bench/phonon/listen/listen.js bench/phonon/listen/listen.css "$PAGE/"
+mkdir -p "$PAGE/vendor/lamejs"
+cp bench/phonon/listen/index.html bench/phonon/listen/listen.js bench/phonon/listen/listen.css \
+  bench/phonon/listen/mp3.worker.js "$PAGE/"
+cp bench/phonon/listen/vendor/lamejs/* "$PAGE/vendor/lamejs/"
 du -sh "$TTS"/phonon*
