@@ -325,9 +325,10 @@ each language's own 40M checkpoint (`phonon:fr`, `phonon:de`, `phonon:es`, `phon
 Ollama), run in the browser. Each language's Male voice is its checkpoint's own default
 voice, under the same CC BY-NC licence. Its Female voice is an Apache 2.0 voice from
 [`gradium/phonon-voices`](https://huggingface.co/gradium/phonon-voices), read from the language's
-`phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. The reader
-credits them as "Male voice: Phonon by Gradium, CC BY-NC 4.0. Female voice: Phonon by Gradium,
-phonon-voices, Apache 2.0." `scripts/stage-phonon-lang.py`
+`phonon:40m-<lang>` Ollama copy; `bench/phonon/FINDINGS.md` "LT-222" says which. Both voices
+are spoken by the CC BY-NC model, so the reader credits them as "Voice model: Phonon 40M by
+Gradium, CC BY-NC 4.0. Male voice: the model's own. Female voice: from Gradium's phonon-voices,
+Apache 2.0." `scripts/stage-phonon-lang.py`
 builds the browser files from a pinned Ollama copy at stage time, outside this
 repository; they are never committed. A reader who only ever listens in English never
 downloads them, and one who picks a language downloads only that language's. They may

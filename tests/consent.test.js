@@ -6,6 +6,8 @@ import {
 afterEach(() => { document.body.innerHTML = ''; });
 
 const dialog = () => document.querySelector('.tts-dialog');
+const VOICE_CREDIT = "Voice model: Phonon 40M by Gradium, CC BY-NC 4.0. Male voice: the model's own. "
+  + "Female voice: from Gradium's phonon-voices, Apache 2.0.";
 const click = (act) => dialog().querySelector(`[data-act="${act}"]`).click();
 
 describe('the translation consent gate', () => {
@@ -145,15 +147,18 @@ describe('the translation gate when the translation voice is not downloaded yet 
     const text = dialog().textContent.replace(/\s+/g, ' ');
     expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
     expect(text).toContain('190 MB voice that reads español aloud');
-    // Each voice under its own licence, in the wording the Chief approved (LT-231):
-    // the Male voice is the model's own, the Female one is from phonon-voices (LT-222).
-    expect(text).toContain('Male voice: Phonon by Gradium, CC BY-NC 4.0.');
-    expect(text).toContain('Female voice: Phonon by Gradium, phonon-voices, Apache 2.0.');
+    // Both voices are spoken by the CC BY-NC model; only the Female voice file is
+    // Apache 2.0, so the credit names the model's licence first (LT-234).
+    expect(text).toContain(VOICE_CREDIT);
+    expect(text).not.toContain('Female voice: Phonon by Gradium');
     expect(text).not.toContain('Supertonic');
     expect(text).not.toContain('OpenRAIL-M');
-    const link = dialog().querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]');
-    expect(link).not.toBeNull();
-    expect(dialog().querySelector('a[href="https://www.apache.org/licenses/LICENSE-2.0"]')).not.toBeNull();
+    // The model's licence is linked from the model, the Apache one from the Female voice.
+    const credit = [...dialog().querySelectorAll('small')].find((s) => s.textContent.includes('Voice model:'));
+    expect(credit.querySelector('a[href="https://creativecommons.org/licenses/by-nc/4.0/"]').textContent)
+      .toBe('CC BY-NC 4.0');
+    expect(credit.querySelector('a[href="https://www.apache.org/licenses/LICENSE-2.0"]').textContent)
+      .toBe('Apache 2.0');
     click('decline');
     await answer;
   });
