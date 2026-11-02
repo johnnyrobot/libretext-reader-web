@@ -797,6 +797,11 @@ def _pt_number_phrase(token: str) -> str:
 # rule.
 _PT_GROUPED = r"[1-9]\d{0,2}(?:\.\d{3})+(?!\d)|[1-9]\d{0,2}(?:,\d{3})+(?!\d)"
 _PT_GROUPED_RE = re.compile(rf"\b(?:{_PT_GROUPED})")
+# A whole part, grouped or not. With a decimal after it, "1.250,50" (or the
+# leaked "1,250.50") is ONE amount: read apart, the head became a number and
+# the ",50" was left behind.
+_PT_WHOLE = rf"(?:{_PT_GROUPED}|\d+)"
+_PT_GROUPED_DECIMAL_RE = re.compile(r"\b([1-9]\d{0,2}(?:\.\d{3})+),(\d+)\b")
 _PT_COMMA_DECIMAL_RE = re.compile(r"\b(\d+),(\d+)\b")
 # A short dot is KEPT from English, as in German: "Tabela 1.3", "3.14", "2.0".
 _PT_SECTION_DOT_RE = re.compile(r"\b(\d+)\.(\d{1,2})(?!\d)")
@@ -806,12 +811,15 @@ _PT_AMOUNT = rf"(?:{_PT_GROUPED}|\d+)(?:,\d+)?"
 # The sign was measured three ways: "US$ 3 milhões", "US $" and a bare "$".
 _PT_SIGN = r"(?:\bUS\s?)?\$\s?"
 _PT_SCALE = r"(?:milhão|milhões|bilhão|bilhões|trilhão|trilhões)"
-_PT_CURRENCY_SCALE_RE = re.compile(rf"{_PT_SIGN}(\d+(?:,\d+)?)\s+({_PT_SCALE})\b")
+# An English dot before a scale ("US$ 1.5 bilhão") is a decimal, read as a comma.
+_PT_CURRENCY_SCALE_RE = re.compile(
+    rf"{_PT_SIGN}(\d+(?:,\d+|\.\d{{1,2}}(?!\d))?)\s+({_PT_SCALE})\b")
+# Cents after a sign, with either mark: "US$ 12,50", or English "$3.50".
 _PT_CURRENCY_CENTS_RE = re.compile(
-    rf"{_PT_SIGN}(\d+),(\d{{1,2}})(?!\d)(?!\s+{_PT_SCALE}\b)")
+    rf"{_PT_SIGN}({_PT_WHOLE})[.,](\d{{1,2}})(?!\d)(?!\s+{_PT_SCALE}\b)")
 _PT_CURRENCY_SIGN_RE = re.compile(rf"{_PT_SIGN}({_PT_GROUPED}|\d+)")
 # And spelled out after the amount: "12,50 dólares".
-_PT_CURRENCY_WORD_RE = re.compile(r"\b(\d+),(\d{1,2})\s+dólares\b")
+_PT_CURRENCY_WORD_RE = re.compile(rf"\b({_PT_WHOLE}),(\d{{1,2}})\s+dólares\b")
 _PT_PERCENT_RE = re.compile(rf"\b({_PT_AMOUNT})\s?%")
 # en-pt kept "et al." three times in four; the voice would read the Latin.
 _PT_ET_AL_RE = re.compile(r"\bet\s+al\.")
@@ -833,11 +841,11 @@ def _pt_money(value: int) -> str:
 
 
 def _pt_currency_scale(match: re.Match) -> str:
-    return f"{_pt_amount(match.group(1))} {match.group(2)} de dólares"
+    return f"{_pt_amount(match.group(1).replace('.', ',', 1))} {match.group(2)} de dólares"
 
 
 def _pt_currency_cents(match: re.Match) -> str:
-    dollars = int(match.group(1))
+    dollars = int(re.sub(r"[.,]", "", match.group(1)))
     cents = int(match.group(2).ljust(2, "0"))
     centavos = f"{_pt_int_to_words(cents)} {'centavo' if cents == 1 else 'centavos'}"
     if dollars == 0 and cents:
@@ -859,6 +867,8 @@ def normalize_pt_for_speech(text: str) -> str:
     out = _PT_CURRENCY_SIGN_RE.sub(lambda m: _pt_money(int(re.sub(r"[.,]", "", m.group(1)))), out)
     out = _PT_CURRENCY_WORD_RE.sub(_pt_currency_cents, out)
     out = _PT_PERCENT_RE.sub(lambda m: _pt_amount(m.group(1)) + " por cento", out)
+    out = _PT_GROUPED_DECIMAL_RE.sub(
+        lambda m: _pt_fraction(m.group(1).replace(".", ""), m.group(2), "vírgula"), out)
     # Groups before the comma decimal, so "1,250" is never "um vírgula dois...".
     out = _PT_GROUPED_RE.sub(lambda m: _pt_number_phrase(m.group(0)), out)
     out = _PT_COMMA_DECIMAL_RE.sub(

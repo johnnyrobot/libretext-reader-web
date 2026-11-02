@@ -644,6 +644,7 @@ def test_portuguese_years_are_plain_cardinals():
     # identifier and is read digit by digit.
     ("1.000.000 casos", "um milhão casos"),
     ("1246120 e", "um dois quatro seis um dois zero e"),
+    ("pesa 1.234,5 kg", "pesa mil duzentos e trinta e quatro vírgula cinco kg"),
 ])
 def test_portuguese_separators(source, expected):
     assert normalize_pt_for_speech(source) == expected
@@ -664,6 +665,13 @@ def test_portuguese_separators(source, expected):
     ("45% de US$ 3 milhões", "quarenta e cinco por cento de três milhões de dólares"),
     ("US$ 2,5 bilhões", "dois vírgula cinco bilhões de dólares"),
     ("US$ 1.000.000", "um milhão de dólares"),
+    # A grouped amount with cents is one amount, in Brazilian or leaked
+    # English form; English-dot cents and scales too.
+    ("custou US$ 1.250,50.", "custou mil duzentos e cinquenta dólares e cinquenta centavos."),
+    ("custava 1.250,50 dólares", "custava mil duzentos e cinquenta dólares e cinquenta centavos"),
+    ("custou $1,250.50.", "custou mil duzentos e cinquenta dólares e cinquenta centavos."),
+    ("custou $3.50.", "custou três dólares e cinquenta centavos."),
+    ("US$ 1.5 bilhão", "um vírgula cinco bilhão de dólares"),
 ])
 def test_portuguese_currency(source, expected):
     assert normalize_pt_for_speech(source) == expected

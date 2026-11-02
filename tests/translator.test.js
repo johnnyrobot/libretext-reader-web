@@ -124,28 +124,37 @@ describe('translator.mjs', () => {
     await expect(german).resolves.toBeUndefined();
   });
 
-  it('shows only the current load\'s download progress, and every batch\'s', () => {
+  it('shows only the current load\'s download progress; a batch\'s goes to that batch', () => {
+    // A stopped Portuguese queue's batch still running in the worker must not
+    // move the bar of the French download that replaced it.
     const worker = { sent: [], onmessage: null, postMessage(m) { this.sent.push(m); }, terminate() {} };
     const translator = createTranslator({ createWorker: () => worker });
     translator.init({ pair: 'en-fr' }).catch(() => {});
-    const seen = [];
-    translator.init({ pair: 'en-de', onProgress: (p) => seen.push(p.loaded) });
-    const [fr, de] = worker.sent.map((m) => m.initId);
+    const download = [];
+    const batch = [];
+    translator.init({ pair: 'en-de', onProgress: (p) => download.push(p.loaded) });
+    translator.translate(['one.'], (p) => batch.push(p.loaded)).catch(() => {});
+    translator.translate(['two.']).catch(() => {});
+    const [fr, de] = worker.sent.filter((m) => m.type === 'init').map((m) => m.initId);
+    const [withBar, without] = worker.sent.filter((m) => m.type === 'translate').map((m) => m.id);
     worker.onmessage({ data: { type: 'progress', initId: fr, loaded: 1, total: 9 } });
     worker.onmessage({ data: { type: 'progress', initId: de, loaded: 2, total: 9 } });
-    worker.onmessage({ data: { type: 'progress', loaded: 3, total: 9, phase: 'translate' } });
-    expect(seen).toEqual([2, 3]);
+    worker.onmessage({ data: { type: 'progress', id: withBar, loaded: 3, total: 9, phase: 'translate' } });
+    worker.onmessage({ data: { type: 'progress', id: without, loaded: 4, total: 9, phase: 'translate' } });
+    expect(download).toEqual([2]);
+    expect(batch).toEqual([3]);
   });
 
   it('forwards download progress while loading', async () => {
     const { worker, translator } = withFakeWorker();
     const seen = [];
     const ready = translator.init({ pair: 'en-es', onProgress: (p) => seen.push(p) });
-    worker.reply({ type: 'progress', file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download' });
+    const { initId } = worker.sent[0];
+    worker.reply({ type: 'progress', initId, file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download' });
     await ready;
 
     expect(seen).toEqual([{
-      type: 'progress', file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download',
+      type: 'progress', initId, file: 'onnx/encoder_model_quantized.onnx', loaded: 5, total: 10, phase: 'download',
     }]);
   });
 

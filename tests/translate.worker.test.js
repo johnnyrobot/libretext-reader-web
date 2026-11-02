@@ -220,6 +220,18 @@ describe('the worker protocol', () => {
     });
   });
 
+  it('says which batch its translation progress belongs to', async () => {
+    const lines = Array.from({ length: 9 }, (_, i) => `Sentence ${i}.`);
+    const { handle, of } = handlerWith(async () => echoUpper);
+    await handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es' });
+
+    await handle({ type: 'translate', id: 7, lines });
+
+    const batch = of('progress').filter((p) => p.phase === 'translate');
+    expect(batch.length).toBeGreaterThan(0);
+    expect(batch.every((p) => p.id === 7)).toBe(true);
+  });
+
   it('round-trips the id, and the lines in order', async () => {
     const { handle, of } = handlerWith(async () => echoUpper);
     await handle({ type: 'init', manifestUrl: '/m.json', pair: 'en-es' });

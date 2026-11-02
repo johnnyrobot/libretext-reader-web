@@ -31,6 +31,16 @@ describe('supertonicFiles', () => {
     expect(supertonicFiles(root)).toEqual([]);
   });
 
+  it('given a whole stage, checks its /_assets/tts/, where the root-only names live', () => {
+    // Pointed at the stage rather than its tts folder, the root-only names
+    // (manifest.json, onnx/, ort/) would be looked for in the wrong place.
+    put('_assets/tts/manifest.json', '{"files":[]}');
+    put('_assets/tts/ort/ort-wasm-simd.wasm');
+    put('_assets/tts/phonon/manifest.json', '{"files":[]}');
+    put('social_psychology/index.html');
+    expect(supertonicFiles(root)).toEqual(['manifest.json', 'ort/ort-wasm-simd.wasm']);
+  });
+
   it('names every Supertonic file the old layout carried', () => {
     put('engine.worker.js');
     put('manifest.json', '{"files":[]}');

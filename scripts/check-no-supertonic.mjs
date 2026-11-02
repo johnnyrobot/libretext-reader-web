@@ -5,6 +5,9 @@
  *   node scripts/check-no-supertonic.mjs dist/_assets/tts     the build
  *   node scripts/check-no-supertonic.mjs .stage/_assets/tts   the staged layout
  *
+ * Given a whole stage instead, it checks that stage's _assets/tts/: the
+ * root-only names below mean the root of /_assets/tts/.
+ *
  * Listen mode runs Phonon only, with no fallback, so nothing Supertonic used
  * may ship: its worker, its manifest at the root, its onnx/ and voice_styles/,
  * and the ONNX Runtime 1.17 copy in ort/ that only its worker loaded. Phonon's
@@ -15,7 +18,7 @@
  * which the workers bundle, supports Supertonic models by name, and that is
  * code we never call, not a file we ship.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,8 +49,15 @@ function walk(dir) {
   });
 }
 
-/** Paths under `root`, relative and sorted, that are or point at Supertonic. */
-export function supertonicFiles(root) {
+/** `dir` itself, or its _assets/tts/ when `dir` is a whole stage or build. */
+export function ttsRoot(dir) {
+  const tts = join(dir, '_assets', 'tts');
+  return existsSync(tts) ? tts : dir;
+}
+
+/** Paths under the tts root of `dir`, relative and sorted, that are or point at Supertonic. */
+export function supertonicFiles(dir) {
+  const root = ttsRoot(dir);
   return walk(root)
     .map((path) => relative(root, path).split(sep).join('/'))
     .filter((path) => {
@@ -64,11 +74,12 @@ export function supertonicFiles(root) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const root = process.argv[2];
-  if (!root) {
+  const dir = process.argv[2];
+  if (!dir) {
     console.error('usage: check-no-supertonic.mjs <_assets/tts dir>');
     process.exit(2);
   }
+  const root = ttsRoot(dir);
   const found = supertonicFiles(root);
   if (found.length) {
     console.error(`Supertonic is still in ${root}:\n${found.map((p) => `  ${p}`).join('\n')}`);

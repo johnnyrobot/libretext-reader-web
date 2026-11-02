@@ -50,7 +50,7 @@ class Pair:
 
 PAIRS = {
     "en-es": Pair(repo="Xenova/opus-mt-en-es", base="Helsinki-NLP/opus-mt-en-es"),
-    # Second pair, 2026-08-25 (design §12 open decision 1). French rather than
+    # Added 2026-08-25 (design §12 open decision 1). French rather than
     # any of the other 27 because it is the other language with a demo book
     # behind it, and because it shares the Romance plain-cardinal year reading
     # that pipeline/lang_normalize.py's Spanish pass already established.
@@ -59,10 +59,10 @@ PAIRS = {
     # checkpoint, but Xenova has no ONNX export of it, exactly as with Spanish.
     # The browser gets the smaller model or nothing.
     "en-fr": Pair(repo="Xenova/opus-mt-en-fr", base="Helsinki-NLP/opus-mt-en-fr"),
-    # Eighth pair, 2026-08-27, and the best numbers of any language screened for
+    # Added 2026-08-27, with the best numbers of any language screened for
     # this project: 1.27% (6 of 472), prose 0.21%, median 0.8090 on the
-    # post-splitter corpus. The prose rate ties Swedish's for the lowest ever
-    # measured here, and German is the largest audience among everything that
+    # post-splitter corpus. The prose rate ties the lowest ever measured here
+    # (Swedish's, a track LT-217 removed), and German is the largest audience among everything that
     # remains reachable.
     #
     # No checkpoint gap: pipeline/languages.py registers opus-mt-en-de, which IS
@@ -73,12 +73,15 @@ PAIRS = {
     # The four candidates screened alongside it all failed decisively and are
     # recorded so nobody re-runs them: id 2.75%, ru 3.39%, ar 5.72%, uk 7.63%.
     "en-de": Pair(repo="Xenova/opus-mt-en-de", base="Helsinki-NLP/opus-mt-en-de"),
-    # Fourth pair, LT-217 (2026-11-01). Portuguese is the one language here not
+    # Added in LT-217 (2026-11-01). Portuguese is the one language here not
     # exported by Xenova: Douglasrambo/opus-mt-tc-big-en-pt-onnx is a third-party
     # export, pinned by revision and hash like the rest, of the cc-by-4.0
     # Helsinki-NLP checkpoint. No checkpoint gap: pipeline/languages.py registers
     # opus-mt-tc-big-en-pt, which IS this export's base. Xenova/opus-mt-en-ROMANCE
     # was measured first and returned garbage.
+    #
+    # The quality gate, one sentence at a time on the same 472 sentences as the
+    # others: 6 failures, under the bar of 12 (LT-217).
     #
     # Measured on 146 corpus sentences: batched with padding it generates past the
     # sentence (21 lines ended in "))))))" or "......"); one sentence at a time it

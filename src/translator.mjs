@@ -55,9 +55,10 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
   worker.onmessage = ({ data }) => {
     switch (data.type) {
       case 'progress':
-        // A replaced load's download must not move the new one's bar. Batch
-        // progress carries no load number.
-        if (data.initId === undefined || latest(data)) onProgress(data);
+        // A batch's progress goes to that batch, and a replaced load's
+        // download to no one: neither may move the current load's bar.
+        if (data.id !== undefined) pending.get(data.id)?.onProgress?.(data);
+        else if (latest(data)) onProgress(data);
         break;
       case 'ready':
         if (latest(data)) readyResolve?.();
@@ -111,16 +112,15 @@ export function createTranslator({ createWorker, workerUrl = DEFAULT_WORKER_URL,
       return loaded;
     },
 
-    // `onProgress` again, because the worker reports progress during a long
-    // translation too, and a run that reuses init's callback would label
-    // translation progress with the download's wording. Only one operation is in
-    // flight at a time, so one slot is enough.
-    translate(lines, progress) {
-      if (progress) onProgress = progress;
+    // Its own `onProgress`, kept with the batch, because the worker reports
+    // progress during a long translation too: on init's callback it would be
+    // labelled with the download's wording, and a stopped batch still running
+    // would move a newer download's bar.
+    translate(lines, onProgress) {
       const id = nextId;
       nextId += 1;
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        pending.set(id, { resolve, reject, onProgress });
         worker.postMessage({ type: 'translate', id, lines });
       });
     },

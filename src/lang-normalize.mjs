@@ -757,6 +757,11 @@ function ptNumberPhrase(token) {
 const PT_GROUPED = '[1-9]\\d{0,2}(?:\\.\\d{3})+(?!\\d)|[1-9]\\d{0,2}(?:,\\d{3})+(?!\\d)';
 const PT_GROUPED_RE = new RegExp(`${B}(?:${PT_GROUPED})`, 'gu');
 const PT_GROUPED_ONLY_RE = new RegExp(`^(?:${PT_GROUPED})$`, 'u');
+// A whole part, grouped or not. With a decimal after it, "1.250,50" (or the
+// leaked "1,250.50") is ONE amount: read apart, the head became a number and
+// the ",50" was left behind.
+const PT_WHOLE = `(?:${PT_GROUPED}|\\d+)`;
+const PT_GROUPED_DECIMAL_RE = new RegExp(`${B}([1-9]\\d{0,2}(?:\\.\\d{3})+),(\\d+)${B}`, 'gu');
 const PT_COMMA_DECIMAL_RE = new RegExp(`${B}(\\d+),(\\d+)${B}`, 'gu');
 // A short dot is KEPT from English, as in German: "Tabela 1.3", "3.14", "2.0".
 const PT_SECTION_DOT_RE = new RegExp(`${B}(\\d+)\\.(\\d{1,2})(?!\\d)`, 'gu');
@@ -767,12 +772,15 @@ const PT_AMOUNT = `(?:${PT_GROUPED}|\\d+)(?:,\\d+)?`;
 const PT_SIGN = `(?:${B}US\\s?)?\\$\\s?`;
 const PT_SCALE = '(?:milhão|milhões|bilhão|bilhões|trilhão|trilhões)';
 const PT_SCALE_END_RE = new RegExp(`${PT_SCALE}$`, 'u');
-const PT_CURRENCY_SCALE_RE = new RegExp(`${PT_SIGN}(\\d+(?:,\\d+)?)\\s+(${PT_SCALE})${B}`, 'gu');
+// An English dot before a scale ("US$ 1.5 bilhão") is a decimal, read as a comma.
+const PT_CURRENCY_SCALE_RE = new RegExp(
+  `${PT_SIGN}(\\d+(?:,\\d+|\\.\\d{1,2}(?!\\d))?)\\s+(${PT_SCALE})${B}`, 'gu');
+// Cents after a sign, with either mark: "US$ 12,50", or English "$3.50".
 const PT_CURRENCY_CENTS_RE = new RegExp(
-  `${PT_SIGN}(\\d+),(\\d{1,2})(?!\\d)(?!\\s+${PT_SCALE}${B})`, 'gu');
+  `${PT_SIGN}(${PT_WHOLE})[.,](\\d{1,2})(?!\\d)(?!\\s+${PT_SCALE}${B})`, 'gu');
 const PT_CURRENCY_SIGN_RE = new RegExp(`${PT_SIGN}(${PT_GROUPED}|\\d+)`, 'gu');
 // And spelled out after the amount: "12,50 dólares".
-const PT_CURRENCY_WORD_RE = new RegExp(`${B}(\\d+),(\\d{1,2})\\s+dólares${B}`, 'gu');
+const PT_CURRENCY_WORD_RE = new RegExp(`${B}(${PT_WHOLE}),(\\d{1,2})\\s+dólares${B}`, 'gu');
 const PT_PERCENT_RE = new RegExp(`${B}(${PT_AMOUNT})\\s?%`, 'gu');
 // en-pt kept "et al." three times in four; the voice would read the Latin.
 const PT_ET_AL_RE = new RegExp(`${B}et\\s+al\\.`, 'gu');
@@ -793,7 +801,7 @@ function ptMoney(value) {
 }
 
 function ptCurrencyCents(_match, whole, fraction) {
-  const dollars = Number(whole);
+  const dollars = Number(ptStrip(whole));
   const cents = Number(fraction.padEnd(2, '0'));
   const centavos = `${ptIntToWords(cents)} ${cents === 1 ? 'centavo' : 'centavos'}`;
   if (dollars === 0 && cents) return centavos;
@@ -806,11 +814,13 @@ export function normalizePtForSpeech(text) {
   out = out.replace(PT_ET_AL_RE, 'e outros');
   // Currency and percentages claim their digits first, as in every language.
   out = out.replace(PT_CURRENCY_SCALE_RE,
-    (_m, amount, scale) => `${ptAmount(amount)} ${scale} de dólares`);
+    (_m, amount, scale) => `${ptAmount(amount.replace('.', ','))} ${scale} de dólares`);
   out = out.replace(PT_CURRENCY_CENTS_RE, ptCurrencyCents);
   out = out.replace(PT_CURRENCY_SIGN_RE, (_m, amount) => ptMoney(Number(ptStrip(amount))));
   out = out.replace(PT_CURRENCY_WORD_RE, ptCurrencyCents);
   out = out.replace(PT_PERCENT_RE, (_m, amount) => `${ptAmount(amount)} por cento`);
+  out = out.replace(PT_GROUPED_DECIMAL_RE,
+    (_m, whole, fraction) => ptFraction(ptStrip(whole), fraction, 'vírgula'));
   // Groups before the comma decimal, so "1,250" is never "um vírgula dois...".
   out = out.replace(PT_GROUPED_RE, (m) => ptNumberPhrase(m));
   out = out.replace(PT_COMMA_DECIMAL_RE,

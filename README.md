@@ -130,7 +130,7 @@ runs Phonon only (LT-217), so a mirror that served Supertonic should delete thos
 when it deploys this.
 
 Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (multi-GB
-download, ~120 MB served per pair) and copy its output to `mt/`, then stage each
+download; ~110 MB served per pair, ~495 MB for Portuguese, the full-size checkpoint) and copy its output to `mt/`, then stage each
 language's voice. Serve a pair only with its `phonon-<lang>/`: no other engine speaks
 a translation, and the reader offers every language in `mt/pairs.json` that it has a
 voice entry for. It reads each voice's manifest only to size the download, and still

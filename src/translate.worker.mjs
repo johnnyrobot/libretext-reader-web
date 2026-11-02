@@ -11,7 +11,8 @@
  * Protocol, deliberately the same shape as the speech worker's:
  *
  *   -> { type: 'init', manifestUrl, pair, initId }
- *   <- { type: 'progress', initId, file, loaded, total, phase }   initId while loading
+ *   <- { type: 'progress', initId, file, loaded, total, phase }   while loading
+ *   <- { type: 'progress', id, loaded, total, phase: 'translate' }  during a batch
  *   <- { type: 'ready', initId }          only for the latest init
  *   -> { type: 'translate', id, lines: string[] }
  *   <- { type: 'translated', id, lines: string[] }
@@ -265,7 +266,7 @@ export function createHandler({ post, load = loadTranslator }) {
         if (!translate && !loading) throw new Error('translator not initialised');
         const session = translate ?? await loading;
         const lines = await translateBatch(session, data.lines, (p) => post({
-          type: 'progress', file: null, loaded: p.loaded, total: p.total, phase: p.phase,
+          type: 'progress', id: data.id, file: null, loaded: p.loaded, total: p.total, phase: p.phase,
         }), code);
         post({ type: 'translated', id: data.id, lines });
       }

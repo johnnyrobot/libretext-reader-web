@@ -535,9 +535,12 @@ test.describe('client-side translation', () => {
       await expect.poll(() => page.evaluate(() => window.__starts.length),
         { timeout: 60_000 }).toBeGreaterThan(0);
 
+      // Counted from the pick, not from the consent: English must already be
+      // silent while the download question is open.
       await select.selectOption('de');
+      const picked = await page.evaluate(() => performance.now());
+      await expect(toggle).toHaveAttribute('aria-label', 'Play');
       await acceptTranslation(page, 'Deutsch');
-      const accepted = await page.evaluate(() => performance.now());
 
       // Ready, or the box: whichever comes first is the answer.
       const outcome = await page.waitForFunction(() => {
@@ -550,7 +553,7 @@ test.describe('client-side translation', () => {
 
       await expect(toggle).toHaveAttribute('aria-label', 'Play');
       const spokenWhileWaiting = await page.evaluate(
-        (t) => window.__starts.filter((s) => s > t).length, accepted);
+        (t) => window.__starts.filter((s) => s > t).length, picked);
       expect(spokenWhileWaiting, 'English kept playing through the switch').toBe(0);
       await expect(select).toHaveValue('de');
     });
