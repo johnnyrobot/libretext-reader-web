@@ -92,7 +92,8 @@ that path, or change every one of them in a single commit.
 
 ```bash
 npm install                      # devDependencies are needed: the math bridge runs at build time
-python -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
+python3.13 -m venv .venv         # any Python 3.10+, by name; see *Running it* below
+.venv/bin/pip install -r pipeline/requirements.txt
 npm run build                    # → dist/_assets/tts/
 ```
 
@@ -385,21 +386,45 @@ bridge (`scripts/math-speech.mjs`) requires both at build time, and an `--omit=d
 install gives it a `node` that dies on module resolution the moment a page has an
 equation.
 
+It needs Node 22 and Python 3.10 or newer; CI runs 3.13. Make the virtualenv with a
+named interpreter, such as `python3.13` or `python3.12`: on a Mac, plain `python3` is often
+the system's 3.9, and with it staging stops in the pipeline with
+`TypeError: unsupported operand type(s) for |`. On an Intel Mac use 3.12, since `torch`
+has no 3.13 build there. `npm run stage` and `npm run serve` both call `.venv/bin/python`,
+so the virtualenv must exist first.
+
 ```bash
 npm install
+python3.13 -m venv .venv         # or python3.12 etc.: any 3.10+, named
+.venv/bin/pip install -r pipeline/requirements.txt
 npm run build
 
 npm run stage      # build a local copy of a real page + assets into .stage/
 npm run serve      # serve it with the COOP/COEP headers production sends
 ```
 
-Then open the staged page and press *Enter Reader Mode*.
+Then open
+<http://127.0.0.1:8788/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/>
+and press *Enter Reader Mode*. `BOOK_NAME`, `PAGE_URL` and `PAGE_DIR` stage a different
+page: `PAGE_URL` is the page on the mirror, and `PAGE_DIR` is its path below the book,
+decoded (`:` for `%3A`, `(` for `%28`). The book must be one of the four in `ALLOWED_BOOKS`
+(`pipeline/tts_manifest.py`: `social_psychology`, `math_elem_teachers`, `chem_4b`,
+`human_relations`); the pipeline refuses any other, and `npm run serve` isolates only those.
+
+A fresh clone stages English only, and two messages say so; both are expected:
+
+- `==> no translation models to stage`: the Opus-MT models come from
+  `scripts/convert-mt-models.py` and are not in the repository, so there is no
+  `mt/pairs.json`, and the browser logs a 404 for `/_assets/tts/mt/pairs.json`.
+- `(skipped: STAGE is inside the repo; …)`: the fr/de/es/pt voices are spoken by a
+  CC BY-NC 4.0 model, built from local Ollama copies and staged only outside the
+  repository (see *Model weights* above).
 
 ## Tests
 
 ```bash
 npx vitest run                       # browser modules
-python -m pytest pipeline/tests -q   # the build step
+.venv/bin/python -m pytest pipeline/tests -q   # the build step
 npx playwright test                  # end to end, needs a staged copy
 ```
 

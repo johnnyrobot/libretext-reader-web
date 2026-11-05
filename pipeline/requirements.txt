@@ -4,6 +4,9 @@ pytest>=8.0
 ctranslate2>=4.5
 transformers>=4.44
 sentencepiece>=0.2
+# onnx: scripts/stage-phonon-lang.py rewrites the ONNX graphs when it stages the
+# fr/de/es/pt voices (numpy comes in through transformers).
+onnx
 
 # torch is NOT imported anywhere translation actually runs (pipeline/opus.py talks
 # to ctranslate2's own runtime, never torch) -- it is needed only at CONVERSION
