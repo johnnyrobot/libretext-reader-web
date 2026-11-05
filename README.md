@@ -406,9 +406,10 @@ npm run serve      # serve it with the COOP/COEP headers production sends
 Then open
 <http://127.0.0.1:8788/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/>
 and press *Enter Reader Mode*. `BOOK_NAME`, `PAGE_URL` and `PAGE_DIR` stage a different
-page; the comments in `scripts/stage-local.sh` describe them and the other options.
-`npm run serve` isolates only the four mirror books (`social_psychology`,
-`math_elem_teachers`, `chem_4b`, `human_relations`), so stage one of those.
+page: `PAGE_URL` is the page on the mirror, and `PAGE_DIR` is its path below the book,
+decoded (`:` for `%3A`, `(` for `%28`). The book must be one of the four in `ALLOWED_BOOKS`
+(`pipeline/tts_manifest.py`: `social_psychology`, `math_elem_teachers`, `chem_4b`,
+`human_relations`); the pipeline refuses any other, and `npm run serve` isolates only those.
 
 A fresh clone stages English only, and two messages say so; both are expected:
 
