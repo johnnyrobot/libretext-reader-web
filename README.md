@@ -92,7 +92,7 @@ that path, or change every one of them in a single commit.
 
 ```bash
 npm install                      # devDependencies are needed: the math bridge runs at build time
-python -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt
+python3.13 -m venv .venv && .venv/bin/pip install -r pipeline/requirements.txt   # Python 3.10+; CI runs 3.13
 npm run build                    # → dist/_assets/tts/
 ```
 
@@ -385,15 +385,31 @@ bridge (`scripts/math-speech.mjs`) requires both at build time, and an `--omit=d
 install gives it a `node` that dies on module resolution the moment a page has an
 equation.
 
+It needs Node 22 and Python 3.10 or newer; CI runs 3.13. Name the interpreter when
+making the virtualenv: on a Mac, plain `python3` is often the system's 3.9, and with it
+staging stops in the pipeline with `TypeError: unsupported operand type(s) for |`.
+`npm run stage` and `npm run serve` both run `.venv/bin/python`, so the virtualenv must
+exist first.
+
 ```bash
 npm install
+python3.13 -m venv .venv
+.venv/bin/pip install -r pipeline/requirements.txt
 npm run build
 
 npm run stage      # build a local copy of a real page + assets into .stage/
 npm run serve      # serve it with the COOP/COEP headers production sends
 ```
 
-Then open the staged page and press *Enter Reader Mode*.
+Then open
+<http://127.0.0.1:8788/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/>
+and press *Enter Reader Mode*. `BOOK_NAME`, `PAGE_URL` and `PAGE_DIR` stage a different
+page; the top of `scripts/stage-local.sh` lists every option.
+
+A fresh clone stages English only. The fr/de/es/pt voices are CC BY-NC and are staged only
+outside the repository, from local Ollama copies (see *Model weights* below), so staging
+prints `(skipped: STAGE is inside the repo; …)`, and the browser logs a 404 for
+`/_assets/tts/mt/pairs.json`. Both are expected.
 
 ## Tests
 
