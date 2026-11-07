@@ -322,8 +322,11 @@ let engine = null;              // Promise of the started module, one per worker
  * progress goes to whichever init asked last, since that is the one the reader
  * is watching. A failed load is forgotten so the next pick retries it.
  *
- * `clear()` is for an engine that aborted: every session on it is dead, and so
- * is any load in flight on it, whose result is then not remembered.
+ * `clear()` is for an engine that aborted: every loaded session on it is dead.
+ * A load still in flight is KEPT. It is almost always still downloading, and
+ * goes on to start a fresh engine; dropping it would make the next pick of that
+ * pair build a second model beside it. A load caught by the abort itself is
+ * refused by `loadPair`, which checks its engine is still the live one.
  * Exported for tests/translate.worker.test.js.
  */
 export function createPairCache(loadPair) {
@@ -338,23 +341,19 @@ export function createPairCache(loadPair) {
       return inFlight.promise;
     }
     const entry = { onProgress };
-    const mine = () => pending.get(pair) === entry;
     entry.promise = Promise.resolve()
       .then(() => loadPair({ manifestUrl, pair, onProgress: (p) => entry.onProgress(p) }))
       .then((translate) => {
-        if (mine()) sessions.set(pair, translate);
+        sessions.set(pair, translate);
         return translate;
       })
-      .finally(() => {
-        if (mine()) pending.delete(pair);
-      });
+      .finally(() => pending.delete(pair));
     pending.set(pair, entry);
     return entry.promise;
   }
 
   function clear() {
     sessions.clear();
-    pending.clear();
   }
 
   return { load, clear };
@@ -390,10 +389,15 @@ async function loadPair({ manifestUrl, pair, onProgress }) {
     started = startEngine(wasm, forget).catch((error) => { forget(); throw error; });
     engine = started;
   }
-  const bergamot = await engine;
+  const live = engine;
+  const bergamot = await live;
 
   const [source, target] = pair.split('-');
-  return createBergamotSession(bergamot, buffers, source, target);
+  const translate = createBergamotSession(bergamot, buffers, source, target);
+  // The engine can abort between `await` and here (another pair's batch runs in
+  // that gap). A session on it would be cached and fail every batch.
+  if (engine !== live) throw new Error('translation engine aborted while loading');
+  return translate;
 }
 
 const pairs = createPairCache(loadPair);
@@ -446,10 +450,13 @@ export function createHandler({ post, load = pairs.load }) {
         // arrives before any init at all is still a programming error and says so.
         // Kept local: a newer init may replace `translate` during the wait.
         if (!translate && !loading) throw new Error('translator not initialised');
+        // Read before the wait, like `loading`: a newer init changes `code`, but
+        // this batch still runs on the model it waited for.
+        const batchCode = code;
         const session = translate ?? await loading;
         const lines = await translateBatch(session, data.lines, (p) => post({
           type: 'progress', id: data.id, file: null, loaded: p.loaded, total: p.total, phase: p.phase,
-        }), code);
+        }), batchCode);
         post({ type: 'translated', id: data.id, lines });
       }
     } catch (error) {

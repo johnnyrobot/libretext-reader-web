@@ -384,21 +384,31 @@ describe('the pair cache', () => {
     expect(loadPair).toHaveBeenCalledTimes(2);
   });
 
-  it('does not remember a load that was in flight when the engine died', async () => {
-    // clear() is what the engine's abort calls. A session built on the dead
-    // module must not be served to the next reader who picks that pair.
-    const stale = deferred();
-    const loadPair = vi.fn()
-      .mockReturnValueOnce(stale.promise)
-      .mockResolvedValueOnce(echoUpper);
+  it('keeps sharing a load still in flight after the engine died (clear)', async () => {
+    // A Spanish download still running when a French batch kills the engine
+    // goes on to start a FRESH engine and build a good session. Dropping it
+    // would make the next Spanish pick build a second model beside it.
+    const spanish = deferred();
+    const loadPair = vi.fn(() => spanish.promise);
     const pairs = createPairCache(loadPair);
 
-    const dying = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    const first = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
     pairs.clear();
-    stale.resolve(session((lines) => lines));
-    await dying;
+    const again = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    spanish.resolve(echoUpper);
 
-    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(await again).toBe(await first);
+    expect(loadPair).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops loaded sessions when the engine died (clear)', async () => {
+    const loadPair = vi.fn(async () => session((lines) => lines));
+    const pairs = createPairCache(loadPair);
+
+    const dead = await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.clear();
+
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).not.toBe(dead);
     expect(loadPair).toHaveBeenCalledTimes(2);
   });
 });
@@ -418,5 +428,60 @@ describe('the worker protocol, with a shared load', () => {
     await Promise.all([first, third]);
 
     expect(of('ready').map((m) => m.initId)).toEqual([2, 3]);
+  });
+
+  it('reports a shared load that fails to the latest init only', async () => {
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair }) => (pair === 'en-es' ? spanish.promise : Promise.resolve(echoUpper)));
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    spanish.reject(new Error('network'));
+    await Promise.all([first, third]);
+
+    expect(of('error')).toEqual([{ type: 'error', id: undefined, initId: 3, message: 'network' }]);
+  });
+
+  it('labels a shared load\'s progress with the latest init', async () => {
+    let report;
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair, onProgress }) => {
+      if (pair !== 'en-es') return Promise.resolve(echoUpper);
+      report = onProgress;
+      return spanish.promise;
+    });
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    report({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+    spanish.resolve(echoUpper);
+    await Promise.all([first, third]);
+
+    expect(of('progress').map((m) => m.initId)).toEqual([3]);
+  });
+});
+
+describe('a batch waiting on a load', () => {
+  it('speaks with the rules of the language it was translated into', async () => {
+    // es init, a batch that waits on it, then fr: the batch runs on the
+    // Spanish model, so it must not be normalised as French. French spells
+    // out a number as a French word; Spanish as a Spanish one.
+    const spanish = deferred();
+    const { handle, of } = handlerWith(({ pair }) => (pair === 'en-es'
+      ? spanish.promise
+      : Promise.resolve(session((lines) => lines))));
+
+    const es = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es' });
+    const batch = handle({ type: 'translate', id: 1, lines: ['Tengo 2 libros.'] });
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    spanish.resolve(session((lines) => lines));
+    await Promise.all([es, batch, fr]);
+
+    const [spoken] = of('translated')[0].lines;
+    expect(spoken).not.toMatch(/deux/);
   });
 });
