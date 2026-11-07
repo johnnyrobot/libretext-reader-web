@@ -81,8 +81,9 @@ python3 "$ROOT/scripts/fetch-phonon.py" "$TTS/phonon"
 # checked there against scripts/mt-models.lock.json. Optional in the same way
 # and for the same reason the translate step below is: it is ~37 MB a pair
 # (~25 MB compressed) plus the 5 MB engine, and staging must stay runnable on a
-# machine that has never run it. Every manifest.json is written by that script, not here -- it records the Remote
-# Settings record and licence alongside the hashes.
+# machine that has never run it. Every manifest.json is written by that script,
+# not here -- it records the Remote Settings record and licence alongside the
+# hashes.
 #
 # The old directory is removed first: copying over a stage that still holds the
 # Opus-MT pairs (bench/assets/mt, retired) would leave its files beside these.

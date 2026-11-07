@@ -355,7 +355,10 @@ async function runEntry() {
    * Costs nothing on the common path: modelsPresent checks caches.has() before
    * caches.open(), so a reader who has never downloaded a language does not even
    * fetch a manifest here, and no cache entry is created by the asking. */
-  const stored = await Promise.all(pairs.map((p) => translationStored(p.pair)));
+  // A lookup that fails counts as "not stored": the menu then quotes a download
+  // and picking the language asks first, which is the safe way to be wrong, and
+  // a failed fetch here cannot stop an English reader.
+  const stored = await Promise.all(pairs.map((p) => translationStored(p.pair).catch(() => false)));
 
   /** A language's voice download, 0 once it is stored. That language's size
    * includes it until then, in the menu and in the dialog alike. It fetches the

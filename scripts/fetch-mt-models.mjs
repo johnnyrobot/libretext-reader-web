@@ -157,12 +157,14 @@ pairs.sort((a, b) => a.code.localeCompare(b.code));
 
 // Everything is fetched and checked; now, and only now, write.
 mkdirSync(OUT, { recursive: true });
+// pairs.json goes before the removals: a run that stops between the two leaves
+// a folder the menu does not list, never a listed pair with no folder.
 for (const [name, files] of Object.entries(dirs)) writeDir(join(OUT, name), files);
+writeFileSync(join(OUT, 'pairs.json'), asJson({ version: 1, pairs }));
 for (const entry of readdirSync(OUT, { withFileTypes: true })) {
   if (entry.isDirectory() && /^en-[a-z]+$/.test(entry.name) && !dirs[entry.name]) {
     rmSync(join(OUT, entry.name), { recursive: true, force: true });
     console.log(`removed ${entry.name}, which this run did not fetch`);
   }
 }
-writeFileSync(join(OUT, 'pairs.json'), asJson({ version: 1, pairs }));
 console.log(`wrote ${OUT}`);

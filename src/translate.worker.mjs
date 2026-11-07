@@ -206,20 +206,26 @@ function serviceFor(bergamot) {
  * Exported so a test can run the real engine on the real files.
  */
 export function createBergamotSession(bergamot, buffers, source, target) {
-  const guarded = (fn) => {
-    try {
-      return fn();
-    } catch (error) {
-      throw engineError(bergamot, error);
-    }
-  };
-  // Built in a function of its own so the session below does not keep `buffers`
-  // reachable: the engine has copied every byte into its heap, and a closure
-  // over the ~37 MB of ArrayBuffers would hold a second copy per language.
-  const model = guarded(() => loadModel(bergamot, buffers, source, target));
-  const service = guarded(() => serviceFor(bergamot));
+  const model = guarded(bergamot, () => loadModel(bergamot, buffers, source, target));
+  // The session is made in a function of its own. A closure keeps its whole
+  // enclosing scope alive, so one made here would keep `buffers` reachable: the
+  // engine has copied every byte into its heap, and the ~37 MB of ArrayBuffers
+  // would stay as a second copy per language for as long as `sessions` holds it.
+  return translateWith(bergamot, model, guarded(bergamot, () => serviceFor(bergamot)));
+}
 
-  return async (lines) => guarded(() => {
+/** Run a C++ call, rethrowing anything it throws as a readable Error. */
+function guarded(bergamot, fn) {
+  try {
+    return fn();
+  } catch (error) {
+    throw engineError(bergamot, error);
+  }
+}
+
+/** `translate(lines)` on one loaded model. */
+function translateWith(bergamot, model, service) {
+  return async (lines) => guarded(bergamot, () => {
     const messages = new bergamot.VectorString();
     const options = new bergamot.VectorResponseOptions();
     let responses;

@@ -216,7 +216,7 @@ describe('translationStored', () => {
   // A language is "(downloaded)" only if picking it fetches nothing. That needs
   // the engine too: a pair's own files in the cache say nothing about the 5 MB
   // engine every pair shares, and a reader told "(downloaded)" gets no consent
-  // dialog. A new engine in the lock file would then download silently.
+  // dialog, so a missing engine would download without one.
   const file = (path) => ({ name: path, path, bytes: 1, sha256: '00' });
   const manifests = {
     [`${MT_ROOT}en-fr/manifest.json`]: { version: 1, files: [file('model.bin')] },

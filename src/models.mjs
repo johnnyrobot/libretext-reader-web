@@ -4,7 +4,9 @@ export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
 // Translation models live in their OWN cache, not alongside the voice. A reader
 // who wants their 40 MB of Spanish back must not have to throw away the voice
 // to get it, and vice versa -- deleteModels() deletes a whole cache.
-// v2 since LT-255: Firefox Translations, engine and models.
+// v2 since LT-255: Firefox Translations, engine and models. Bump it whenever
+// scripts/mt-models.lock.json changes a file: "already downloaded" is decided by
+// URL (translator.mjs, translationStored), and the URLs stay the same.
 export const MT_CACHE_NAME = 'libretexts-mt-v2';
 
 // Caches nothing reads any more. 'libretexts-tts-v1' held Supertonic, ~380 MB,
