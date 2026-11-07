@@ -2,13 +2,15 @@
 export const PHONON_CACHE_NAME = 'libretexts-tts-phonon-v1';
 
 // Translation models live in their OWN cache, not alongside the voice. A reader
-// who wants their 121 MB of Spanish back must not have to throw away the voice
+// who wants their 40 MB of Spanish back must not have to throw away the voice
 // to get it, and vice versa -- deleteModels() deletes a whole cache.
-export const MT_CACHE_NAME = 'libretexts-mt-v1';
+// v2 since LT-255: Firefox Translations, engine and models.
+export const MT_CACHE_NAME = 'libretexts-mt-v2';
 
 // Caches nothing reads any more. 'libretexts-tts-v1' held Supertonic, ~380 MB,
-// which Listen mode stopped using in LT-217.
-const RETIRED_CACHES = ['libretexts-tts-v1'];
+// which Listen mode stopped using in LT-217. 'libretexts-mt-v1' held Opus-MT,
+// 108-516 MB a language, replaced in LT-255.
+const RETIRED_CACHES = ['libretexts-tts-v1', 'libretexts-mt-v1'];
 
 async function sha256Hex(buffer) {
   const digest = await crypto.subtle.digest('SHA-256', buffer);

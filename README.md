@@ -22,7 +22,7 @@ We started with **Supertonic**. We replaced it with **Phonon** from Gradium:
 | Accuracy | similar | similar |
 | English licence | OpenRAIL-M | Apache 2.0 (open) |
 
-**Languages:** English, French, German, Spanish and Portuguese, each with a male and a female voice. Pages are translated in the browser, one sentence at a time, and then spoken. The four non-English voices are licensed for non-commercial use, so they stay demo-only until Gradium confirms in writing that we may use them. English has no such restriction.
+**Languages:** English, French, German, Spanish and Portuguese, each with a male and a female voice. Pages are translated in the browser by Mozilla's Firefox Translations (the same engine and models Firefox uses), then spoken. The four non-English voices are licensed for non-commercial use, so they stay demo-only until Gradium confirms in writing that we may use them. English has no such restriction.
 
 ### Does closing the browser mean downloading again?
 
@@ -84,7 +84,7 @@ flowchart LR
     J --> P["phonon.worker.js<br/>English: Phonon 31M on ONNX Runtime wasm, streamed"]
     K --> P
     P --> M["player.mjs<br/>audio + sentence highlight"]
-    I -. language chosen .-> N["translate.worker.js<br/>Opus-MT, per sentence"]
+    I -. language chosen .-> N["translate.worker.js<br/>Firefox Translations (Bergamot),<br/>~37 MB per language"]
     N --> L["phonon.worker.js, phonon-&lt;lang&gt;/<br/>that language's Phonon 40M, CC BY-NC 4.0,<br/>~190 MB, loaded only then"]
     L --> M
   end
@@ -141,13 +141,13 @@ Then lay out the served directory:
 
 ```
 /_assets/tts/
-├── boot.js  reader.js  models.js  qa.js  reader.css  preload-helper.js  from dist/
+├── boot.js  reader.js  models.js  qa.js  reader.css                    from dist/
 ├── phonon.worker.js  translate.worker.js  transformers.web.js           from dist/
 ├── phonon/                  English voice (~155 MB): scripts/fetch-phonon.py <this dir>/phonon
 ├── phonon-fr/ phonon-de/    one Phonon 40M per translation language (~190 MB each):
 ├── phonon-es/ phonon-pt/      scripts/stage-phonon-lang.py <lang> <this dir>/phonon-<lang>
-├── ort-mt/                  onnxruntime-web wasm, for Phonon and the translator
-└── mt/                      optional: one directory per language pair + pairs.json
+├── ort-mt/                  onnxruntime-web wasm, for Phonon
+└── mt/                      optional: bergamot/ (the engine), one directory per language pair, pairs.json
 ```
 
 `scripts/stage-local.sh` does exactly this into `.stage/` (or `STAGE=<dir>`) and is the
@@ -161,8 +161,9 @@ CI runs the same check on the build. Listen mode
 runs Phonon only (LT-217), so a mirror that served Supertonic should delete those paths
 when it deploys this.
 
-Translation is optional. To ship it, run `scripts/convert-mt-models.py` once (multi-GB
-download; ~110 MB served per pair, ~495 MB for Portuguese, the full-size checkpoint) and copy its output to `mt/`, then stage each
+Translation is optional. To ship it, run `node scripts/fetch-mt-models.mjs` once (Node 22.15 or
+newer; ~37 MB per pair plus a 5 MB engine shared by all of them, written to
+`bench/assets/mt-bergamot/`) and copy its output to `mt/`, then stage each
 language's voice. Serve a pair only with its `phonon-<lang>/`: no other engine speaks
 a translation, and the reader offers every language in `mt/pairs.json` that it has a
 voice entry for. It reads each voice's manifest only to size the download, and still
@@ -373,15 +374,23 @@ noncommercial terms travel with them to anyone who receives them, and they are n
 distributed here — staging fetches them. Whether those terms suit a given distribution is
 a legal question, not a code one, and it is not settled by this repository being MIT.
 
-The text is translated in the browser by Opus-MT from
-[Helsinki-NLP](https://huggingface.co/Helsinki-NLP) (the OPUS-MT project, University of
-Helsinki): `opus-mt-en-fr` and `opus-mt-en-es` (Apache 2.0) and `opus-mt-en-de`
-(CC BY 4.0) through Xenova's ONNX exports, and `opus-mt-tc-big-en-pt` (**CC BY 4.0**)
-through a third-party ONNX export,
-[`Douglasrambo/opus-mt-tc-big-en-pt-onnx`](https://huggingface.co/Douglasrambo/opus-mt-tc-big-en-pt-onnx).
-That export is pinned to revision `738ee4cc` with every file's sha256 in
-`scripts/convert-mt-models.py`, and staging stops if the repo or its base stops carrying
-a permissive licence. Like the voices, none of these weights is committed.
+The text is translated in the browser by
+[Firefox Translations](https://github.com/mozilla/firefox-translations-models), Mozilla's
+own models (v3, `base-memory`) run by its Bergamot engine
+([bergamot-translator](https://github.com/mozilla/bergamot-translator), a wasm build of
+Marian). Models and engine are both **MPL-2.0**. The engine's JavaScript glue is vendored
+unchanged in `src/vendor/bergamot/` with its licence; `vite.config.js` turns it into an ES
+module at build time. Every file is pinned, with Mozilla's own sha256 before and after
+decompression, in `scripts/mt-models.lock.json`, and `scripts/fetch-mt-models.mjs` stops
+on any mismatch. The files are fetched from Firefox's attachment CDN when staging and
+served from our own origin; a reader's browser never contacts Mozilla. Like the voices,
+none of these files is committed.
+
+It replaced Opus-MT (LT-255) after a benchmark (LT-252) in which it scored higher in all
+four languages (COMET-22 83.2 against 80.7 on news text; about half as many badly wrong
+sentences on 472 textbook sentences), at a third of the download and about six times the
+speed. `scripts/convert-mt-models.py`, which staged Opus-MT for the browser, is kept only
+for the Opus-MT comparison tools.
 
 Supertonic, which spoke the translations until LT-217, is gone from Listen mode entirely,
 with no fallback in any language.
@@ -441,8 +450,8 @@ decoded (`:` for `%3A`, `(` for `%28`). The book must be one of the four in `ALL
 
 A fresh clone stages English only, and two messages say so; both are expected:
 
-- `==> no translation models to stage`: the Opus-MT models come from
-  `scripts/convert-mt-models.py` and are not in the repository, so there is no
+- `==> no translation models to stage`: the Firefox Translations files come from
+  `node scripts/fetch-mt-models.mjs` and are not in the repository, so there is no
   `mt/pairs.json`, and the browser logs a 404 for `/_assets/tts/mt/pairs.json`.
 - `(skipped: STAGE is inside the repo; …)`: the fr/de/es/pt voices are spoken by a
   CC BY-NC 4.0 model, built from local Ollama copies and staged only outside the
@@ -505,6 +514,8 @@ Known limits, all documented rather than hidden:
   voice files are Apache 2.0);
   they run on the staging mirror, a demo, and are not served publicly until Gradium
   confirms the use is noncommercial.
-- The translation quality gate (472 sentences, at most 2% failing) passed for all four:
-  Portuguese 6, German 9, French 10 and Spanish 10 failures.
+- The translation quality gate (472 sentences, at most 2% failing) passed for all four
+  with Opus-MT: Portuguese 6, German 9, French 10 and Spanish 10 failures. Firefox
+  Translations, which replaced it (LT-255), had fewer badly wrong sentences in every
+  language on the same 472 (LT-252).
 - `docs/SPEAKING_MATHEMATICS.md` §8 lists the remaining phrasing defects.

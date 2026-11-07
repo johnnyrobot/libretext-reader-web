@@ -11,7 +11,8 @@
  * Listen mode runs Phonon only, with no fallback, so nothing Supertonic used
  * may ship: its worker, its manifest at the root, its onnx/ and voice_styles/,
  * and the ONNX Runtime 1.17 copy in ort/ that only its worker loaded. Phonon's
- * own files live under phonon/, and the translator's runtime under ort-mt/.
+ * own files live under phonon/, its runtime under ort-mt/, and the translator
+ * (Firefox Translations, LT-255) under mt/.
  *
  * Built code is checked too, for a URL that still points at one of those
  * files. The word "Supertonic" itself is not searched for: transformers.js,
@@ -28,7 +29,7 @@ const FILES = new Set(['manifest.json']);
 const DIRS = new Set(['onnx', 'ort']);
 // Supertonic's alone, so a copy anywhere in the tree is named: its worker,
 // its four networks and its voice styles. Phonon's networks are flow_lm and
-// mimi_decoder, the translator's encoder_model and decoder_model.
+// mimi_decoder; the translator's are model.en*.bin under mt/.
 const ANYWHERE_FILES = new Set([
   'engine.worker.js',
   'duration_predictor.onnx', 'text_encoder.onnx', 'vector_estimator.onnx', 'vocoder.onnx',

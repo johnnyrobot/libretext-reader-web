@@ -16,11 +16,10 @@ const PHONON_MODEL_URL = 'https://huggingface.co/onnx-community/phonon-31m-en-ON
 const TRANSLATION_MODEL_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc/4.0/';
 const APACHE_LICENSE_URL = 'https://www.apache.org/licenses/LICENSE-2.0';
 
-// The Opus-MT checkpoint the ONNX export is quantized from. Linked rather than
-// the export itself because the export carries no licence tag of its own -- see
-// scripts/convert-mt-models.py, which resolves the licence through this repo and
-// records which one it came from.
-const MT_MODEL_URL = 'https://huggingface.co/Helsinki-NLP/opus-mt-en-es';
+// Mozilla's Firefox Translations models (LT-255), the repository that publishes
+// them with their licence. The files themselves come from Firefox's own CDN,
+// pinned in scripts/mt-models.lock.json, and are served from our origin.
+const MT_MODEL_URL = 'https://github.com/mozilla/firefox-translations-models';
 
 // Every other string this file interpolates is a literal or a number. `language`
 // and `licence` are neither: they come from LANGUAGE_LABELS and pairs.json, and
@@ -86,15 +85,15 @@ export function requestConsent({ requiredBytes, quotaSufficient }) {
  * A SECOND gate, and it is not a formality.
  *
  * A reader who accepted 155 MB for a voice has not thereby accepted another
- * 121 MB for Spanish. It is a separate download, of a separate model, under a
+ * 40 MB for Spanish. It is a separate download, of a separate model, under a
  * separate licence, made days later by someone who has forgotten the first
  * dialog -- so it is asked separately.
  *
  * The licence is named because this project's model choice was MADE on licence
  * grounds: NLLB is the obvious multilingual checkpoint and is out, because its
- * output is cc-by-nc-4.0 and cannot ship inside an MIT product. Opus-MT is
- * apache-2.0, which is the reason it is here, so the reader gets told which one
- * they are running.
+ * output is cc-by-nc-4.0 and cannot ship inside an MIT product. Firefox
+ * Translations is mpl-2.0, models and engine both, which is why it could replace
+ * Opus-MT (apache-2.0) in LT-255; the reader gets told which one they are running.
  */
 export function requestTranslationConsent({ language, requiredBytes, quotaSufficient, licence, voiceBytes = 0 }) {
   return new Promise((resolve) => {
@@ -130,8 +129,8 @@ export function requestTranslationConsent({ language, requiredBytes, quotaSuffic
          sentences wrong.</p>
       ${warning}
       <p><small>Translation model:
-        <a href="${MT_MODEL_URL}" target="_blank" rel="noopener">Opus-MT (English to ${name})</a>
-        by the Helsinki-NLP group, licensed under ${terms}. Runtime code under MIT.</small></p>
+        <a href="${MT_MODEL_URL}" target="_blank" rel="noopener">Firefox Translations (English to ${name})</a>
+        by Mozilla, licensed under ${terms}. Runtime code under MIT and MPL 2.0.</small></p>
       ${voiceCredit}
       <p>
         <button type="button" data-act="accept">Download and translate</button>

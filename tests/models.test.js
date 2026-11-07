@@ -254,6 +254,22 @@ describe('models.mjs', () => {
     expect(caches_.storeFor(MT_CACHE_NAME).size).toBe(1);
   });
 
+  it('removes the Opus-MT translation cache too, keeping the current one (LT-255)', async () => {
+    // Opus-MT's files were 108-516 MB a language, under 'libretexts-mt-v1'.
+    // Firefox Translations has a cache of its own, so nothing in the old one is
+    // read again; a reader who tried a language on the demo gets that space back.
+    expect(MT_CACHE_NAME).not.toBe('libretexts-mt-v1');
+    for (const name of ['libretexts-mt-v1', CACHE_NAME, MT_CACHE_NAME]) {
+      caches_.storeFor(name).set('/x', new Uint8Array([1]).buffer);
+      caches_.created.add(name);
+    }
+
+    await removeRetiredCaches();
+
+    expect([...caches_.created].sort()).toEqual([MT_CACHE_NAME, CACHE_NAME].sort());
+    expect(caches_.storeFor(MT_CACHE_NAME).size).toBe(1);
+  });
+
   it('does not create the retired cache by removing it', async () => {
     await removeRetiredCaches();
     expect(caches_.created.size).toBe(0);

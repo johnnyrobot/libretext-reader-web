@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { createHandler, translateBatch, SentenceCountError } from '../src/translate.worker.mjs';
 
 // A stubbed session: takes masked lines, returns "translated" ones. The real one
-// is 115 MB and 0.3 s a sentence, and none of what is asserted here is about the
-// model -- it is about the contract around it.
+// is a 37 MB model in a wasm engine, run in tests/bergamot.test.js; none of what
+// is asserted here is about the model -- it is about the contract around it.
 function session(fn) {
   return vi.fn(async (lines) => fn(lines));
 }
@@ -127,18 +127,17 @@ describe('translateBatch', () => {
     //
     // The example was 'fr' until French shipped, then 'de' until German did,
     // and both times this test failed loudly rather than quietly passing --
-    // which is what it is for. Polish is the durable name: no ONNX export of
-    // opus-mt-en-pl exists, so it cannot ship and cannot need a third edit.
+    // which is what it is for. Polish is the stand-in: no Polish pair ships, and
+    // it has no normaliser.
     const out = await translateBatch(
       session((lines) => lines.map(() => 'Było 21 kobiet')), ['x'], () => {}, 'pl');
     expect(out[0]).toBe('Było 21 kobiet');
   });
 
   it('chunks a whole page rather than handing the model one huge batch', async () => {
-    // transformers.js pads a batch to its longest sequence, so one run over a
-    // whole page dies with std::bad_alloc -- measured on this page's 303
-    // sentences. Order and length must survive the chunking, since highlighting
-    // is keyed by position.
+    // One call per chunk is what lets a whole page report progress as it goes,
+    // and keeps each synchronous call into the engine short. Order and length
+    // must survive the chunking, since highlighting is keyed by position.
     const runs = [];
     const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
     const lines = Array.from({ length: 20 }, (_, i) => `Sentence ${i}.`);
@@ -151,34 +150,22 @@ describe('translateBatch', () => {
     expect(runs.reduce((a, b) => a + b, 0)).toBe(20);
   });
 
-  it('translates Portuguese one sentence at a time', async () => {
-    // LT-217: the en-pt export (Douglasrambo/opus-mt-tc-big-en-pt-onnx) runs on
-    // past the sentence when it is batched with padding -- 21 of 146 lines
-    // ended in "))))))" or "......" in batches of 8, none one at a time. So
-    // Portuguese never batches.
-    const runs = [];
-    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
-    // No digits: the Portuguese Speech Text pass would rewrite them.
-    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.', 'Sentence d.', 'Sentence e.'];
+  it('batches every language the same, German and Portuguese included', async () => {
+    // LT-217 sent de and pt one sentence at a time: their Opus-MT exports ran on
+    // past the sentence when batched with padding. Bergamot does not -- 0 runaway
+    // lines in 472 textbook sentences per language, as ONE batch (LT-252) -- so
+    // the one-at-a-time rule went with Opus-MT (LT-255).
+    // No digits: the Speech Text passes would rewrite them.
+    const lines = Array.from({ length: 10 }, (_, i) => `Sentence ${String.fromCharCode(97 + i)}.`);
+    for (const code of ['de', 'es', 'fr', 'pt']) {
+      const runs = [];
+      const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
 
-    const out = await translateBatch(spy, lines, () => {}, 'pt');
+      const out = await translateBatch(spy, lines, () => {}, code);
 
-    expect(out).toEqual(lines.map((l) => SPANISH + l));
-    expect(runs).toEqual([1, 1, 1, 1, 1]);
-  });
-
-  it('translates German one sentence at a time', async () => {
-    // LT-217: the Xenova en-de export runs on past the sentence in batches too.
-    // On the 3.02 Moods page both batches of 8 came back with every line trailed
-    // by dozens of dots, and each took 25 s, against 24 s for all 16 one at a
-    // time. 13.01 did it once in two batches; 1.02 not at all.
-    const runs = [];
-    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
-    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.'];
-
-    await translateBatch(spy, lines, () => {}, 'de');
-
-    expect(runs).toEqual([1, 1, 1]);
+      expect(out).toEqual(lines.map((l) => SPANISH + l));
+      expect(runs).toEqual([8, 2]);
+    }
   });
 
   it('reports how far through the page it is, chunk by chunk', async () => {

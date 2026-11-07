@@ -76,20 +76,27 @@ cp dist/_assets/tts/* "$TTS/"
 echo "==> staging Phonon (English voice)"
 python3 "$ROOT/scripts/fetch-phonon.py" "$TTS/phonon"
 
-# Translation models, staged by scripts/convert-mt-models.py. Optional in the
-# same way and for the same reason the translate step below is: it is a ~115 MB
-# fetch per pair, and staging must stay runnable on a machine that has never run
-# it. Their manifest.json is written by that script, not here -- it records the
-# source repo, revision and licence alongside the hashes.
-if [ -d "$ROOT/bench/assets/mt" ]; then
-  echo "==> staging translation models"
+# Translation: Mozilla's Firefox Translations engine and models (LT-255),
+# fetched by scripts/fetch-mt-models.mjs into bench/assets/mt-bergamot and
+# checked there against scripts/mt-models.lock.json. Optional in the same way
+# and for the same reason the translate step below is: it is a ~42 MB fetch per
+# pair, and staging must stay runnable on a machine that has never run it. Every
+# manifest.json is written by that script, not here -- it records the Remote
+# Settings record and licence alongside the hashes.
+#
+# The old directory is removed first: copying over a stage that still holds the
+# Opus-MT pairs (bench/assets/mt, retired) would leave its files beside these.
+MT_SRC="$ROOT/bench/assets/mt-bergamot"
+rm -rf "$TTS/mt"
+if [ -f "$MT_SRC/pairs.json" ] && [ -f "$MT_SRC/bergamot/manifest.json" ]; then
+  echo "==> staging translation (Firefox Translations)"
   mkdir -p "$TTS/mt"
-  cp -R "$ROOT/bench/assets/mt/." "$TTS/mt/"
-  for pair in "$TTS"/mt/*/; do
-    echo "  $(basename "$pair"): $(du -sh "$pair" | cut -f1)"
+  cp -R "$MT_SRC/." "$TTS/mt/"
+  for dir in "$TTS"/mt/*/; do
+    echo "  $(basename "$dir"): $(du -sh "$dir" | cut -f1)"
   done
 else
-  echo "==> no translation models to stage (run scripts/convert-mt-models.py)"
+  echo "==> no translation models to stage (run node scripts/fetch-mt-models.mjs)"
 fi
 
 # Each translation's voice, Phonon 40M, built from Johnny's Ollama copy by
@@ -123,11 +130,12 @@ console.log(`  offered: ${index.pairs.map((p) => p.code).join(', ') || '(English
 JS
 fi
 
-echo "==> staging ORT for Phonon and the translation worker"
-# The ONNX Runtime wasm transformers.js bundles (1.26.0-dev), which both workers
-# load from $TTS/ort-mt. Another version's binaries in that directory load the
-# wrong runtime's wasm into this one's JS -- a version mismatch that surfaces as
-# an unreadable abort inside the wasm module, not as "wrong file".
+echo "==> staging ORT for Phonon"
+# The ONNX Runtime wasm transformers.js bundles (1.26.0-dev), which the speech
+# worker loads from $TTS/ort-mt (the translator stopped using it in LT-255).
+# Another version's binaries in that directory load the wrong runtime's wasm
+# into this one's JS -- a version mismatch that surfaces as an unreadable abort
+# inside the wasm module, not as "wrong file".
 #
 # Resolved through transformers.js rather than hardcoded, so the staged binaries
 # always match the runtime npm actually installed -- npm may hoist that copy to
