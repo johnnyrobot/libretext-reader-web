@@ -137,6 +137,24 @@ function percent({ loaded, total }) {
 }
 
 /**
+ * The translation queue's progress line, shown only while the reader is waiting.
+ *
+ * The queue keeps reporting after playback starts, because it translates the
+ * window ahead of the cursor as the reader listens. Repainting the toolbar then
+ * would set it to "Play" over running audio, and the next press of the button
+ * would call play instead of pause. While audio plays, the player owns the
+ * toolbar.
+ */
+export function reportTranslationProgress({ controls, playing, label, progress }) {
+  if (playing) return;
+  controls.setState({
+    playing: false,
+    buffering: true,
+    message: `Translating into ${label} (${percent(progress)}%)`,
+  });
+}
+
+/**
  * Recover from a failed language switch: put the reader back in English and
  * report the failure -- guaranteed, even if the recovery itself fails too.
  *
@@ -480,10 +498,8 @@ async function runEntry() {
       if (voiceLoad.cancelled() || !current()) return null;
     }
 
-    const report = (p) => controls.setState({
-      playing: false,
-      buffering: true,
-      message: `Translating into ${label} (${percent(p)}%)`,
+    const report = (progress) => reportTranslationProgress({
+      controls, playing: player.isPlaying(), label, progress,
     });
 
     controls.setState({ playing: false, buffering: true, message: `Translating into ${label}…` });
