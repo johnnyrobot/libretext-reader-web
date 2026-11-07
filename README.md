@@ -36,16 +36,6 @@ The page still shows equations with the site's usual MathJax. For the voice, eve
 
 On the listening page, a local test page where you type or paste text, readers can save a passage as an MP3. The same audio that plays is converted to MP3 right in the browser, so no server is involved. Save turns on as soon as the voice has finished preparing the audio, often while it is still playing, and it saves the whole passage. It stays off if a reading was stopped or failed. Book pages currently offer listening only.
 
-## About this repository
-
-A listen mode for LibreTexts textbook pages. Speech is synthesised **entirely in the
-reader's browser** — no audio is generated on a server, and nothing about what is read or
-heard leaves the device.
-
-Not to be confused with the desktop LibreTexts Reader, a separate Tauri + React + Rust
-application. This project borrows its domain vocabulary and several algorithms; it shares
-no code.
-
 ## How it works
 
 A build step walks a book's pages and, for each one, writes a `speech.json` beside the
