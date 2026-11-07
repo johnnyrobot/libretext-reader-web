@@ -1,6 +1,6 @@
 /* Measure the translation worker's sustained rate on real sentences.
  *
- *   npm run stage          # needs .stage/_assets/tts/mt/en-es and .../ort-mt
+ *   npm run stage          # needs .stage/_assets/tts/mt/en-es and .../mt/bergamot
  *   node scripts/measure-translate.mjs [count]
  *
  * Serves .stage through scripts/serve-local.py, because the COOP/COEP headers it

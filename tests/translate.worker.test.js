@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createHandler, translateBatch, SentenceCountError } from '../src/translate.worker.mjs';
+import { createHandler, createPairCache, translateBatch, SentenceCountError } from '../src/translate.worker.mjs';
 
 // A stubbed session: takes masked lines, returns "translated" ones. The real one
-// is 115 MB and 0.3 s a sentence, and none of what is asserted here is about the
-// model -- it is about the contract around it.
+// is a 37 MB model in a wasm engine, run in tests/bergamot.test.js; none of what
+// is asserted here is about the model -- it is about the contract around it.
 function session(fn) {
   return vi.fn(async (lines) => fn(lines));
 }
@@ -127,18 +127,17 @@ describe('translateBatch', () => {
     //
     // The example was 'fr' until French shipped, then 'de' until German did,
     // and both times this test failed loudly rather than quietly passing --
-    // which is what it is for. Polish is the durable name: no ONNX export of
-    // opus-mt-en-pl exists, so it cannot ship and cannot need a third edit.
+    // which is what it is for. Polish is the stand-in: no Polish pair ships, and
+    // it has no normaliser.
     const out = await translateBatch(
       session((lines) => lines.map(() => 'Było 21 kobiet')), ['x'], () => {}, 'pl');
     expect(out[0]).toBe('Było 21 kobiet');
   });
 
   it('chunks a whole page rather than handing the model one huge batch', async () => {
-    // transformers.js pads a batch to its longest sequence, so one run over a
-    // whole page dies with std::bad_alloc -- measured on this page's 303
-    // sentences. Order and length must survive the chunking, since highlighting
-    // is keyed by position.
+    // One call per chunk is what lets a whole page report progress as it goes,
+    // and keeps each synchronous call into the engine short. Order and length
+    // must survive the chunking, since highlighting is keyed by position.
     const runs = [];
     const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
     const lines = Array.from({ length: 20 }, (_, i) => `Sentence ${i}.`);
@@ -151,34 +150,22 @@ describe('translateBatch', () => {
     expect(runs.reduce((a, b) => a + b, 0)).toBe(20);
   });
 
-  it('translates Portuguese one sentence at a time', async () => {
-    // LT-217: the en-pt export (Douglasrambo/opus-mt-tc-big-en-pt-onnx) runs on
-    // past the sentence when it is batched with padding -- 21 of 146 lines
-    // ended in "))))))" or "......" in batches of 8, none one at a time. So
-    // Portuguese never batches.
-    const runs = [];
-    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
-    // No digits: the Portuguese Speech Text pass would rewrite them.
-    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.', 'Sentence d.', 'Sentence e.'];
+  it('batches every language the same, German and Portuguese included', async () => {
+    // LT-217 sent de and pt one sentence at a time: their Opus-MT exports ran on
+    // past the sentence when batched with padding. Bergamot does not -- 0 runaway
+    // lines in 472 textbook sentences per language, as ONE batch (LT-252) -- so
+    // the one-at-a-time rule went with Opus-MT (LT-255).
+    // No digits: the Speech Text passes would rewrite them.
+    const lines = Array.from({ length: 10 }, (_, i) => `Sentence ${String.fromCharCode(97 + i)}.`);
+    for (const code of ['de', 'es', 'fr', 'pt']) {
+      const runs = [];
+      const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
 
-    const out = await translateBatch(spy, lines, () => {}, 'pt');
+      const out = await translateBatch(spy, lines, () => {}, code);
 
-    expect(out).toEqual(lines.map((l) => SPANISH + l));
-    expect(runs).toEqual([1, 1, 1, 1, 1]);
-  });
-
-  it('translates German one sentence at a time', async () => {
-    // LT-217: the Xenova en-de export runs on past the sentence in batches too.
-    // On the 3.02 Moods page both batches of 8 came back with every line trailed
-    // by dozens of dots, and each took 25 s, against 24 s for all 16 one at a
-    // time. 13.01 did it once in two batches; 1.02 not at all.
-    const runs = [];
-    const spy = session((batch) => { runs.push(batch.length); return batch.map((l) => SPANISH + l); });
-    const lines = ['Sentence a.', 'Sentence b.', 'Sentence c.'];
-
-    await translateBatch(spy, lines, () => {}, 'de');
-
-    expect(runs).toEqual([1, 1, 1]);
+      expect(out).toEqual(lines.map((l) => SPANISH + l));
+      expect(runs).toEqual([8, 2]);
+    }
   });
 
   it('reports how far through the page it is, chunk by chunk', async () => {
@@ -330,5 +317,188 @@ describe('the worker protocol', () => {
     const { handle, of } = handlerWith(async () => echoUpper);
     await handle({ type: 'translate', id: 1, lines: ['one.'] });
     expect(of('error')[0]).toEqual({ type: 'error', id: 1, message: 'translator not initialised' });
+  });
+});
+
+// A deferred promise, so a test decides when a load finishes.
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+describe('the pair cache', () => {
+  it('shares a load still in flight instead of building a second model (CodeRabbit, PR #15)', async () => {
+    // Spanish, then French, then Spanish again before the first Spanish load
+    // ends: two Spanish models, and the one `sessions` dropped was ~37 MB of
+    // wasm heap nothing could free.
+    const loads = { 'en-es': deferred(), 'en-fr': deferred() };
+    const loadPair = vi.fn(({ pair }) => loads[pair].promise);
+    const pairs = createPairCache(loadPair);
+
+    const first = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.load({ manifestUrl: '/fr.json', pair: 'en-fr', onProgress: () => {} });
+    const again = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    loads['en-es'].resolve(echoUpper);
+
+    expect(await first).toBe(echoUpper);
+    expect(await again).toBe(echoUpper);
+    expect(loadPair.mock.calls.map(([args]) => args.pair)).toEqual(['en-es', 'en-fr']);
+  });
+
+  it('sends a shared load\'s progress to the latest caller', async () => {
+    let report;
+    const done = deferred();
+    const pairs = createPairCache(({ onProgress }) => { report = onProgress; return done.promise; });
+    const older = vi.fn();
+    const newer = vi.fn();
+
+    pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: older });
+    pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: newer });
+    await Promise.resolve();
+    report({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+
+    expect(older).not.toHaveBeenCalled();
+    expect(newer).toHaveBeenCalledWith({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+    done.resolve(echoUpper);
+  });
+
+  it('reuses a loaded pair without loading it again', async () => {
+    const loadPair = vi.fn(async () => echoUpper);
+    const pairs = createPairCache(loadPair);
+
+    await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets a load that failed, so the next pick retries', async () => {
+    const loadPair = vi.fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(echoUpper);
+    const pairs = createPairCache(loadPair);
+
+    await expect(pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).rejects.toThrow('network');
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps sharing a load still in flight after the engine died (clear)', async () => {
+    // A Spanish download still running when a French batch kills the engine
+    // goes on to start a FRESH engine and build a good session. Dropping it
+    // would make the next Spanish pick build a second model beside it.
+    const spanish = deferred();
+    const loadPair = vi.fn(() => spanish.promise);
+    const pairs = createPairCache(loadPair);
+
+    const first = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.clear();
+    const again = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    spanish.resolve(echoUpper);
+
+    expect(await again).toBe(await first);
+    expect(loadPair).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a session whose engine died before it was cached (PR-Agent, PR #15)', async () => {
+    // Two pairs load at once; the second one's model aborts the engine in the
+    // gap after the first left loadPair but before the cache took it. Cached,
+    // the dead session would fail every Spanish batch from then on.
+    let alive = true;
+    const dead = session((lines) => lines);
+    const loadPair = vi.fn()
+      .mockImplementationOnce(async () => { alive = false; return dead; })
+      .mockResolvedValueOnce(echoUpper);
+    const pairs = createPairCache(loadPair, (translate) => translate !== dead || alive);
+
+    await expect(pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} }))
+      .rejects.toThrow(/engine aborted/);
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops loaded sessions when the engine died (clear)', async () => {
+    const loadPair = vi.fn(async () => session((lines) => lines));
+    const pairs = createPairCache(loadPair);
+
+    const dead = await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.clear();
+
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).not.toBe(dead);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the worker protocol, with a shared load', () => {
+  it('answers only the latest init when an earlier one shares its load', async () => {
+    // es, fr, es: the two Spanish inits get the SAME promise from the pair
+    // cache, so "is my promise still the latest?" no longer tells them apart.
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair }) => (pair === 'en-es' ? spanish.promise : Promise.resolve(echoUpper)));
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    spanish.resolve(echoUpper);
+    await Promise.all([first, third]);
+
+    expect(of('ready').map((m) => m.initId)).toEqual([2, 3]);
+  });
+
+  it('reports a shared load that fails to the latest init only', async () => {
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair }) => (pair === 'en-es' ? spanish.promise : Promise.resolve(echoUpper)));
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    spanish.reject(new Error('network'));
+    await Promise.all([first, third]);
+
+    expect(of('error')).toEqual([{ type: 'error', id: undefined, initId: 3, message: 'network' }]);
+  });
+
+  it('labels a shared load\'s progress with the latest init', async () => {
+    let report;
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair, onProgress }) => {
+      if (pair !== 'en-es') return Promise.resolve(echoUpper);
+      report = onProgress;
+      return spanish.promise;
+    });
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    report({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+    spanish.resolve(echoUpper);
+    await Promise.all([first, third]);
+
+    expect(of('progress').map((m) => m.initId)).toEqual([3]);
+  });
+});
+
+describe('a batch waiting on a load', () => {
+  it('speaks with the rules of the language it was translated into', async () => {
+    // es init, a batch that waits on it, then fr: the batch runs on the
+    // Spanish model, so it must not be normalised as French. French spells
+    // out a number as a French word; Spanish as a Spanish one.
+    const spanish = deferred();
+    const { handle, of } = handlerWith(({ pair }) => (pair === 'en-es'
+      ? spanish.promise
+      : Promise.resolve(session((lines) => lines))));
+
+    const es = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es' });
+    const batch = handle({ type: 'translate', id: 1, lines: ['Tengo 2 libros.'] });
+    const fr = handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr' });
+    spanish.resolve(session((lines) => lines));
+    await Promise.all([es, batch, fr]);
+
+    const [spoken] = of('translated')[0].lines;
+    expect(spoken).not.toMatch(/deux/);
   });
 });

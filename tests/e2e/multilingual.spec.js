@@ -71,27 +71,38 @@ test.describe('client-side translation', () => {
     expect(spanish).toBeTruthy();
     expect(spanish.pair).toBe('en-es');
     expect(spanish.bytes).toBeGreaterThan(0);
-    // The licence is the reason this checkpoint was chosen over NLLB, whose
-    // cc-by-nc-4.0 output cannot ship inside an MIT product. It is recorded where
-    // the consent gate can show it, so it is asserted where it is recorded.
-    expect(spanish.licence).toBe('apache-2.0');
+    // The licence is the reason these models could be chosen at all: NLLB is
+    // out because its cc-by-nc-4.0 output cannot ship inside an MIT product, and
+    // Firefox Translations is mpl-2.0 (LT-255). It is recorded where the consent
+    // gate can show it, so it is asserted where it is recorded.
+    expect(spanish.licence).toBe('mpl-2.0');
   });
 
   test('every file a pair advertises is actually served, at the advertised size',
     async ({ request }) => {
       // The old suite checked a track covered the page's ids. The equivalent
       // integrity question for a model is whether the manifest describes what the
-      // mirror will really hand a reader -- a truncated 57 MB decoder fails
-      // sha256 in the browser, silently, after the download has already happened.
+      // mirror will really hand a reader -- a truncated 31 MB model fails sha256
+      // in the browser, silently, after the download has already happened.
+      //
+      // A pair's advertised size counts the engine too (LT-255): the first
+      // language a reader picks downloads Bergamot's wasm along with its model,
+      // and the menu should not quote less than that.
       const { pairs } = await (await request.get(PAIRS)).json();
-      const { files } = await (await request.get(`/_assets/tts/mt/en-es/manifest.json`)).json();
+      const manifests = {};
+      for (const dir of ['bergamot', 'en-es']) {
+        manifests[dir] = (await (await request.get(`/_assets/tts/mt/${dir}/manifest.json`)).json()).files;
+      }
+      const total = (files) => files.reduce((sum, f) => sum + f.bytes, 0);
       expect(pairs.find((p) => p.pair === 'en-es').bytes)
-        .toBe(files.reduce((sum, f) => sum + f.bytes, 0));
+        .toBe(total(manifests['en-es']) + total(manifests.bergamot));
 
-      for (const file of files) {
-        const res = await request.head(`/_assets/tts/mt/en-es/${file.path}`);
-        expect(res.status(), file.path).toBe(200);
-        expect(Number(res.headers()['content-length']), file.path).toBe(file.bytes);
+      for (const [dir, files] of Object.entries(manifests)) {
+        for (const file of files) {
+          const res = await request.head(`/_assets/tts/mt/${dir}/${file.path}`);
+          expect(res.status(), file.path).toBe(200);
+          expect(Number(res.headers()['content-length']), file.path).toBe(file.bytes);
+        }
       }
     });
 
@@ -116,17 +127,16 @@ test.describe('client-side translation', () => {
       // On a cold cache, before the reader commits to anything: the menu already
       // says what picking each language will cost. That is the whole difference
       // between an informed choice and a surprise. Each language brings its own
-      // 190 MB Phonon voice (LT-217): 115 + 190 for Spanish, 109 + 190 for
-      // French, 108 + 190 for German, and 495 + 190 for Portuguese, whose only
-      // ONNX export is the big Opus-MT.
+      // 191 MB Phonon voice (LT-217) and a ~40 MB translation model, engine
+      // included (LT-255): 230 MB for every one. Opus-MT made it 298-685.
       await expect(select.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (306 MB download)');
+        .toHaveText('español — machine translation (230 MB download)');
       await expect(select.locator('option[value="fr"]'))
-        .toHaveText('français — machine translation (300 MB download)');
+        .toHaveText('français — machine translation (230 MB download)');
       await expect(select.locator('option[value="de"]'))
-        .toHaveText('Deutsch — machine translation (298 MB download)');
+        .toHaveText('Deutsch — machine translation (230 MB download)');
       await expect(select.locator('option[value="pt"]'))
-        .toHaveText('português — machine translation (685 MB download)');
+        .toHaveText('português — machine translation (230 MB download)');
     });
 
   // EVERY OTHER HOSTED LANGUAGE, one test each. The Spanish test below is the
@@ -136,8 +146,8 @@ test.describe('client-side translation', () => {
   // nothing else can prove, is two things:
   //
   //   1. this pair's model actually loads and produces THAT language. A wrong
-  //      or missing `forward_token`, a mispackaged export, or a tokenizer that
-  //      silently falls back all produce fluent output in some language.
+  //      vocab, a mispackaged model, or a pair staged under another code all
+  //      produce fluent output in some language.
   //   2. `pipeline/lang_normalize.py`'s port is WIRED for that code. The pair is
   //      "en-de" and the normaliser is keyed on "de", and a mistake there is
   //      silent: untouched text is still perfectly good German. It just says
@@ -164,7 +174,7 @@ test.describe('client-side translation', () => {
   };
 
   test('every hosted language has an expectation here', async ({ request }) => {
-    // A pair added to scripts/convert-mt-models.py without a row above would
+    // A pair added to scripts/mt-models.lock.json without a row above would
     // otherwise ship with nobody ever having checked that it speaks its own
     // language -- the table would still be green because it never ran.
     const { pairs } = await (await request.get(PAIRS)).json();
@@ -301,7 +311,7 @@ test.describe('client-side translation', () => {
 
       // THE POINT OF STEP 6. Translating this 303-sentence page took ~60 s before
       // streaming; only a 16-sentence window has to be ready now. The bound is
-      // loose because it includes a 115 MB model load and runs in headless
+      // loose because it includes a 40 MB model load and runs in headless
       // Chromium -- it is here to catch a regression to whole-page blocking, not
       // to police a second either way.
       const readyIn = (Date.now() - startedAt) / 1000;
@@ -322,7 +332,7 @@ test.describe('client-side translation', () => {
       // TWO caches, which is why deleting a language cannot cost a reader the
       // voice. This is step 2's invariant observed end to end rather than mocked.
       expect(await page.evaluate(() => Promise.all([
-        caches.has('libretexts-mt-v1'), caches.has('libretexts-tts-phonon-v1'),
+        caches.has('libretexts-mt-v2'), caches.has('libretexts-tts-phonon-v1'),
       ]))).toEqual([true, true]);
 
       // Now play, and read what the speech engine was asked to say.
@@ -445,13 +455,13 @@ test.describe('client-side translation', () => {
       await expect(page.locator('.tts-status')).toHaveText('');
       await expect(page.locator('.tts-dialog')).toHaveCount(0);
 
-      // The menu said "306 MB download" before, and it is no longer true. It is
+      // The menu said "230 MB download" before, and it is no longer true. It is
       // repainted rather than rebuilt, so the reader's selection survives.
       await expect(page.locator('option[value="es"]'))
         .toHaveText('español — machine translation (downloaded)');
       // French has a voice of its own, still to fetch (LT-217).
       await expect(page.locator('option[value="fr"]'))
-        .toHaveText('français — machine translation (300 MB download)');
+        .toHaveText('français — machine translation (230 MB download)');
 
       // And back to Spanish asks NOTHING: the model is already stored, so the
       // gate is about downloading, not about translating. Being asked to consent
@@ -488,24 +498,25 @@ test.describe('client-side translation', () => {
       const dialog = page.locator('.tts-dialog');
       await expect(dialog.locator('h2')).toHaveText('Listen in español');
       // The model and the Spanish voice, since neither is stored yet (LT-217).
-      await expect(dialog).toContainText('306 MB');
+      await expect(dialog).toContainText('230 MB');
       // The model's licence covers both voices; only the Female voice file is Apache (LT-234).
       await expect(dialog).toContainText(
         "Voice model: Phonon 40M by Gradium, CC BY-NC 4.0. Male voice: the model's own. "
         + "Female voice: from Gradium's phonon-voices, Apache 2.0.");
-      await expect(dialog).toContainText('apache-2.0');
+      await expect(dialog).toContainText('mpl-2.0');
+      await expect(dialog).toContainText('Firefox Translations (English to español) by Mozilla');
       await expect(dialog).toContainText(/delete/i);
 
       await page.locator('[data-act="decline"]').click();
 
       // Still marked as a download, because it still is one.
       await expect(page.locator('option[value="es"]'))
-        .toHaveText('español — machine translation (306 MB download)');
+        .toHaveText('español — machine translation (230 MB download)');
 
       // Nothing downloaded, and no cache entry -- not even an empty one. Asking
       // whether the models are present must not create the cache, which is why
       // modelsPresent checks caches.has() before caches.open().
-      expect(await page.evaluate(() => caches.has('libretexts-mt-v1'))).toBe(false);
+      expect(await page.evaluate(() => caches.has('libretexts-mt-v2'))).toBe(false);
 
       // Silent: they answered the question, so there is nothing to report. And
       // the menu says what is actually playing.

@@ -12,20 +12,20 @@ const click = (act) => dialog().querySelector(`[data-act="${act}"]`).click();
 
 describe('the translation consent gate', () => {
   it('is a SECOND gate: it names its own size, language and licence', async () => {
-    // A reader who accepted 383 MB for a voice has not accepted another 121 MB
+    // A reader who accepted 383 MB for a voice has not accepted another 40 MB
     // for Spanish. Different model, different licence, quite possibly a
     // different day.
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: true, licence: 'mpl-2.0',
     });
 
     const text = dialog().textContent;
     expect(text).toContain('español');
-    expect(text).toContain('115 MB');   // 121,097,315 bytes, the real en-es total
+    expect(text).toContain('40 MB');   // 41,536,783 bytes, the real en-es total with the engine
     // The licence is named because the model choice was MADE on licence grounds:
     // NLLB is out because its output is cc-by-nc-4.0 and cannot ship in an MIT
     // product. A reader should be able to see which one they are running.
-    expect(text).toContain('apache-2.0');
+    expect(text).toContain('mpl-2.0');
     expect(text).toMatch(/delete/i);
     // And that machine translation is not a human translation.
     expect(text).toMatch(/not a substitute/i);
@@ -35,9 +35,28 @@ describe('the translation consent gate', () => {
     expect(dialog()).toBeNull();
   });
 
+  it('credits the translator it runs: Firefox Translations, by Mozilla', async () => {
+    // LT-255 swapped Opus-MT for Mozilla's models and engine. A credit that still
+    // named Helsinki-NLP would tell the reader they were running something else.
+    const answer = requestTranslationConsent({
+      language: 'español', requiredBytes: 1, quotaSufficient: true, licence: 'mpl-2.0',
+    });
+
+    const text = dialog().textContent.replace(/\s+/g, ' ');
+    expect(text).toContain('Translation model: Firefox Translations (English to español) by Mozilla, '
+      + 'licensed under mpl-2.0.');
+    expect(text).not.toMatch(/Opus-MT|Helsinki/);
+    const link = [...dialog().querySelectorAll('a')].find((a) => a.textContent.includes('Firefox Translations'));
+    expect(link.href).toBe('https://github.com/mozilla/firefox-translations-models');
+    expect(link.rel).toBe('noopener');
+
+    click('decline');
+    await answer;
+  });
+
   it('resolves false and removes itself when declined', async () => {
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 1, quotaSufficient: true, licence: 'apache-2.0',
+      language: 'español', requiredBytes: 1, quotaSufficient: true, licence: 'mpl-2.0',
     });
     click('decline');
     await expect(answer).resolves.toBe(false);
@@ -46,7 +65,7 @@ describe('the translation consent gate', () => {
 
   it('warns when the browser may not have room, reusing the voice gate\'s wording', async () => {
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: false, licence: 'apache-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: false, licence: 'mpl-2.0',
     });
     expect(dialog().textContent).toMatch(/may not have room/i);
     click('decline');
@@ -141,11 +160,11 @@ describe('the translation gate when the translation voice is not downloaded yet 
     // reader has never downloaded. Its size and its noncommercial licence are
     // part of what they are agreeing to here. Supertonic is gone (LT-217).
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: true, licence: 'mpl-2.0',
       voiceBytes: 199_570_458,               // phonon-es, as staged
     });
     const text = dialog().textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
+    expect(text).toContain('230 MB');     // 40 MB + 190 MB, rounded once
     expect(text).toContain('190 MB voice that reads español aloud');
     // Both voices are spoken by the CC BY-NC model; only the Female voice file is
     // Apache 2.0, so the credit names the model's licence first (LT-234).
@@ -166,7 +185,7 @@ describe('the translation gate when the translation voice is not downloaded yet 
 
   it('says nothing about the voice once it is downloaded', async () => {
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'apache-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: true, licence: 'mpl-2.0',
     });
     expect(dialog().textContent).not.toContain('CC BY-NC');
     expect(dialog().textContent).not.toContain('phonon-voices');

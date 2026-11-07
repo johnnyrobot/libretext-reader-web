@@ -19,6 +19,12 @@ this compares a CHAIN, where each link changes exactly one thing:
     python-tcbig  vs deployed          the post-passes the browser does not run
     browser       vs deployed          all four at once -- the headline
 
+SINCE LT-255 the browser runs Firefox Translations on Bergamot, not Opus-MT, so
+"browser vs python-small" no longer compares one checkpoint on two runtimes: it
+compares two different models, and its number measures the model swap as much
+as the runtime. The chain was built for the Opus-MT browser; read that link, and
+the headline, with that in mind. The model-free links are unaffected.
+
 The last link is also the harness's own honesty check: replaying the deployed
 post-passes over python-tcbig should reproduce the deployed track almost exactly.
 If it does not, the chain above is measuring something other than what it claims,

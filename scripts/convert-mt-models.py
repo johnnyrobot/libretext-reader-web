@@ -2,6 +2,11 @@
 """Stage a pre-converted Opus-MT ONNX pair so the browser loads it from the
 mirror instead of the Hugging Face CDN.
 
+RETIRED for the reader in LT-255: Listen mode now translates with Mozilla's
+Firefox Translations, staged by scripts/fetch-mt-models.mjs. This script and
+its bench/assets/mt output are kept for the Opus-MT comparison tools
+(scripts/oracle-js.mjs) and pipeline/languages.py's list of what was shipped.
+
 Named "convert" to match its sibling scripts/convert-models.py, but nothing is
 converted here: Xenova (and, for Portuguese, one pinned third-party export)
 publishes the ONNX exports transformers.js expects, and

@@ -1,0 +1,172 @@
+{
+  "comment": "Pinned Firefox Translations files. Generated from Firefox Remote Settings (bucket main) on 2026-11-06 for LT-255; see scripts/fetch-mt-models.mjs.",
+  "attachmentsBase": "https://firefox-settings-attachments.cdn.mozilla.net/",
+  "engine": {
+    "name": "bergamot-translator",
+    "version": "3.0",
+    "recordId": "4fd32605-9889-4dd9-9fc7-577ad1136746",
+    "location": "main-workspace/translations-wasm/05082c31-aee8-4249-9e01-c1865afd7520.wasm",
+    "bytes": 4960506,
+    "sha256": "a3a89d9ad0a4ed8f27bf3e403701b23f5709816f6376438503f2fa5b0182c2dc",
+    "licence": "mpl-2.0",
+    "glue": {
+      "file": "src/vendor/bergamot/bergamot-translator.js",
+      "release": "v0.6.0",
+      "revision": "eea6e5a80aa4ddd86d9cc35ce9a65b79aa3ab96d"
+    }
+  },
+  "pairs": {
+    "en-de": {
+      "code": "de",
+      "version": "3.0",
+      "architecture": "base-memory",
+      "licence": "mpl-2.0",
+      "files": [
+        {
+          "fileType": "model",
+          "name": "model.ende.intgemm.alphas.bin",
+          "recordId": "1c50e0b4-2b75-45ce-aa9a-034943f1dcdb",
+          "location": "main-workspace/translations-models-v2/210d5dea-12cc-4960-9f6a-aa21740c6735.zst",
+          "bytes": 22461496,
+          "sha256": "db0fa25f3767efdf913ad7d213adf51702a87fb9b07f5e6c64fc4dc13c2eb2cf",
+          "decompressedBytes": 31561787,
+          "decompressedSha256": "8df29d9494d19f47fd5d97c6a73474c6f657e9f81c1a607c431d02befdf3810f"
+        },
+        {
+          "fileType": "lex",
+          "name": "lex.50.50.ende.s2t.bin",
+          "recordId": "68632714-2d2c-4f5e-82aa-ac11ec4077a7",
+          "location": "main-workspace/translations-models-v2/7b8929f7-c5c2-4869-9193-12821a86354d.zst",
+          "bytes": 1696246,
+          "sha256": "a483b34d541dc8d4097cbfafbb188d68ee54d68368b96ed2e3d1e16bcfad40aa",
+          "decompressedBytes": 4347672,
+          "decompressedSha256": "7ed39f1cffbd68a27ddf05bbfe068de2060f1d7e69f1a20e27ae923551dd7393"
+        },
+        {
+          "fileType": "vocab",
+          "name": "vocab.ende.spm",
+          "recordId": "11d3da0e-d16c-455d-b2d2-3fad8c66b07f",
+          "location": "main-workspace/translations-models-v2/a850d21e-c220-45ea-b978-a826a9248e64.zst",
+          "bytes": 352776,
+          "sha256": "688bd61fce9ff1a1f93b81f0f039f9a850a3f345b0a82e044a743ff48b71ffbc",
+          "decompressedBytes": 810073,
+          "decompressedSha256": "69f730becafa48e3bb2c244eab66456877c08959a02f2bd5519b5a3088b62f9c"
+        }
+      ]
+    },
+    "en-es": {
+      "code": "es",
+      "version": "3.0",
+      "architecture": "base-memory",
+      "licence": "mpl-2.0",
+      "files": [
+        {
+          "fileType": "model",
+          "name": "model.enes.intgemm.alphas.bin",
+          "recordId": "4e0e076d-8784-4978-9d68-b3d8d8d4848c",
+          "location": "main-workspace/translations-models-v2/1d705201-9be0-40c4-a0b4-18d1e3973777.zst",
+          "bytes": 22085725,
+          "sha256": "ce7ba731d3352d7e595d96ed4fac513744568eaf9a271daf90b5fa8fa33b195d",
+          "decompressedBytes": 31561787,
+          "decompressedSha256": "3b1c399511c01c84c36fae5c0524df44096288efdc8236e182b5c97d7ad2244c"
+        },
+        {
+          "fileType": "lex",
+          "name": "lex.50.50.enes.s2t.bin",
+          "recordId": "fb49bf6d-4532-4717-a577-b1d1da2cff4b",
+          "location": "main-workspace/translations-models-v2/51318160-1249-451f-80fb-12e61f8c1def.zst",
+          "bytes": 1687731,
+          "sha256": "0dd2945dc8a5bbccad6fb1e1dfce137d363de839f4492cab717f60f1f38c09e6",
+          "decompressedBytes": 4198436,
+          "decompressedSha256": "7d51237c0a07027dcd61643cfbbb0f8c48597d19907ef53d2cae9d6bec2cf25c"
+        },
+        {
+          "fileType": "vocab",
+          "name": "vocab.enes.spm",
+          "recordId": "478bd95a-e9f5-4b98-9c41-e2140bfb2beb",
+          "location": "main-workspace/translations-models-v2/b2b5907b-8759-4cc8-a721-89c283e6e45b.zst",
+          "bytes": 348996,
+          "sha256": "76b9ef220b22cec379f097852ca6312cabf065d5ddfb05149d5af31aa050ec22",
+          "decompressedBytes": 816054,
+          "decompressedSha256": "5ae254fa9b15aa182e70fd2a6186b1333c63a29a48043a9224c6aa4fcac058ad"
+        }
+      ]
+    },
+    "en-fr": {
+      "code": "fr",
+      "version": "3.0",
+      "architecture": "base-memory",
+      "licence": "mpl-2.0",
+      "files": [
+        {
+          "fileType": "model",
+          "name": "model.enfr.intgemm.alphas.bin",
+          "recordId": "72097f14-48e2-4031-b5a9-a2b7e325ff98",
+          "location": "main-workspace/translations-models-v2/570d07a3-d360-430f-bbb4-37d89715bcfb.zst",
+          "bytes": 22542574,
+          "sha256": "98c229b4f356565fec4cd9ba9374b1fa0216965addeef7ca250d4a3ed4a396eb",
+          "decompressedBytes": 31561787,
+          "decompressedSha256": "6322e296d4fecfe395a8d5723da4ec37ecbe6d7613bb1dfcf4b28e2a47498b68"
+        },
+        {
+          "fileType": "lex",
+          "name": "lex.50.50.enfr.s2t.bin",
+          "recordId": "fbff4a38-2eb5-4c72-a422-a53bb82a4ab8",
+          "location": "main-workspace/translations-models-v2/bff0d10a-d07a-4873-a5a7-a6b7af42bf86.zst",
+          "bytes": 1703263,
+          "sha256": "371c84ca05d528013638c4c19c24fb12a15cbe9208239e599498539467a0436e",
+          "decompressedBytes": 4372936,
+          "decompressedSha256": "2585ed98d3af0bc949865aedeb390493d591f56870814376e73e4144c41ed059"
+        },
+        {
+          "fileType": "vocab",
+          "name": "vocab.enfr.spm",
+          "recordId": "a7aea13d-32ac-4f27-96b9-7c101f4eb302",
+          "location": "main-workspace/translations-models-v2/faa168f7-1b8d-4d29-9267-cc5e1bac3c73.zst",
+          "bytes": 348946,
+          "sha256": "61c982758a3e7dc880a8dbc11aaf0fb04a1e4f5d2d7a36ee11bc419323f2ca80",
+          "decompressedBytes": 814404,
+          "decompressedSha256": "783abf3abe075afdf8d85d233994bef2c3a064e935ab1bed946820aff6ac002a"
+        }
+      ]
+    },
+    "en-pt": {
+      "code": "pt",
+      "version": "3.0",
+      "architecture": "base-memory",
+      "licence": "mpl-2.0",
+      "files": [
+        {
+          "fileType": "model",
+          "name": "model.enpt.intgemm.alphas.bin",
+          "recordId": "4928d3bc-2d2d-4b6c-b06c-c5d3df104739",
+          "location": "main-workspace/translations-models-v2/90cb3b8f-d3bd-4584-9b49-f3072a952582.zst",
+          "bytes": 22901341,
+          "sha256": "b6ae4dfe27a5fd5bfaaeb4d84c4297e69c83a329e7eb26ae6ceefafe5ab541c9",
+          "decompressedBytes": 31561787,
+          "decompressedSha256": "07892fd2544ee79dcb643615d8f2debb9793fae16842e87c328e27a3dd26a770"
+        },
+        {
+          "fileType": "lex",
+          "name": "lex.50.50.enpt.s2t.bin",
+          "recordId": "acfeb4b0-8e8a-4dbb-9979-2fa91501612c",
+          "location": "main-workspace/translations-models-v2/94532a3d-b009-4b56-9ffb-213a052c22fe.zst",
+          "bytes": 1588521,
+          "sha256": "c51d8fa1524a4fd70ac32dc6ef8df2a7683ec8da1b7888ef0b82dc1fcbafd14b",
+          "decompressedBytes": 3970340,
+          "decompressedSha256": "ccb4c31c9e1899d77a200e71a86958e6ef6c8649627d0bbf3f873b57d9f236bd"
+        },
+        {
+          "fileType": "vocab",
+          "name": "vocab.enpt.spm",
+          "recordId": "7ada09e0-cb3a-42a0-8a3a-3d24338298d5",
+          "location": "main-workspace/translations-models-v2/1ae15c1a-90b6-4c32-8dfa-50dbb710904c.zst",
+          "bytes": 348792,
+          "sha256": "5b2ef32ade5c06aa3503186dc8c73e0ff21374e097a071f04d73f8bb1ab0e052",
+          "decompressedBytes": 816726,
+          "decompressedSha256": "d9f46182823d5bbc84201252b2dfcac28f63e561f0ec827ed858f241864c9def"
+        }
+      ]
+    }
+  }
+}

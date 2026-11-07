@@ -1,2 +1,5 @@
 # Vendored third-party files are pinned by sha256: never rewrite their line endings.
 bench/phonon/listen/vendor/** -text
+
+# Mozilla's Bergamot glue is vendored byte-identical; vite.config.js matches it exactly.
+src/vendor/** -text

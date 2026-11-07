@@ -671,6 +671,9 @@ export function normalizeDeForSpeech(text) {
 // ones (dezasseis, mil milhões). Measured on 146 corpus sentences translated
 // one at a time by Douglasrambo/opus-mt-tc-big-en-pt-onnx, the only en-pt ONNX
 // export transformers.js can load; there is no deployed pt track to count over.
+// Still Brazilian after LT-255: Firefox Translations' en-pt writes "As treze
+// colônias custam um bilhão de dólares", "trem", "arquivo" (checked 2026-11-06),
+// though the odd European noun ("telemóvel") gets through.
 // ---------------------------------------------------------------------------
 
 const PT_ONES = [

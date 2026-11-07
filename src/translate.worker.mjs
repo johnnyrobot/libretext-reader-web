@@ -4,9 +4,14 @@
  * A SEPARATE worker from the speech worker, for two reasons that are not
  * stylistic. Inference on the main thread freezes the tab for its whole
  * duration. And translation and synthesis must run CONCURRENTLY: the design
- * depends on the translator staying ahead of playback (2.99 sent/s measured
- * against playback's ~0.33), and sharing one worker serialises them, which
- * guarantees it cannot.
+ * depends on the translator staying ahead of playback (about 20 sentences/s
+ * for Bergamot in Chrome against playback's ~0.33), and sharing one worker
+ * serialises them, which guarantees it cannot.
+ *
+ * The translator is Mozilla's Firefox Translations engine (LT-255): Bergamot,
+ * a wasm build of Marian, with Firefox's own models and settings. It replaced
+ * Opus-MT on Transformers.js, which it beat in all four languages (LT-252) at a
+ * third of the download.
  *
  * Protocol, deliberately the same shape as the speech worker's:
  *
@@ -28,43 +33,53 @@ import { ensureModels, MT_CACHE_NAME } from './models.mjs';
 import { mask, restore, PlaceholderError } from './protect.mjs';
 import { shouldFallBack } from './qa.mjs';
 import { NORMALIZERS } from './lang-normalize.mjs';
+// Mozilla's glue, vendored unchanged; vite.config.js turns it into a module.
+// Imported statically: this worker only starts once a reader picks a language.
+import loadBergamot from './vendor/bergamot/bergamot-translator.js';
 
-// The ONNX Runtime binaries transformers.js bundles (1.26.0-dev). ORT builds
-// are not interchangeable -- loading another version's wasm into this JS aborts
-// inside the wasm module with nothing that says "wrong version" -- so
-// scripts/stage-local.sh resolves the binaries through transformers.js's own
-// dependency so they cannot drift from the runtime that is actually bundled.
-// phonon.worker.mjs reads the same directory.
+// Sentences per call into the engine. Neither a memory ceiling nor a speed
+// knob any more: Bergamot batches internally by word count (`mini-batch-words`
+// below) and pads nothing across calls. What a chunk still buys is PROGRESS --
+// one report per chunk, so a whole-page translation shows movement -- and a
+// short hold on the worker, since a call is synchronous (~0.3 s for 8).
 //
-// ABSOLUTE: a relative path resolves against the ORT module's URL, not the
-// page's.
-const ORT_WASM_PATH = '/_assets/tts/ort-mt/';
-
-const MAX_THREADS = 8;
-
-// Sentences per inference run. NOT a throughput tuning knob -- a memory ceiling.
-// transformers.js pads a batch to its longest sequence, so cost grows with
-// batch x longest^2, and handing it a whole page at once is what it sounds like:
-// 303 sentences in one run died with
-// `failed to call OrtRun(). ERROR_CODE: 6, ERROR_MESSAGE: std::bad_alloc`.
-// Chunking lives HERE rather than in the caller because the caller cannot know
-// this, and because every caller would otherwise have to.
+// Opus-MT needed German and Portuguese one sentence at a time (LT-217), because
+// those exports ran on past the sentence when padded. Bergamot does not: 0
+// runaway lines in 472 textbook sentences per language, translated as ONE
+// batch (LT-252). So every language batches the same.
 const MAX_BATCH = 8;
 
-// Languages whose export must not be batched at all (LT-217). The en-pt export
-// (Douglasrambo/opus-mt-tc-big-en-pt-onnx) keeps generating past the sentence
-// when its input is padded: 21 of 146 lines ended in "))))))" or "......" in
-// batches of 8, none one at a time. A correctness limit, unlike MAX_BATCH, and
-// it costs Portuguese about 4x the translation time.
-//
-// Xenova's en-de does it too, less often, and when it does every line in the
-// batch trails dozens of dots and the batch runs to the length limit: 25 s per
-// batch on the 3.02 Moods page, where 16 sentences took 51 s batched and showed
-// "Deutsch is slow on this device" even paused, against 24 s one at a time with
-// no box. Where it batches cleanly (1.02) one at a time is about 2.4x slower,
-// still 0.8 sentences/s against MIN_RATE's 0.5 on the M2 Max. French and Spanish
-// did not run away on 3.02 and keep batching.
-const BATCH_BY_LANG = { de: 1, pt: 1 };
+// Firefox's own model settings, from Firefox's translations-engine.worker.js
+// (bergamot-translator v0.6.0). Copied rather than tuned: these are what the
+// LT-252 scores measured. `skip-cost` turns off the quality model, which these
+// models do not ship; `cpu-threads: 0` is the single-threaded wasm path.
+// int8shiftAlphaAll matches the `.intgemm.alphas.bin` models in the lock file;
+// an `intgemm8.bin` model would need int8shiftAll instead.
+const MODEL_CONFIG = {
+  'beam-size': '1',
+  normalize: '1.0',
+  'word-penalty': '0',
+  'max-length-break': '128',
+  'mini-batch-words': '1024',
+  workspace: '128',
+  'max-length-factor': '2.0',
+  'skip-cost': 'true',
+  'cpu-threads': '0',
+  quiet: 'true',
+  'quiet-translation': 'true',
+  'gemm-precision': 'int8shiftAlphaAll',
+  alignment: 'soft',
+};
+
+// The byte alignment each model file needs inside the wasm heap. Firefox's values.
+const ALIGNMENT = { model: 256, lex: 64, vocab: 64 };
+
+// Where the engine's own manifest sits, relative to any pair's manifest: one
+// wasm for every language, so it is downloaded and verified once.
+const ENGINE_MANIFEST = '../bergamot/manifest.json';
+
+// Firefox's starting heap, 40 MiB. The heap grows to fit a model (~37 MB each).
+const INITIAL_MEMORY = 41_943_040;
 
 /** The translator returned a different number of lines than it was given. */
 export class SentenceCountError extends Error {
@@ -79,7 +94,7 @@ export class SentenceCountError extends Error {
  *
  * `translate` takes masked lines and returns translated ones. Keeping it a
  * parameter is what makes the 1:1 invariant and the fallback testable without a
- * 115 MB model.
+ * 37 MB model and a wasm engine.
  *
  * A line whose protected spans did not survive falls back to its ENGLISH source
  * rather than shipping a mangled URL to be read aloud. The Python omits the id
@@ -90,11 +105,10 @@ export class SentenceCountError extends Error {
 const identity = (text) => text;
 
 export async function translateBatch(translate, lines, onProgress = () => {}, code = null) {
-  const size = BATCH_BY_LANG[code] ?? MAX_BATCH;
   const out = [];
-  for (let start = 0; start < lines.length; start += size) {
+  for (let start = 0; start < lines.length; start += MAX_BATCH) {
     out.push(...await translateChunk(
-      translate, lines.slice(start, start + size), NORMALIZERS[code] ?? identity));
+      translate, lines.slice(start, start + MAX_BATCH), NORMALIZERS[code] ?? identity));
     // Whole-page translation blocks playback until M2 step 6, and a 45-second
     // wait with a static message is indistinguishable from a hung tab.
     onProgress({ phase: 'translate', loaded: out.length, total: lines.length });
@@ -146,83 +160,258 @@ async function translateChunk(translate, lines, normalize) {
 }
 
 /**
- * Build the transformers.js pipeline, served entirely from our own verified cache.
+ * Make a value the engine threw into an Error a reader can be shown.
  *
- * transformers.js normally fetches model files from the Hugging Face CDN and
- * caches them itself. Both halves of that are wrong here: the mirror's CSP blocks
- * the cross-origin request, and the request would tell a third party which book
- * a reader just opened. `env.customCache` is the seam that avoids reimplementing
- * the loader -- every file it asks for is answered from the buffers
- * `ensureModels` already downloaded, sha256-verified and stored, so no model byte
- * is ever fetched by transformers.js at all.
- *
- * The import is dynamic so this module can be imported by a test without pulling
- * in the runtime, and so the ~1 MB of pipeline machinery is parsed only by a
- * reader who actually asked for a translation.
+ * A C++ exception reaches JS as a bare number: the address of the exception
+ * object in the wasm heap. Passed on as it is, the reader saw "The voice could
+ * not start: 38307768". Everything Bergamot and Marian throw derives from
+ * std::runtime_error, whose second word points at the what() string, so that
+ * is read back. If it does not look like text the number is kept, labelled.
+ * Anything that is not a number (an abort's RuntimeError, our own Errors) is
+ * already readable and passes through unchanged.
  */
-async function loadTranslator({ manifestUrl, pair, onProgress }) {
-  const buffers = await ensureModels(manifestUrl, onProgress, MT_CACHE_NAME);
-
-  // Re-read to recover each buffer's PATH: ensureModels returns buffers keyed by
-  // name, and the custom cache below is keyed by URL. Sub-kilobyte, and already
-  // in the HTTP cache from the call above -- cheaper than duplicating the file
-  // list here, where it would silently rot the first time the script changes.
-  const base = new URL(manifestUrl, self.location.href);
-  const manifest = await (await fetch(manifestUrl)).json();
-  const byPath = new Map(
-    manifest.files.map((file) => [new URL(file.path, base).pathname, buffers[file.name]]),
-  );
-
-  const { pipeline, env } = await import('@huggingface/transformers');
-
-  env.allowLocalModels = true;
-  // A miss must fail loudly here rather than quietly reaching for the CDN, where
-  // it would fail again as an opaque CSP violation one layer further away.
-  env.allowRemoteModels = false;
-  env.localModelPath = new URL('..', base).pathname;  // the directory holding <pair>/
-  env.useBrowserCache = false;
-  env.useFSCache = false;
-  env.useWasmCache = false;   // the wasm is served from ORT_WASM_PATH, not cached through us
-  env.useCustomCache = true;
-  env.customCache = {
-    async match(request) {
-      const buffer = byPath.get(request);
-      return buffer ? new Response(buffer) : undefined;
-    },
-    // Everything this cache can serve is already stored and verified by
-    // models.mjs. Anything it cannot serve must not be written here, or an
-    // unverified byte would be indistinguishable from a verified one.
-    async put() {},
-  };
-
-  env.backends.onnx.wasm.wasmPaths = ORT_WASM_PATH;
-  // Threads are the entire lever: 0.90 sent/s single-threaded against 2.99 with
-  // 8. Cross-origin isolation buys nothing by itself; it matters only because it
-  // is what allows wasm threads at all, and the reader already sets COOP/COEP.
-  if (self.crossOriginIsolated) {
-    env.backends.onnx.wasm.numThreads = Math.min(MAX_THREADS, navigator.hardwareConcurrency || 1);
+export function engineError(bergamot, thrown) {
+  if (typeof thrown !== 'number') return thrown;
+  try {
+    const at = bergamot.HEAPU32[(thrown >>> 2) + 1];
+    const end = bergamot.HEAPU8.indexOf(0, at);
+    if (at > 0 && end > at && end - at <= 1000) {
+      const what = new TextDecoder().decode(bergamot.HEAPU8.subarray(at, end));
+      if (/^[\P{C}\s]+$/u.test(what)) return new Error(`translation engine: ${what}`);
+    }
+  } catch {
+    // An address outside the heap; fall through to the number.
   }
-
-  // ONE config, no fallback ladder -- no webgpu-then-wasm try/catch, and
-  // deliberately so. A failed session poisons
-  // ORT for the whole page: after one config fails, every later config fails
-  // with the identical error, so a second attempt here would not be a fallback,
-  // it would be a guaranteed second failure reported as if the first had been
-  // fine. fp16 is already known dead on ORT-web 1.26 for this export
-  // (graph_utils.cc:30 GetIndexFromName on session create); q8 with
-  // optimizations disabled is what was measured, and 2.99 sent/s IS that number,
-  // not a degraded one.
-  const translator = await pipeline('translation', pair, {
-    dtype: 'q8',
-    device: 'wasm',
-    session_options: { graphOptimizationLevel: 'disabled' },
-  });
-
-  return async (lines) => (await translator(lines)).map((result) => result.translation_text);
+  return new Error(`translation engine error ${thrown}`);
 }
 
-export function createHandler({ post, load = loadTranslator }) {
+/**
+ * The engine's one BlockingService. Bergamot's service registers a logger named
+ * "general" when it is built, and a second one in the same module throws
+ * "logger with name 'general' already exists" -- which is what a reader got on
+ * picking a second language. One service runs any number of models, so every
+ * pair shares it.
+ */
+const services = new WeakMap();
+function serviceFor(bergamot) {
+  if (!services.has(bergamot)) services.set(bergamot, new bergamot.BlockingService({ cacheSize: 0 }));
+  return services.get(bergamot);
+}
+
+/**
+ * Turn the Bergamot module and one pair's verified files into `translate(lines)`.
+ *
+ * `buffers` is what `ensureModels` returns for a pair's manifest: `model`, `lex`
+ * and `vocab`, each an ArrayBuffer whose sha256 has already been checked.
+ * Exported so a test can run the real engine on the real files.
+ */
+export function createBergamotSession(bergamot, buffers, source, target) {
+  const model = guarded(bergamot, () => loadModel(bergamot, buffers, source, target));
+  // The session is made in a function of its own. A closure keeps its whole
+  // enclosing scope alive, so one made here would keep `buffers` reachable: the
+  // engine has copied every byte into its heap, and the ~37 MB of ArrayBuffers
+  // would stay as a second copy per language for as long as `sessions` holds it.
+  return translateWith(bergamot, model, guarded(bergamot, () => serviceFor(bergamot)));
+}
+
+/** Run a C++ call, rethrowing anything it throws as a readable Error. */
+function guarded(bergamot, fn) {
+  try {
+    return fn();
+  } catch (error) {
+    throw engineError(bergamot, error);
+  }
+}
+
+/** `translate(lines)` on one loaded model. */
+function translateWith(bergamot, model, service) {
+  return async (lines) => guarded(bergamot, () => {
+    const messages = new bergamot.VectorString();
+    const options = new bergamot.VectorResponseOptions();
+    let responses;
+    try {
+      for (const line of lines) {
+        messages.push_back(line);
+        options.push_back({ qualityScores: false, alignment: false, html: false });
+      }
+      responses = service.translate(model, messages, options);
+      const out = [];
+      for (let i = 0; i < responses.size(); i += 1) {
+        // get() hands back a COPY of the response, with its own share of the
+        // heap, so it is freed here like everything else this call made.
+        const response = responses.get(i);
+        try {
+          // A newline inside a line is a paragraph break to Bergamot, and comes
+          // back as one. A line here is one spoken sentence, so it is joined up.
+          out.push(response.getTranslatedText().replace(/\s*\n\s*/g, ' '));
+        } finally {
+          response.delete();
+        }
+      }
+      return out;
+    } finally {
+      // wasm-side vectors are not garbage-collected; each call frees its own.
+      messages.delete();
+      options.delete();
+      responses?.delete();
+    }
+  });
+}
+
+/** One pair's TranslationModel, from its verified files. */
+function loadModel(bergamot, buffers, source, target) {
+  const aligned = (name) => {
+    const bytes = new Uint8Array(buffers[name]);
+    const memory = new bergamot.AlignedMemory(bytes.byteLength, ALIGNMENT[name]);
+    memory.getByteArrayView().set(bytes);
+    return memory;
+  };
+  // Bergamot reads its settings as YAML.
+  const config = Object.entries(MODEL_CONFIG).map(([key, value]) => `${key}: ${value}`).join('\n');
+  const vocabs = new bergamot.AlignedMemoryList();
+  vocabs.push_back(aligned('vocab'));
+  return new bergamot.TranslationModel(
+    source, target, config, aligned('model'), aligned('lex'), vocabs, null);
+}
+
+/**
+ * Start the engine from its verified wasm bytes. Exported for tests/bergamot.test.js.
+ *
+ * `onDead` is called if the engine ever aborts -- a model that does not parse,
+ * or the heap running out. An aborted module fails every later call, so the
+ * worker drops it and its sessions, and the next language a reader picks starts
+ * a fresh one.
+ */
+export async function startEngine(wasmBinary, onDead = () => {}) {
+  return new Promise((resolve, reject) => {
+    const bergamot = loadBergamot({
+      INITIAL_MEMORY,
+      // The bytes come from our own verified cache, so the glue never fetches.
+      wasmBinary,
+      print: () => {},
+      printErr: (message) => console.warn('bergamot:', message),
+      onAbort: (reason) => {
+        onDead(reason);
+        reject(new Error(`translation engine aborted: ${reason}`));
+      },
+      // Resolving with the module itself from inside its own init callback would
+      // make the promise adopt it as a thenable. A microtask later is what
+      // Firefox's worker does too.
+      onRuntimeInitialized: async () => {
+        await Promise.resolve();
+        resolve(bergamot);
+      },
+    });
+  });
+}
+
+let engine = null;              // Promise of the started module, one per worker
+
+/**
+ * The worker's memory of its pairs: one loaded or loading model per pair.
+ *
+ * A loaded pair is KEPT. Switching es -> fr -> es then costs nothing the second
+ * time, and a batch still running on the Spanish model when French is picked
+ * keeps a model to run on: freeing it there would be a use-after-free inside the
+ * wasm heap, between two chunks. The cost is ~37 MB of heap per language a
+ * reader has tried, which wasm never hands back anyway.
+ *
+ * A pair still LOADING is shared too. es -> fr -> es before the first Spanish
+ * load ends would otherwise build a second Spanish model, and the one the map
+ * dropped would be ~37 MB of heap that nothing could free. The shared load's
+ * progress goes to whichever init asked last, since that is the one the reader
+ * is watching. A failed load is forgotten so the next pick retries it.
+ *
+ * `clear()` is for an engine that aborted: every loaded session on it is dead.
+ * A load still in flight is KEPT. It is almost always still downloading, and
+ * goes on to start a fresh engine; dropping it would make the next pick of that
+ * pair build a second model beside it. A load caught by the abort itself is
+ * refused here, as it is cached: `isLive(translate)` says whether the session's
+ * engine is still the live one. Checking any earlier leaves a gap, since another
+ * pair's model can abort the engine between `loadPair` returning and this.
+ * Exported for tests/translate.worker.test.js.
+ */
+export function createPairCache(loadPair, isLive = () => true) {
+  const sessions = new Map();   // pair -> translate(lines)
+  const pending = new Map();    // pair -> { promise, onProgress }
+
+  function load({ manifestUrl, pair, onProgress }) {
+    if (sessions.has(pair)) return Promise.resolve(sessions.get(pair));
+    const inFlight = pending.get(pair);
+    if (inFlight) {
+      inFlight.onProgress = onProgress;
+      return inFlight.promise;
+    }
+    const entry = { onProgress };
+    entry.promise = Promise.resolve()
+      .then(() => loadPair({ manifestUrl, pair, onProgress: (p) => entry.onProgress(p) }))
+      .then((translate) => {
+        if (!isLive(translate)) throw new Error('translation engine aborted while loading');
+        sessions.set(pair, translate);
+        return translate;
+      })
+      .finally(() => pending.delete(pair));
+    pending.set(pair, entry);
+    return entry.promise;
+  }
+
+  function clear() {
+    sessions.clear();
+  }
+
+  return { load, clear };
+}
+
+/**
+ * Load one pair, served entirely from our own verified cache.
+ *
+ * Every byte -- the engine's wasm and the pair's three model files -- comes from
+ * our own origin through `ensureModels`, sha256-checked, and is stored in the
+ * translation cache. Nothing is fetched from Mozilla: the mirror's CSP blocks
+ * the cross-origin request, and the request would tell a third party which book
+ * a reader just opened. Reuse of loaded and loading pairs is `createPairCache`'s.
+ */
+async function loadPair({ manifestUrl, pair, onProgress }) {
+  const engineManifest = new URL(ENGINE_MANIFEST, new URL(manifestUrl, self.location.href)).pathname;
+  const { wasm } = await ensureModels(engineManifest, onProgress, MT_CACHE_NAME);
+  const buffers = await ensureModels(manifestUrl, onProgress, MT_CACHE_NAME);
+
+  // Neither a failed start nor an engine that later aborts is remembered: the
+  // next init starts a fresh one. Only one engine is ever live in a worker --
+  // the glue publishes its wasm exports as globals, so a second module would
+  // overwrite the first one's.
+  // `forget` checks the engine is still this one, so a late abort from an
+  // engine already replaced cannot drop its successor.
+  if (!engine) {
+    let started = null;
+    const forget = () => {
+      if (engine !== started) return;
+      engine = null;
+      pairs.clear();
+    };
+    started = startEngine(wasm, forget).catch((error) => { forget(); throw error; });
+    engine = started;
+  }
+  const live = engine;
+  const bergamot = await live;
+
+  const [source, target] = pair.split('-');
+  const translate = createBergamotSession(bergamot, buffers, source, target);
+  sessionEngines.set(translate, live);
+  return translate;
+}
+
+// Which engine each session runs on, so the cache can refuse one whose engine
+// has since aborted. Weak: a session nobody holds takes its entry with it.
+const sessionEngines = new WeakMap();
+const pairs = createPairCache(loadPair, (translate) => sessionEngines.get(translate) === engine);
+
+export function createHandler({ post, load = pairs.load }) {
   let loading = null;
+  // Which init is the latest. Counted rather than compared by promise: two
+  // inits for the same pair can share one load (createPairCache), and then the
+  // promise no longer says which of them the reader is waiting on.
+  let inits = 0;
   let translate = null;
   // The TARGET half of the pair, which is what picks the spoken-form normaliser.
   // Read from init rather than passed per batch: it cannot change without a new
@@ -238,6 +427,7 @@ export function createHandler({ post, load = loadTranslator }) {
       if (data.type === 'init') {
         code = String(data.pair ?? '').split('-')[1] ?? null;
         translate = null;
+        const mine = ++inits;
         const loadingNow = load({
           manifestUrl: data.manifestUrl,
           pair: data.pair,
@@ -248,10 +438,10 @@ export function createHandler({ post, load = loadTranslator }) {
         loading = loadingNow;
         try {
           const loadedSession = await loadingNow;
-          if (loading !== loadingNow) return;
+          if (inits !== mine) return;
           translate = loadedSession;
         } catch (error) {
-          replaced = loading !== loadingNow;
+          replaced = inits !== mine;
           throw error;
         }
         post({ type: 'ready', initId: data.initId });
@@ -264,10 +454,13 @@ export function createHandler({ post, load = loadTranslator }) {
         // arrives before any init at all is still a programming error and says so.
         // Kept local: a newer init may replace `translate` during the wait.
         if (!translate && !loading) throw new Error('translator not initialised');
+        // Read before the wait, like `loading`: a newer init changes `code`, but
+        // this batch still runs on the model it waited for.
+        const batchCode = code;
         const session = translate ?? await loading;
         const lines = await translateBatch(session, data.lines, (p) => post({
           type: 'progress', id: data.id, file: null, loaded: p.loaded, total: p.total, phase: p.phase,
-        }), code);
+        }), batchCode);
         post({ type: 'translated', id: data.id, lines });
       }
     } catch (error) {
