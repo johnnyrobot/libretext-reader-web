@@ -9,7 +9,7 @@ bench/assets/ (gitignored: the weights are never committed), checks each
 against the size and sha256 pinned below, copies them to the target and writes
 its `manifest.json` in the `{version, files:[{name,path,bytes,sha256}]}` shape
 src/models.mjs reads, plus
-the source block scripts/convert-mt-models.py adds.
+a `source` block saying where the files came from.
 
 Every pin is checked twice: on the cached copy, so a truncated or tampered
 download is fetched again, and on the staged copy, because the manifest is a

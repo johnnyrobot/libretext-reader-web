@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createTranslator, hostedPairs, MT_ROOT } from '../src/translator.mjs';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { createTranslator, hostedPairs, MT_ROOT, translationStored } from '../src/translator.mjs';
+import { MT_CACHE_NAME } from '../src/models.mjs';
 
 class FakeWorker {
   constructor({ failInit = false } = {}) {
@@ -208,5 +209,42 @@ describe('translator.mjs', () => {
 
     expect(worker.terminated).toBe(true);
     await expect(batch).rejects.toThrow(/terminated/);
+  });
+});
+
+describe('translationStored', () => {
+  // A language is "(downloaded)" only if picking it fetches nothing. That needs
+  // the engine too: a pair's own files in the cache say nothing about the 5 MB
+  // engine every pair shares, and a reader told "(downloaded)" gets no consent
+  // dialog, so a missing engine would download without one.
+  const file = (path) => ({ name: path, path, bytes: 1, sha256: '00' });
+  const manifests = {
+    [`${MT_ROOT}en-fr/manifest.json`]: { version: 1, files: [file('model.bin')] },
+    [`${MT_ROOT}bergamot/manifest.json`]: { version: 1, files: [file('bergamot-translator.wasm')] },
+  };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stub(stored) {
+    vi.stubGlobal('fetch', vi.fn(async (url) => Response.json(manifests[url])));
+    vi.stubGlobal('caches', {
+      has: async (name) => name === MT_CACHE_NAME,
+      open: async () => ({ match: async (url) => (stored.includes(url) ? new Response('x') : undefined) }),
+    });
+  }
+
+  it('is false when the pair is stored but the engine is not', async () => {
+    stub([`${MT_ROOT}en-fr/model.bin`]);
+    expect(await translationStored('en-fr')).toBe(false);
+  });
+
+  it('is true when the pair and the engine are both stored', async () => {
+    stub([`${MT_ROOT}en-fr/model.bin`, `${MT_ROOT}bergamot/bergamot-translator.wasm`]);
+    expect(await translationStored('en-fr')).toBe(true);
+  });
+
+  it('is false when only the engine is stored', async () => {
+    stub([`${MT_ROOT}bergamot/bergamot-translator.wasm`]);
+    expect(await translationStored('en-fr')).toBe(false);
   });
 });

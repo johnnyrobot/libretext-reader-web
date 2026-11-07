@@ -30,8 +30,15 @@
 import { ensureModels, PHONON_CACHE_NAME } from './models.mjs';
 import { renderGuarded } from './phonon-guard.mjs';
 
-// The ORT 1.26 binaries transformers.js bundles, staged once and shared with
-// the translator (see translate.worker.mjs for why they come from it).
+// The ONNX Runtime binaries transformers.js bundles (1.26.0-dev). ORT builds
+// are not interchangeable -- loading another version's wasm into this JS aborts
+// inside the wasm module with nothing that says "wrong version" -- so
+// scripts/stage-local.sh resolves them through transformers.js's own dependency,
+// and they cannot drift from the runtime that is bundled. The directory is still
+// called ort-mt because the translator used it too, until LT-255 moved
+// translation to Bergamot.
+//
+// ABSOLUTE: a relative path resolves against the ORT module's URL, not the page's.
 const ORT_WASM_PATH = '/_assets/tts/ort-mt/';
 const MAX_THREADS = 8;
 

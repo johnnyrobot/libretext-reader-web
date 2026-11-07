@@ -87,8 +87,47 @@ function stageOrtWasmOutOfBundle() {
   };
 }
 
+/**
+ * Load Mozilla's Bergamot glue (src/vendor/bergamot/) as an ES module (LT-255).
+ *
+ * The file is kept byte-identical to the copy Firefox ships, so a later upgrade
+ * is a plain copy and a diff against Mozilla's file says nothing has drifted.
+ * It is written as a CLASSIC script, though, and two changes make it a module:
+ *
+ *   1. `export default loadBergamot;` at the end. A classic script's top-level
+ *      function is a global; a module's is not.
+ *   2. `var global_object = this;` becomes `globalThis`. The glue copies every
+ *      wasm export onto `this` and then calls them by bare name (`_malloc`). A
+ *      classic script's `this` is the worker's global scope; in a module, which is
+ *      always strict, it is undefined, and the first call throws "_malloc is not
+ *      defined". Firefox's own translations worker has the same globals, and
+ *      nothing else runs in ours.
+ *
+ * Both are matched exactly, and a miss stops the build instead of shipping a glue
+ * that fails at runtime.
+ */
+const BERGAMOT_GLUE = 'src/vendor/bergamot/bergamot-translator.js';
+
+function bergamotGlueAsModule() {
+  const THIS_GLOBAL = 'var global_object = this;';
+  return {
+    name: 'libretexts-bergamot-glue',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!id.endsWith(BERGAMOT_GLUE)) return null;
+      if (code.split(THIS_GLOBAL).length !== 2 || !/^function loadBergamot\(Module\) \{$/m.test(code)) {
+        this.error(`${BERGAMOT_GLUE} no longer matches what this plugin rewrites; re-check it`);
+      }
+      return {
+        code: `${code.replace(THIS_GLOBAL, 'var global_object = globalThis;')}\nexport default loadBergamot;\n`,
+        map: null,
+      };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [emitStaticAssets(), stageOrtWasmOutOfBundle()],
+  plugins: [emitStaticAssets(), stageOrtWasmOutOfBundle(), bergamotGlueAsModule()],
   build: {
     target: 'es2022',
     outDir: 'dist/_assets/tts',

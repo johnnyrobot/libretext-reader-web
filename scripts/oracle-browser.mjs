@@ -1,7 +1,7 @@
 /* Translate the whole validation corpus IN THE BROWSER, through the shipping worker.
  *
  *   scripts/oracle-fetch.sh          # the corpus
- *   npm run stage                    # .stage/_assets/tts/mt/en-es + ort-mt
+ *   npm run stage                    # .stage/_assets/tts/mt/en-es + mt/bergamot
  *   node scripts/oracle-browser.mjs  # ~35 min for 14,418 sentences
  *
  * This is the side of the oracle diff (build plan step 9) that cannot be faked.
