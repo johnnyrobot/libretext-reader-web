@@ -1,5 +1,43 @@
 # libretext-reader-web
 
+## Listen Mode for LibreTexts: how it works and why
+
+Listen Mode reads any LibreTexts page aloud and highlights each sentence as it's spoken. The voice runs entirely in the reader's own browser. No audio is made on a server, and nothing about what a student reads or hears leaves their device.
+
+### The approach, and why we chose it
+
+- **Speech made in the browser, not on a server.** Pre-recording every LibreTexts page in English alone would mean about 306,000 hours of audio and 2.3–3.3 TB of files, plus a re-record every time a page is edited. Doing it in the browser costs nothing per listen, stays current with every edit, and keeps reading private.
+- **The page is prepared once, ahead of time.** A build step writes a small "speech script" next to each page. It holds what the reader sees (left untouched) and what the voice should say: years read as years, "et al." spelled out, long citations shortened, tables announced instead of read cell by cell.
+- **Nothing loads unless you ask for it.** Visitors who never press *Enter Reader Mode* get a tiny 1 KB script. The voice downloads only after the reader agrees to it, and the download size is shown up front.
+
+### Old model vs. new model
+
+We started with **Supertonic**. We replaced it with **Phonon** from Gradium:
+
+| | Supertonic (old) | Phonon (current) |
+|---|---|---|
+| English download | ~410 MB | ~160 MB, plus a 15–26 MB engine the first time |
+| Time to first sound | about 5–14 seconds | almost instant once the voice is loaded (under a tenth of a second) |
+| Speed | baseline | about 2.3x faster |
+| Accuracy | similar | similar |
+| English licence | OpenRAIL-M | Apache 2.0 (open) |
+
+**Languages:** English, French, German, Spanish and Portuguese, each with a male and a female voice. Pages are translated in the browser, one sentence at a time, and then spoken. The four non-English voices are licensed for non-commercial use, so they stay demo-only until Gradium confirms in writing that we may use them. English has no such restriction.
+
+### Does closing the browser mean downloading again?
+
+No. The voice is saved in the browser's own storage the first time. It's checked for damage before every use, and the browser is asked to keep it. Closing or force-quitting the browser only means loading the saved voice back into memory, which takes a few seconds on a fast computer. A new download happens only in a private/incognito window, after the reader clears their site data, or if the browser frees up space on its own.
+
+### Equations
+
+The page still shows equations with the site's usual MathJax. For the voice, every equation is turned into spoken words ahead of time with MathJax and the Speech Rule Engine (the same open-source tools behind MathJax's accessibility features), using the ClearSpeak reading style. Our own rules fix chemistry, units and subscripts on top of that. While it plays, each equation is highlighted as one piece. In translated readings, equations are still spoken in English.
+
+### MP3 download
+
+On the listening page, a local test page where you type or paste text, readers can save a passage as an MP3. The same audio that plays is converted to MP3 right in the browser, so no server is involved. Save turns on as soon as the voice has finished preparing the audio, often while it is still playing, and it saves the whole passage. It stays off if a reading was stopped or failed. Book pages currently offer listening only.
+
+## About this repository
+
 A listen mode for LibreTexts textbook pages. Speech is synthesised **entirely in the
 reader's browser** — no audio is generated on a server, and nothing about what is read or
 heard leaves the device.
