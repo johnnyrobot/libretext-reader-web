@@ -306,26 +306,70 @@ export async function startEngine(wasmBinary, onDead = () => {}) {
 }
 
 let engine = null;              // Promise of the started module, one per worker
-const sessions = new Map();     // pair -> translate(lines), for switching back
 
 /**
- * Load a pair, served entirely from our own verified cache.
- *
- * Every byte -- the engine's wasm and the pair's three model files -- comes from
- * our own origin through `ensureModels`, sha256-checked, and is stored in the
- * translation cache. Nothing is fetched from Mozilla: the mirror's CSP blocks
- * the cross-origin request, and the request would tell a third party which book
- * a reader just opened.
+ * The worker's memory of its pairs: one loaded or loading model per pair.
  *
  * A loaded pair is KEPT. Switching es -> fr -> es then costs nothing the second
  * time, and a batch still running on the Spanish model when French is picked
  * keeps a model to run on: freeing it there would be a use-after-free inside the
  * wasm heap, between two chunks. The cost is ~37 MB of heap per language a
  * reader has tried, which wasm never hands back anyway.
+ *
+ * A pair still LOADING is shared too. es -> fr -> es before the first Spanish
+ * load ends would otherwise build a second Spanish model, and the one the map
+ * dropped would be ~37 MB of heap that nothing could free. The shared load's
+ * progress goes to whichever init asked last, since that is the one the reader
+ * is watching. A failed load is forgotten so the next pick retries it.
+ *
+ * `clear()` is for an engine that aborted: every session on it is dead, and so
+ * is any load in flight on it, whose result is then not remembered.
+ * Exported for tests/translate.worker.test.js.
  */
-async function loadTranslator({ manifestUrl, pair, onProgress }) {
-  if (sessions.has(pair)) return sessions.get(pair);
+export function createPairCache(loadPair) {
+  const sessions = new Map();   // pair -> translate(lines)
+  const pending = new Map();    // pair -> { promise, onProgress }
 
+  function load({ manifestUrl, pair, onProgress }) {
+    if (sessions.has(pair)) return Promise.resolve(sessions.get(pair));
+    const inFlight = pending.get(pair);
+    if (inFlight) {
+      inFlight.onProgress = onProgress;
+      return inFlight.promise;
+    }
+    const entry = { onProgress };
+    const mine = () => pending.get(pair) === entry;
+    entry.promise = Promise.resolve()
+      .then(() => loadPair({ manifestUrl, pair, onProgress: (p) => entry.onProgress(p) }))
+      .then((translate) => {
+        if (mine()) sessions.set(pair, translate);
+        return translate;
+      })
+      .finally(() => {
+        if (mine()) pending.delete(pair);
+      });
+    pending.set(pair, entry);
+    return entry.promise;
+  }
+
+  function clear() {
+    sessions.clear();
+    pending.clear();
+  }
+
+  return { load, clear };
+}
+
+/**
+ * Load one pair, served entirely from our own verified cache.
+ *
+ * Every byte -- the engine's wasm and the pair's three model files -- comes from
+ * our own origin through `ensureModels`, sha256-checked, and is stored in the
+ * translation cache. Nothing is fetched from Mozilla: the mirror's CSP blocks
+ * the cross-origin request, and the request would tell a third party which book
+ * a reader just opened. Reuse of loaded and loading pairs is `createPairCache`'s.
+ */
+async function loadPair({ manifestUrl, pair, onProgress }) {
   const engineManifest = new URL(ENGINE_MANIFEST, new URL(manifestUrl, self.location.href)).pathname;
   const { wasm } = await ensureModels(engineManifest, onProgress, MT_CACHE_NAME);
   const buffers = await ensureModels(manifestUrl, onProgress, MT_CACHE_NAME);
@@ -341,7 +385,7 @@ async function loadTranslator({ manifestUrl, pair, onProgress }) {
     const forget = () => {
       if (engine !== started) return;
       engine = null;
-      sessions.clear();
+      pairs.clear();
     };
     started = startEngine(wasm, forget).catch((error) => { forget(); throw error; });
     engine = started;
@@ -349,13 +393,17 @@ async function loadTranslator({ manifestUrl, pair, onProgress }) {
   const bergamot = await engine;
 
   const [source, target] = pair.split('-');
-  const translate = createBergamotSession(bergamot, buffers, source, target);
-  sessions.set(pair, translate);
-  return translate;
+  return createBergamotSession(bergamot, buffers, source, target);
 }
 
-export function createHandler({ post, load = loadTranslator }) {
+const pairs = createPairCache(loadPair);
+
+export function createHandler({ post, load = pairs.load }) {
   let loading = null;
+  // Which init is the latest. Counted rather than compared by promise: two
+  // inits for the same pair can share one load (createPairCache), and then the
+  // promise no longer says which of them the reader is waiting on.
+  let inits = 0;
   let translate = null;
   // The TARGET half of the pair, which is what picks the spoken-form normaliser.
   // Read from init rather than passed per batch: it cannot change without a new
@@ -371,6 +419,7 @@ export function createHandler({ post, load = loadTranslator }) {
       if (data.type === 'init') {
         code = String(data.pair ?? '').split('-')[1] ?? null;
         translate = null;
+        const mine = ++inits;
         const loadingNow = load({
           manifestUrl: data.manifestUrl,
           pair: data.pair,
@@ -381,10 +430,10 @@ export function createHandler({ post, load = loadTranslator }) {
         loading = loadingNow;
         try {
           const loadedSession = await loadingNow;
-          if (loading !== loadingNow) return;
+          if (inits !== mine) return;
           translate = loadedSession;
         } catch (error) {
-          replaced = loading !== loadingNow;
+          replaced = inits !== mine;
           throw error;
         }
         post({ type: 'ready', initId: data.initId });

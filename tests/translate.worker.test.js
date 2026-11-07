@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createHandler, translateBatch, SentenceCountError } from '../src/translate.worker.mjs';
+import { createHandler, createPairCache, translateBatch, SentenceCountError } from '../src/translate.worker.mjs';
 
 // A stubbed session: takes masked lines, returns "translated" ones. The real one
 // is a 37 MB model in a wasm engine, run in tests/bergamot.test.js; none of what
@@ -317,5 +317,106 @@ describe('the worker protocol', () => {
     const { handle, of } = handlerWith(async () => echoUpper);
     await handle({ type: 'translate', id: 1, lines: ['one.'] });
     expect(of('error')[0]).toEqual({ type: 'error', id: 1, message: 'translator not initialised' });
+  });
+});
+
+// A deferred promise, so a test decides when a load finishes.
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+describe('the pair cache', () => {
+  it('shares a load still in flight instead of building a second model (CodeRabbit, PR #15)', async () => {
+    // Spanish, then French, then Spanish again before the first Spanish load
+    // ends: two Spanish models, and the one `sessions` dropped was ~37 MB of
+    // wasm heap nothing could free.
+    const loads = { 'en-es': deferred(), 'en-fr': deferred() };
+    const loadPair = vi.fn(({ pair }) => loads[pair].promise);
+    const pairs = createPairCache(loadPair);
+
+    const first = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.load({ manifestUrl: '/fr.json', pair: 'en-fr', onProgress: () => {} });
+    const again = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    loads['en-es'].resolve(echoUpper);
+
+    expect(await first).toBe(echoUpper);
+    expect(await again).toBe(echoUpper);
+    expect(loadPair.mock.calls.map(([args]) => args.pair)).toEqual(['en-es', 'en-fr']);
+  });
+
+  it('sends a shared load\'s progress to the latest caller', async () => {
+    let report;
+    const done = deferred();
+    const pairs = createPairCache(({ onProgress }) => { report = onProgress; return done.promise; });
+    const older = vi.fn();
+    const newer = vi.fn();
+
+    pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: older });
+    pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: newer });
+    await Promise.resolve();
+    report({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+
+    expect(older).not.toHaveBeenCalled();
+    expect(newer).toHaveBeenCalledWith({ file: 'model', loaded: 1, total: 2, phase: 'download' });
+    done.resolve(echoUpper);
+  });
+
+  it('reuses a loaded pair without loading it again', async () => {
+    const loadPair = vi.fn(async () => echoUpper);
+    const pairs = createPairCache(loadPair);
+
+    await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets a load that failed, so the next pick retries', async () => {
+    const loadPair = vi.fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(echoUpper);
+    const pairs = createPairCache(loadPair);
+
+    await expect(pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).rejects.toThrow('network');
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not remember a load that was in flight when the engine died', async () => {
+    // clear() is what the engine's abort calls. A session built on the dead
+    // module must not be served to the next reader who picks that pair.
+    const stale = deferred();
+    const loadPair = vi.fn()
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce(echoUpper);
+    const pairs = createPairCache(loadPair);
+
+    const dying = pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} });
+    pairs.clear();
+    stale.resolve(session((lines) => lines));
+    await dying;
+
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the worker protocol, with a shared load', () => {
+  it('answers only the latest init when an earlier one shares its load', async () => {
+    // es, fr, es: the two Spanish inits get the SAME promise from the pair
+    // cache, so "is my promise still the latest?" no longer tells them apart.
+    const spanish = deferred();
+    const pairs = createPairCache(({ pair }) => (pair === 'en-es' ? spanish.promise : Promise.resolve(echoUpper)));
+    const { handle, of } = handlerWith(pairs.load);
+
+    const first = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 1 });
+    await handle({ type: 'init', manifestUrl: '/fr.json', pair: 'en-fr', initId: 2 });
+    const third = handle({ type: 'init', manifestUrl: '/es.json', pair: 'en-es', initId: 3 });
+    spanish.resolve(echoUpper);
+    await Promise.all([first, third]);
+
+    expect(of('ready').map((m) => m.initId)).toEqual([2, 3]);
   });
 });
