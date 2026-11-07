@@ -7,7 +7,7 @@
  * fails here rather than only in a browser.
  *
  * It needs the files `node scripts/fetch-mt-models.mjs` writes, which are not in
- * git (~42 MB a pair). Without them it is skipped, and says so.
+ * git (~37 MB a pair, plus the 5 MB engine). Without them it is skipped, and says so.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it, expect, beforeAll } from 'vitest';

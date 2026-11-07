@@ -79,9 +79,9 @@ python3 "$ROOT/scripts/fetch-phonon.py" "$TTS/phonon"
 # Translation: Mozilla's Firefox Translations engine and models (LT-255),
 # fetched by scripts/fetch-mt-models.mjs into bench/assets/mt-bergamot and
 # checked there against scripts/mt-models.lock.json. Optional in the same way
-# and for the same reason the translate step below is: it is a ~42 MB fetch per
-# pair, and staging must stay runnable on a machine that has never run it. Every
-# manifest.json is written by that script, not here -- it records the Remote
+# and for the same reason the translate step below is: it is ~37 MB a pair
+# (~25 MB compressed) plus the 5 MB engine, and staging must stay runnable on a
+# machine that has never run it. Every manifest.json is written by that script, not here -- it records the Remote
 # Settings record and licence alongside the hashes.
 #
 # The old directory is removed first: copying over a stage that still holds the

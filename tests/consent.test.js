@@ -65,7 +65,7 @@ describe('the translation consent gate', () => {
 
   it('warns when the browser may not have room, reusing the voice gate\'s wording', async () => {
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: false, licence: 'mpl-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: false, licence: 'mpl-2.0',
     });
     expect(dialog().textContent).toMatch(/may not have room/i);
     click('decline');
@@ -160,11 +160,11 @@ describe('the translation gate when the translation voice is not downloaded yet 
     // reader has never downloaded. Its size and its noncommercial licence are
     // part of what they are agreeing to here. Supertonic is gone (LT-217).
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'mpl-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: true, licence: 'mpl-2.0',
       voiceBytes: 199_570_458,               // phonon-es, as staged
     });
     const text = dialog().textContent.replace(/\s+/g, ' ');
-    expect(text).toContain('306 MB');     // 115 MB + 190 MB, rounded once
+    expect(text).toContain('230 MB');     // 40 MB + 190 MB, rounded once
     expect(text).toContain('190 MB voice that reads español aloud');
     // Both voices are spoken by the CC BY-NC model; only the Female voice file is
     // Apache 2.0, so the credit names the model's licence first (LT-234).
@@ -185,7 +185,7 @@ describe('the translation gate when the translation voice is not downloaded yet 
 
   it('says nothing about the voice once it is downloaded', async () => {
     const answer = requestTranslationConsent({
-      language: 'español', requiredBytes: 121_097_315, quotaSufficient: true, licence: 'mpl-2.0',
+      language: 'español', requiredBytes: 41_536_783, quotaSufficient: true, licence: 'mpl-2.0',
     });
     expect(dialog().textContent).not.toContain('CC BY-NC');
     expect(dialog().textContent).not.toContain('phonon-voices');

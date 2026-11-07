@@ -25,7 +25,7 @@ export function mountControls(host, {
   // the project can verify, without saying it is machine output, misrepresents
   // it. English is the source and carries no such note.
   //
-  // And each one says whether picking it starts in seconds or starts a 115 MB
+  // And each one says whether picking it starts in seconds or starts a 230 MB
   // download. That is the single most useful thing this menu can tell a reader,
   // and it is a cache lookup -- the caller does it and passes `stored`.
   const langControl = languages.length ? `

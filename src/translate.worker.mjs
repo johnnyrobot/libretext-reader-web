@@ -11,7 +11,7 @@
  * The translator is Mozilla's Firefox Translations engine (LT-255): Bergamot,
  * a wasm build of Marian, with Firefox's own models and settings. It replaced
  * Opus-MT on Transformers.js, which it beat in all four languages (LT-252) at a
- * quarter of the download.
+ * third of the download.
  *
  * Protocol, deliberately the same shape as the speech worker's:
  *
@@ -213,23 +213,11 @@ export function createBergamotSession(bergamot, buffers, source, target) {
       throw engineError(bergamot, error);
     }
   };
-  const aligned = (name) => {
-    const bytes = new Uint8Array(buffers[name]);
-    const memory = new bergamot.AlignedMemory(bytes.byteLength, ALIGNMENT[name]);
-    memory.getByteArrayView().set(bytes);
-    return memory;
-  };
-  // Bergamot reads its settings as YAML.
-  const config = Object.entries(MODEL_CONFIG).map(([key, value]) => `${key}: ${value}`).join('\n');
-  const { model, service } = guarded(() => {
-    const vocabs = new bergamot.AlignedMemoryList();
-    vocabs.push_back(aligned('vocab'));
-    return {
-      model: new bergamot.TranslationModel(
-        source, target, config, aligned('model'), aligned('lex'), vocabs, null),
-      service: serviceFor(bergamot),
-    };
-  });
+  // Built in a function of its own so the session below does not keep `buffers`
+  // reachable: the engine has copied every byte into its heap, and a closure
+  // over the ~37 MB of ArrayBuffers would hold a second copy per language.
+  const model = guarded(() => loadModel(bergamot, buffers, source, target));
+  const service = guarded(() => serviceFor(bergamot));
 
   return async (lines) => guarded(() => {
     const messages = new bergamot.VectorString();
@@ -242,10 +230,17 @@ export function createBergamotSession(bergamot, buffers, source, target) {
       }
       responses = service.translate(model, messages, options);
       const out = [];
-      // A newline inside a line is a paragraph break to Bergamot, and comes back
-      // as one. A line here is one spoken sentence, so it is joined back up.
       for (let i = 0; i < responses.size(); i += 1) {
-        out.push(responses.get(i).getTranslatedText().replace(/\s*\n\s*/g, ' '));
+        // get() hands back a COPY of the response, with its own share of the
+        // heap, so it is freed here like everything else this call made.
+        const response = responses.get(i);
+        try {
+          // A newline inside a line is a paragraph break to Bergamot, and comes
+          // back as one. A line here is one spoken sentence, so it is joined up.
+          out.push(response.getTranslatedText().replace(/\s*\n\s*/g, ' '));
+        } finally {
+          response.delete();
+        }
       }
       return out;
     } finally {
@@ -255,6 +250,22 @@ export function createBergamotSession(bergamot, buffers, source, target) {
       responses?.delete();
     }
   });
+}
+
+/** One pair's TranslationModel, from its verified files. */
+function loadModel(bergamot, buffers, source, target) {
+  const aligned = (name) => {
+    const bytes = new Uint8Array(buffers[name]);
+    const memory = new bergamot.AlignedMemory(bytes.byteLength, ALIGNMENT[name]);
+    memory.getByteArrayView().set(bytes);
+    return memory;
+  };
+  // Bergamot reads its settings as YAML.
+  const config = Object.entries(MODEL_CONFIG).map(([key, value]) => `${key}: ${value}`).join('\n');
+  const vocabs = new bergamot.AlignedMemoryList();
+  vocabs.push_back(aligned('vocab'));
+  return new bergamot.TranslationModel(
+    source, target, config, aligned('model'), aligned('lex'), vocabs, null);
 }
 
 /**

@@ -47,18 +47,18 @@ function manifest() {
   };
 }
 
-// The shape scripts/convert-mt-models.py writes: same {version, files:[...]} the
-// engine manifest uses, plus provenance keys this reader ignores by design.
+// The shape scripts/fetch-mt-models.mjs writes (LT-255): same {version, files:[...]}
+// the voice manifest uses, plus provenance keys this reader ignores by design.
 function mtManifest() {
   return {
     version: 1,
     pair: 'en-es',
-    source: { repo: 'Xenova/opus-mt-en-es', revision: 'deadbeef', licence: 'apache-2.0' },
+    engine: 'bergamot',
+    source: { project: 'Firefox Translations', version: '3.0', licence: 'mpl-2.0' },
     files: [
-      { name: 'encoder', path: 'onnx/encoder_model_quantized.onnx', bytes: 3, sha256: SHA_123 },
-      { name: 'decoder', path: 'onnx/decoder_model_merged_quantized.onnx', bytes: 3, sha256: SHA_123 },
-      { name: 'tokenizer', path: 'tokenizer.json', bytes: 3, sha256: SHA_123 },
-      { name: 'vocab', path: 'vocab.json', bytes: 3, sha256: SHA_123 },
+      { name: 'model', path: 'model.enes.intgemm.alphas.bin', bytes: 3, sha256: SHA_123 },
+      { name: 'lex', path: 'lex.50.50.enes.s2t.bin', bytes: 3, sha256: SHA_123 },
+      { name: 'vocab', path: 'vocab.enes.spm', bytes: 3, sha256: SHA_123 },
     ],
   };
 }
@@ -193,12 +193,12 @@ describe('models.mjs', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json(mtManifest())));
     vi.stubGlobal('navigator', { storage: { estimate: async () => ({ quota: 1000, usage: 0 }) } });
     await expect(checkQuota('/_assets/tts/mt/en-es/manifest.json'))
-      .resolves.toMatchObject({ required: 12, sufficient: true });
+      .resolves.toMatchObject({ required: 9, sufficient: true });   // three files of 3 bytes
   });
 
   it('puts translation models in their own cache, leaving the voice untouched', async () => {
     // The whole reason for a second cache: deleteModels() deletes a WHOLE cache,
-    // so a reader reclaiming 121 MB of Spanish must not lose the voice.
+    // so a reader reclaiming 40 MB of Spanish must not lose the voice.
     caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([1, 2, 3]).buffer);
     caches_.created.add(CACHE_NAME);
     vi.stubGlobal('fetch', vi.fn(async (url) => {
@@ -208,16 +208,16 @@ describe('models.mjs', () => {
 
     const out = await ensureModels('/_assets/tts/mt/en-es/manifest.json', () => {}, MT_CACHE_NAME);
 
-    expect(Object.keys(out).sort()).toEqual(['decoder', 'encoder', 'tokenizer', 'vocab']);
-    expect(caches_.storeFor(MT_CACHE_NAME).size).toBe(4);
+    expect(Object.keys(out).sort()).toEqual(['lex', 'model', 'vocab']);
+    expect(caches_.storeFor(MT_CACHE_NAME).size).toBe(3);
     expect([...caches_.storeFor(MT_CACHE_NAME).keys()])
-      .toContain('/_assets/tts/mt/en-es/onnx/encoder_model_quantized.onnx');
+      .toContain('/_assets/tts/mt/en-es/model.enes.intgemm.alphas.bin');
     expect(caches_.store.size).toBe(1); // the voice, exactly as it was
   });
 
   it('deletes one cache without touching the other', async () => {
     caches_.store.set('/_assets/tts/phonon/onnx/flow_lm_main.onnx', new Uint8Array([1, 2, 3]).buffer);
-    caches_.storeFor(MT_CACHE_NAME).set('/_assets/tts/mt/en-es/vocab.json',
+    caches_.storeFor(MT_CACHE_NAME).set('/_assets/tts/mt/en-es/vocab.enes.spm',
       new Uint8Array([1, 2, 3]).buffer);
     caches_.created.add(CACHE_NAME);
     caches_.created.add(MT_CACHE_NAME);

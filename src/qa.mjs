@@ -2,8 +2,8 @@
  * What survives of the build-time QA gate when there is no back-translation.
  *
  * `pipeline/qa.py` scores a sentence by translating it BACK to English and
- * comparing. That needs the reverse checkpoint -- another ~120 MB per pair on top
- * of the 115 MB the reader already accepted -- and it doubles the inference cost
+ * comparing. That needs the reverse checkpoint -- another ~40 MB per pair on top
+ * of the 40 MB the reader already accepted -- and it doubles the inference cost
  * of a feature that must stay ahead of playback. It does not go in the browser.
  *
  * Three of its checks only ever look at ONE side of a pair, so they cost nothing

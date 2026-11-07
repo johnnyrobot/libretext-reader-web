@@ -13,7 +13,7 @@ import {
   modelsPresent, deleteModels, checkQuota, checkQuotaFor, removeRetiredCaches,
   MT_CACHE_NAME, PHONON_CACHE_NAME,
 } from './models.mjs';
-import { createTranslator, hostedPairs, MT_ROOT } from './translator.mjs';
+import { createTranslator, hostedPairs, translationStored } from './translator.mjs';
 import { createTranslationQueue, MIN_RATE } from './translate-queue.mjs';
 import { referenceSentenceIds } from './qa.mjs';
 import { substituteMathSpeech } from './math-speech.mjs';
@@ -349,16 +349,13 @@ async function runEntry() {
   // manifest.languages describes something that no longer exists.
   const pairs = offeredPairs(await hostedPairs(), TRANSLATION_VOICES);
 
-  const mtManifestUrl = (pair) => `${MT_ROOT}${pair}/manifest.json`;
-
   /** Which of them are already downloaded -- a cache lookup, and the difference
-   * between "starts in three seconds" and "starts after a 115 MB download".
+   * between "starts in three seconds" and "starts after a 40 MB download".
    *
    * Costs nothing on the common path: modelsPresent checks caches.has() before
    * caches.open(), so a reader who has never downloaded a language does not even
    * fetch a manifest here, and no cache entry is created by the asking. */
-  const stored = await Promise.all(pairs.map((p) =>
-    modelsPresent(mtManifestUrl(p.pair), MT_CACHE_NAME)));
+  const stored = await Promise.all(pairs.map((p) => translationStored(p.pair)));
 
   /** A language's voice download, 0 once it is stored. That language's size
    * includes it until then, in the menu and in the dialog alike. It fetches the
@@ -390,7 +387,7 @@ async function runEntry() {
    * download. Resolves false if the reader says no.
    *
    * A SECOND gate on purpose. Accepting 155 MB for a voice is not accepting
-   * another 121 MB for Spanish: different model, different licence, and quite
+   * another 40 MB for Spanish: different model, different licence, and quite
    * possibly a different day. The size and licence come from pairs.json, which is
    * why they are recorded there -- naming a size means knowing it BEFORE
    * fetching anything of the model's.
@@ -399,7 +396,7 @@ async function runEntry() {
     // modelsPresent must not create the cache just by asking (models.mjs's
     // invariant, tested): a reader who declines leaves nothing behind.
     const voice = voiceBytes[hosted.code] = await translationVoiceBytes(hosted.code);
-    if (!voice && await modelsPresent(mtManifestUrl(hosted.pair), MT_CACHE_NAME)) return true;
+    if (!voice && await translationStored(hosted.pair)) return true;
 
     // The translation model's size is stated even in the rare case it is stored
     // and only the voice is missing (a reader who deleted the voice): it then
@@ -441,7 +438,7 @@ async function runEntry() {
 
     if (!(await consentToDownload(hosted)) || !current()) return null;
 
-    // TWO waits, told apart deliberately. A 121 MB download gets the same modal
+    // TWO waits, told apart deliberately. A 40 MB download gets the same modal
     // progress bar the voice gets, because it is the same kind of wait and can
     // be cancelled. Translation gets the status line, because it is seconds and
     // the reader is already looking at a working page. One bar meaning both
@@ -453,12 +450,12 @@ async function runEntry() {
     } finally {
       download.close();
     }
-    // The menu said "115 MB download" a moment ago and it is no longer true.
+    // The menu said "230 MB download" a moment ago and it is no longer true.
     // Repainted rather than rebuilt: the reader is looking at this select right
     // now, and rebuilding it would drop their selection.
     modelStored.add(hosted.code);
     controls.setLanguageStored(hosted.code, !voiceBytes[hosted.code]);
-    // ONNX Runtime cannot abort a load in flight, so the honest behaviour is the
+    // The worker cannot abort a load in flight, so the honest behaviour is the
     // same as the voice's: finish the load, then stop. What was downloaded stays
     // cached -- cancel means "not now", not "undo the consent I just gave".
     if (download.cancelled() || !current()) return null;

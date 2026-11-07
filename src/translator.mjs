@@ -7,12 +7,26 @@
  * lives in `translate.worker.mjs`, where it cannot block the page.
  */
 
+import { modelsPresent, MT_CACHE_NAME } from './models.mjs';
+
 // The DEPLOYED filename. Vite builds src/translate.worker.mjs to
 // translate.worker.js; pointing at the .mjs name 404s and surfaces only as a
 // worker error event -- the same trap engine.mjs names.
 const DEFAULT_WORKER_URL = '/_assets/tts/translate.worker.js';
 
 export const MT_ROOT = '/_assets/tts/mt/';
+
+/**
+ * Whether picking this pair downloads nothing: its own files AND the engine
+ * every pair shares (LT-255). The menu's "(downloaded)" and the consent dialog's
+ * skip both rest on this, so checking the pair alone would let a new engine in
+ * the lock file reach a returning reader with no dialog. The engine's path is
+ * the one translate.worker.mjs resolves next to each pair.
+ */
+export async function translationStored(pair, root = MT_ROOT) {
+  return (await modelsPresent(`${root}${pair}/manifest.json`, MT_CACHE_NAME))
+    && modelsPresent(`${root}bergamot/manifest.json`, MT_CACHE_NAME);
+}
 
 /**
  * The language pairs this deployment hosts models for.
