@@ -326,10 +326,12 @@ let engine = null;              // Promise of the started module, one per worker
  * A load still in flight is KEPT. It is almost always still downloading, and
  * goes on to start a fresh engine; dropping it would make the next pick of that
  * pair build a second model beside it. A load caught by the abort itself is
- * refused by `loadPair`, which checks its engine is still the live one.
+ * refused here, as it is cached: `isLive(translate)` says whether the session's
+ * engine is still the live one. Checking any earlier leaves a gap, since another
+ * pair's model can abort the engine between `loadPair` returning and this.
  * Exported for tests/translate.worker.test.js.
  */
-export function createPairCache(loadPair) {
+export function createPairCache(loadPair, isLive = () => true) {
   const sessions = new Map();   // pair -> translate(lines)
   const pending = new Map();    // pair -> { promise, onProgress }
 
@@ -344,6 +346,7 @@ export function createPairCache(loadPair) {
     entry.promise = Promise.resolve()
       .then(() => loadPair({ manifestUrl, pair, onProgress: (p) => entry.onProgress(p) }))
       .then((translate) => {
+        if (!isLive(translate)) throw new Error('translation engine aborted while loading');
         sessions.set(pair, translate);
         return translate;
       })
@@ -394,13 +397,14 @@ async function loadPair({ manifestUrl, pair, onProgress }) {
 
   const [source, target] = pair.split('-');
   const translate = createBergamotSession(bergamot, buffers, source, target);
-  // The engine can abort between `await` and here (another pair's batch runs in
-  // that gap). A session on it would be cached and fail every batch.
-  if (engine !== live) throw new Error('translation engine aborted while loading');
+  sessionEngines.set(translate, live);
   return translate;
 }
 
-const pairs = createPairCache(loadPair);
+// Which engine each session runs on, so the cache can refuse one whose engine
+// has since aborted. Weak: a session nobody holds takes its entry with it.
+const sessionEngines = new WeakMap();
+const pairs = createPairCache(loadPair, (translate) => sessionEngines.get(translate) === engine);
 
 export function createHandler({ post, load = pairs.load }) {
   let loading = null;

@@ -401,6 +401,23 @@ describe('the pair cache', () => {
     expect(loadPair).toHaveBeenCalledTimes(1);
   });
 
+  it('refuses a session whose engine died before it was cached (PR-Agent, PR #15)', async () => {
+    // Two pairs load at once; the second one's model aborts the engine in the
+    // gap after the first left loadPair but before the cache took it. Cached,
+    // the dead session would fail every Spanish batch from then on.
+    let alive = true;
+    const dead = session((lines) => lines);
+    const loadPair = vi.fn()
+      .mockImplementationOnce(async () => { alive = false; return dead; })
+      .mockResolvedValueOnce(echoUpper);
+    const pairs = createPairCache(loadPair, (translate) => translate !== dead || alive);
+
+    await expect(pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} }))
+      .rejects.toThrow(/engine aborted/);
+    expect(await pairs.load({ manifestUrl: '/es.json', pair: 'en-es', onProgress: () => {} })).toBe(echoUpper);
+    expect(loadPair).toHaveBeenCalledTimes(2);
+  });
+
   it('drops loaded sessions when the engine died (clear)', async () => {
     const loadPair = vi.fn(async () => session((lines) => lines));
     const pairs = createPairCache(loadPair);
