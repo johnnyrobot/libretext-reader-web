@@ -6,9 +6,9 @@ Listen Mode reads any LibreTexts page aloud and highlights each sentence as it's
 
 ### The approach, and why we chose it
 
-- **Speech made in the browser, not on a server.** Pre-recording every LibreTexts page in English alone would mean about 306,000 hours of audio and 2–3 TB of files, plus a re-record every time a page is edited. Doing it in the browser costs nothing per listen, stays current with every edit, and keeps reading private.
+- **Speech made in the browser, not on a server.** Pre-recording every LibreTexts page in English alone would mean about 306,000 hours of audio and 2.3–3.3 TB of files, plus a re-record every time a page is edited. Doing it in the browser costs nothing per listen, stays current with every edit, and keeps reading private.
 - **The page is prepared once, ahead of time.** A build step writes a small "speech script" next to each page. It holds what the reader sees (left untouched) and what the voice should say: years read as years, "et al." spelled out, long citations shortened, tables announced instead of read cell by cell.
-- **Nothing loads unless you ask for it.** Visitors who never press Listen get a tiny 1 KB script. The voice downloads only after the reader agrees to it, and the download size is shown up front.
+- **Nothing loads unless you ask for it.** Visitors who never press *Enter Reader Mode* get a tiny 1 KB script. The voice downloads only after the reader agrees to it, and the download size is shown up front.
 
 ### Old model vs. new model
 
@@ -16,8 +16,8 @@ We started with **Supertonic**. We replaced it with **Phonon** from Gradium:
 
 | | Supertonic (old) | Phonon (current) |
 |---|---|---|
-| English download | ~409 MB | ~155 MB |
-| Time to first sound | about 5–14 seconds | almost instant (first audio in ~25 ms) |
+| English download | ~410 MB | ~160 MB, plus a 15–26 MB engine the first time |
+| Time to first sound | about 5–14 seconds | almost instant once the voice is loaded (under a tenth of a second) |
 | Speed | baseline | about 2.3x faster |
 | Accuracy | similar | similar |
 | English licence | OpenRAIL-M | Apache 2.0 (open) |
@@ -26,7 +26,7 @@ We started with **Supertonic**. We replaced it with **Phonon** from Gradium:
 
 ### Does closing the browser mean downloading again?
 
-No. The voice is saved in the browser's own storage the first time. It's checked for damage before every use, and the browser is asked to keep it. Closing or force-quitting the browser only means loading the saved voice back into memory, which takes a second or two. A new download happens only in a private/incognito window, after the reader clears their site data, or if the browser frees up space on its own.
+No. The voice is saved in the browser's own storage the first time. It's checked for damage before every use, and the browser is asked to keep it. Closing or force-quitting the browser only means loading the saved voice back into memory, which takes a few seconds on a fast computer. A new download happens only in a private/incognito window, after the reader clears their site data, or if the browser frees up space on its own.
 
 ### Equations
 
@@ -34,7 +34,7 @@ The page still shows equations with the site's usual MathJax. For the voice, eve
 
 ### MP3 download
 
-On the listening page, readers can save what they just heard as an MP3. The same audio that played is converted to MP3 right in the browser, so no server is involved. Save becomes available once a reading finishes. Book pages currently offer listening only; MP3 saving is on the separate listening page.
+On the listening page, a local test page where you type or paste text, readers can save a passage as an MP3. The same audio that plays is converted to MP3 right in the browser, so no server is involved. Save turns on as soon as the voice has finished preparing the audio, often while it is still playing, and it saves the whole passage. It stays off if a reading was stopped or failed. Book pages currently offer listening only.
 
 ## About this repository
 
