@@ -34,6 +34,19 @@ def test_the_image_block_is_anchored_on_the_img_itself():
     assert blocks[0].path == [0, 0]
 
 
+def test_identical_sibling_images_each_get_their_own_path():
+    # Beautiful Soup counts tags with the same markup as equal, so the path
+    # must find each image by identity, not by equality.
+    blocks = extract_blocks(page('<img alt="A flask"/><img alt="A flask"/>'))
+    assert [b.path for b in blocks] == [[0], [1]]
+
+
+def test_an_image_inside_the_second_of_two_identical_figures_points_at_that_figure():
+    fig = '<figure><img alt="A flask"/></figure>'
+    blocks = extract_blocks(page(fig + fig))
+    assert [b.path for b in blocks] == [[0, 0], [1, 0]]
+
+
 def test_an_image_inside_a_paragraph_follows_that_paragraph():
     blocks = extract_blocks(page('<p>Look at this <img alt="A red flask"/> closely.</p>'))
     assert kinds(blocks) == [

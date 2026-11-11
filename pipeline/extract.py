@@ -311,7 +311,9 @@ def _element_path(element: Tag, root: Tag) -> list:
     node = element
     while node is not root and node.parent is not None:
         siblings = [c for c in node.parent.children if isinstance(c, Tag)]
-        path.append(siblings.index(node))
+        # By identity: Beautiful Soup counts tags with the same markup as equal,
+        # so `siblings.index(node)` would pick the first of two identical tags.
+        path.append(next(i for i, sibling in enumerate(siblings) if sibling is node))
         node = node.parent
     return list(reversed(path))
 
