@@ -34,7 +34,7 @@
 
 /* Background tint plus a left border: contrast alone must not carry the
    meaning (WCAG 2.2 AA, and colour-blind readers). */
-.tts-current {
+.tts-current:not(img) {
   background: #fff3c4;
   box-shadow: -3px 0 0 0 #b45309;
   color: #1a1a1a;
@@ -74,12 +74,11 @@
 }
 
 /* LT-537: an image being described. There is no text to tint, so the image is
-   outlined; the outline sits outside it so the picture itself is unchanged.
+   outlined; the outline sits outside it so the picture itself is unchanged
+   (the text tint above skips images, so a page's own image background stays).
    Skipped first, so a current image that was also skipped shows as current. */
 img.tts-skipped { outline: 2px dotted #b45309; outline-offset: 3px; }
 img.tts-current {
-  background: none;
-  box-shadow: none;
   outline: 3px solid #b45309;
   outline-offset: 3px;
 }

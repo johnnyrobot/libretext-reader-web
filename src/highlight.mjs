@@ -14,9 +14,11 @@
  *
  * What `mountSentences`'s guard actually checks: that an equation atom is
  * PRESENT at every position the manifest expects one, in the right count and
- * document order, and that the surrounding text is unchanged. It does NOT
- * decode or compare what the DOM's equation actually says against the
- * manifest's token -- an atom contributes "the token the manifest says is
+ * document order, and that the surrounding text is unchanged. For a typeset
+ * equation it does NOT decode or compare what the DOM's equation actually says
+ * against the manifest's token (an image's alt is the exception: MathJax never
+ * typesets an attribute, so its raw TeX is still there to compare -- see
+ * mountImage) -- an atom contributes "the token the manifest says is
  * here" by construction (see `placed` below), so two equations with the same
  * atom count in the same positions are indistinguishable to this guard even
  * if their LaTeX differs. Recovering the real TeX from MathJax internals to
@@ -25,10 +27,13 @@
  * production, and this file does not want that coupling.
  */
 
+// The pipeline walks the page before MathJax runs, so a typeset
+// <mjx-container> is not one of the children it counted: skip it, or an image
+// after inline math in the same paragraph resolves one element too far.
 export function resolveBlockElement(root, path) {
   let node = root;
   for (const index of path) {
-    const children = [...node.children];
+    const children = [...node.children].filter((child) => !isAtom(child));
     if (index >= children.length) return null;
     node = children[index];
   }
@@ -102,7 +107,8 @@ export function blockTextOf(element, expected) {
 }
 
 // A global counterpart to MATH_TOKEN_AT, for counting how many tokens the
-// manifest expects rather than matching the one at a fixed offset.
+// manifest expects rather than matching the one at a fixed offset, and for
+// decoding every token in an image's description (decodeMathTokens).
 const MATH_TOKEN_G = /\[\[latex:[A-Za-z0-9+/=]+\]\]/g;
 
 // How many non-empty math atoms the element's subtree actually renders. Used
@@ -157,7 +163,7 @@ function rangeFor(element, expected, offset, length) {
 const IMAGE_LEAD = 'Image: ';
 
 export function imageText(element) {
-  if (element?.tagName?.toLowerCase() !== 'img') return null;
+  if (!element || !isImage(element)) return null;
   const alt = element.getAttribute('alt');
   if (alt === null) return null;
   const text = alt.replace(/[ \t\n\r\f]+/g, ' ').replace(/^ | $/g, '');
@@ -172,9 +178,6 @@ function isImage(element) {
   return element.tagName?.toLowerCase() === 'img';
 }
 
-// An image is highlighted by outlining the <img> itself: there is no text to
-// wrap, and wrapping the image in a span would break `figure > img` styles.
-// Every sentence of the description maps to the same element.
 // A formula in an alt stays raw TeX on the page (MathJax never typesets an
 // attribute) but is a math token in the manifest, so the pipeline speaks it in
 // words. Decoding the tokens back to their spans lets the two compare.
@@ -186,6 +189,9 @@ function decodeMathTokens(text) {
   });
 }
 
+// An image is highlighted by outlining the <img> itself: there is no text to
+// wrap, and wrapping the image in a span would break `figure > img` styles.
+// Every sentence of the description maps to the same element.
 function mountImage(block, element, elements, onDrop) {
   if (!element) { onDrop(block, 'unresolved-path'); return; }
   if (typeof block.text !== 'string' || imageText(element) !== decodeMathTokens(block.text)) {

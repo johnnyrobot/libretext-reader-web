@@ -52,7 +52,8 @@ page: every sentence in two forms.
   whose text is that token. Every translated track speaks the equation in English.
 - **Images** — an image with a real description is read as "Image: <alt text>", in page order
   (so before its caption), and outlined while it is spoken; the image itself is never wrapped
-  or changed. Empty alt (decorative), `role="presentation"`, and alt that is only a filename,
+  or changed. Empty alt (decorative), `role="presentation"` or `"none"`, an image under
+  `aria-hidden="true"`, and alt that is only a filename,
   a placeholder word or MindTouch's `mindtouch.page#thumbnail` stay silent (LT-537). A
   `\( … \)` formula in the alt becomes a math token like any other and is spoken in words;
   the reader decodes the token to match it against the raw alt, which MathJax never typesets.

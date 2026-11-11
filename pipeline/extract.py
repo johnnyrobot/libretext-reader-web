@@ -30,8 +30,13 @@ def math_token(span: str) -> str:
     return "[[latex:" + base64.b64encode(span.encode("utf-8")).decode("ascii") + "]]"
 
 
+def math_token_span(token: str) -> str:
+    """`[[latex:XChFXCk=]]` -> `\\(E\\)`, delimiters and all."""
+    return base64.b64decode(token[len("[[latex:"):-2]).decode("utf-8")
+
+
 def decode_math_token(token: str) -> tuple[str, bool]:
-    span = base64.b64decode(token[len("[[latex:"):-2]).decode("utf-8")
+    span = math_token_span(token)
     display = span.startswith("\\[")
     return span[2:-2].strip(), display
 
@@ -164,8 +169,7 @@ def tokenize_math(text: str) -> str:
 def detokenize_math(text: str) -> str:
     """Inverse of tokenize_math for every span it keeps: each token back to its
     span, delimiters and all."""
-    return MATH_TOKEN_RE.sub(
-        lambda m: base64.b64decode(m.group(0)[len("[[latex:"):-2]).decode("utf-8"), text)
+    return MATH_TOKEN_RE.sub(lambda m: math_token_span(m.group(0)), text)
 
 
 def preamble_definitions(html: str) -> list[str]:
@@ -236,12 +240,19 @@ _PLACEHOLDER_ALTS = {
 _SILENT_ROLES = {"presentation", "none"}
 
 
+def _aria_hidden(tag: Tag) -> bool:
+    """aria-hidden="true" hides the element and everything inside it from a
+    screen reader, so an image under such an ancestor stays silent too."""
+    return (tag.get("aria-hidden") or "").strip().lower() == "true"
+
+
 def image_alt(alt: str | None) -> str | None:
     """The alt text worth reading aloud, collapsed, or None for none.
 
     None for an empty alt (the HTML way to mark an image decorative), for junk
     (a filename, a bare hash, a placeholder word, MindTouch's
-    `mindtouch.page#thumbnail`).
+    `mindtouch.page#thumbnail`), and for an alt that already holds something
+    shaped like a math token, which no page writes and which may not decode.
 
     A formula in the alt (`\\(F\\)`) becomes a math token, exactly as in a
     paragraph, so build_manifest speaks it in words. MathJax never typesets an
@@ -258,7 +269,7 @@ def image_alt(alt: str | None) -> str | None:
         return None
     if text.lower().strip(" .:;,!?-_") in _PLACEHOLDER_ALTS:
         return None
-    if "mindtouch.page#" in text:
+    if "mindtouch.page#" in text or MATH_TOKEN_RE.search(text):
         return None
     tokenized = tokenize_math(text)
     if detokenize_math(tokenized) != text:
@@ -271,7 +282,7 @@ def image_alt(alt: str | None) -> str | None:
 def _image_block(img: Tag, main: Tag) -> "Block | None":
     if (img.get("role") or "").strip().lower() in _SILENT_ROLES:
         return None
-    if (img.get("aria-hidden") or "").strip().lower() == "true":
+    if any(_aria_hidden(tag) for tag in (img, *img.parents)):
         return None
     alt = image_alt(img.get("alt"))
     if alt is None:

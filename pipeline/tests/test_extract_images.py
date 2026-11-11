@@ -78,6 +78,7 @@ def test_presentational_or_hidden_images_stay_silent():
         '<img role="presentation" alt="A flask"/>'
         '<img aria-hidden="true" alt="A flask"/>'
         '<img role="none" alt="A flask"/>'
+        '<div aria-hidden="true"><figure><img alt="A flask"/></figure></div>'
     ))
     assert blocks == []
 
@@ -153,4 +154,16 @@ def test_an_alt_with_only_a_macro_definition_stays_silent_rather_than_mismatch()
     """tokenize_math drops a definition-only span, so the text would no longer
     match the alt the browser reads back; better silent than dropped later."""
     assert image_alt("A circle \\(\\newcommand{\\R}{x}\\)") is None
+
+
+def test_an_alt_with_a_formula_holds_a_math_token():
     assert MATH_TOKEN_RE.search(image_alt("A circle \\(r\\)"))
+
+
+def test_an_alt_that_already_looks_like_a_math_token_stays_silent():
+    """Not a formula the page wrote, so it cannot be decoded or spoken; it
+    must not stop the rest of the page being built either."""
+    for alt in ("A [[latex:/w==]] mark", "A [[latex:" + math_token("\\(r\\)")[8:]):
+        assert image_alt(alt) is None, alt
+    blocks = extract_blocks(page('<img alt="A [[latex:/w==]] mark"/><p>Still here.</p>'))
+    assert kinds(blocks) == [("paragraph", "Still here.")]

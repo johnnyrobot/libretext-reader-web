@@ -40,10 +40,10 @@ describe('image blocks (LT-537)', () => {
     const before = root.innerHTML;
     const img = root.querySelector('img');
 
-    const map = mountSentences(root, [imageBlock('b0', [0, 0], 'Image: A beaker. It is blue.', ['Image: A beaker.', 'It is blue.'])]);
+    const map = mountSentences(root, [imageBlock('i0', [0, 0], 'Image: A beaker. It is blue.', ['Image: A beaker.', 'It is blue.'])]);
 
-    expect(map.get('b0s0')).toBe(img);
-    expect(map.get('b0s1')).toBe(img);
+    expect(map.get('i0s0')).toBe(img);
+    expect(map.get('i0s1')).toBe(img);
     expect(root.innerHTML).toBe(before);
   });
 
@@ -58,21 +58,38 @@ describe('image blocks (LT-537)', () => {
           { id: 'b0s1', display: 'Then on.', offset: 12, length: 8 },
         ],
       },
-      imageBlock('b1', [0, 0], 'Image: A red flask'),
+      imageBlock('i0', [0, 0], 'Image: A red flask'),
     ]);
     expect(map.get('b0s0').textContent).toBe('Look here.');
-    expect(map.get('b1s0')).toBe(img);
+    expect(map.get('i0s0')).toBe(img);
+  });
+
+  it('finds an image that follows typeset math in the same paragraph', () => {
+    // The pipeline never sees <mjx-container>: it counts the image as the
+    // paragraph's first element child. MathJax puts its container ahead of it.
+    const span = '\\(x\\)';
+    const token = `[[latex:${Buffer.from(span, 'utf8').toString('base64')}]]`;
+    const root = mainWith('<p>Let <mjx-container><mjx-math><mjx-mi>x</mjx-mi></mjx-math></mjx-container> be: <img alt="A red flask"></p>');
+    const img = root.querySelector('img');
+    const map = mountSentences(root, [
+      {
+        id: 'b0', kind: 'paragraph', text: `Let ${token} be: `, anchor: { path: [0] },
+        sentences: [{ id: 'b0s0', display: `Let ${token} be:`, offset: 0, length: `Let ${token} be:`.length }],
+      },
+      imageBlock('i0', [0, 0], 'Image: A red flask'),
+    ]);
+    expect(map.get('i0s0')).toBe(img);
   });
 
   it('drops an image whose alt changed since the build, or a path that is not an image', () => {
     const root = mainWith('<img alt="A blue flask"><p>Text.</p>');
     const dropped = [];
     const map = mountSentences(root, [
-      imageBlock('b0', [0], 'Image: A red flask'),
-      imageBlock('b1', [1], 'Image: Text.'),
+      imageBlock('i0', [0], 'Image: A red flask'),
+      imageBlock('i1', [1], 'Image: Text.'),
     ], { onDrop: (block, why) => dropped.push([block.id, why]) });
     expect(map.size).toBe(0);
-    expect(dropped).toEqual([['b0', 'text-mismatch'], ['b1', 'text-mismatch']]);
+    expect(dropped).toEqual([['i0', 'text-mismatch'], ['i1', 'text-mismatch']]);
   });
 
   it('matches a formula in the alt through its math token, as the pipeline wrote it', () => {
@@ -94,8 +111,8 @@ describe('image blocks (LT-537)', () => {
     const root = mainWith('<img alt="A flask"><img class="wide" alt="A cat" title="Kitty"><p>One.</p>');
     const before = root.innerHTML;
     const map = mountSentences(root, [
-      imageBlock('b0', [0], 'Image: A flask'),
-      imageBlock('b1', [1], 'Image: A cat'),
+      imageBlock('i0', [0], 'Image: A flask'),
+      imageBlock('i1', [1], 'Image: A cat'),
       {
         id: 'b2', kind: 'paragraph', text: 'One.', anchor: { path: [2] },
         sentences: [{ id: 'b2s0', display: 'One.', offset: 0, length: 4 }],
@@ -105,12 +122,12 @@ describe('image blocks (LT-537)', () => {
     flask.scrollIntoView = () => {};
     cat.scrollIntoView = () => {};
 
-    setCurrent(map, 'b0s0');
+    setCurrent(map, 'i0s0');
     expect(flask.classList.contains('tts-current')).toBe(true);
-    setCurrent(map, 'b1s0');
+    setCurrent(map, 'i1s0');
     expect(flask.classList.contains('tts-current')).toBe(false);
     expect(cat.classList.contains('tts-current')).toBe(true);
-    markSkipped(map, 'b1s0');
+    markSkipped(map, 'i1s0');
     expect(cat.classList.contains('tts-skipped')).toBe(true);
     expect(cat.title).toBe('Kitty');
 
