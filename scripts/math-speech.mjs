@@ -52,7 +52,8 @@ function ensureEngine() {
  *
  * A \ref becomes its bare name. Authors write the word themselves --
  * "Equation \(\ref{Ex1.1}\)" is 218 of the 231 refs in the staged books -- so
- * prefixing "Equation" here said it twice (LT-538).
+ * prefixing "Equation" here said it twice (LT-538). A ref the author wrote
+ * with no word in front is now read as just its name ("quadratic form 5-10").
  */
 function preprocess(tex, prefix) {
   let out = tex.replace(/\\label\{[^}]*\}/g, '');

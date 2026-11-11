@@ -38,7 +38,7 @@ describe('math-speech bridge', () => {
     // SRE reads a two-decimal-point number as "12.4" then ".2" with a space between,
     // the same digit-grouping quirk pinned in the PageIndex test above.
     // No "Equation" in front (LT-538): the books write that word themselves,
-    // "Equation \\(\\ref{…}\\)", so adding one said it twice.
+    // "Equation \(\ref{…}\)", so adding one said it twice.
     expect(out).toBe('12.4 .2');
     expect(out).not.toMatch(/question mark/);
   });

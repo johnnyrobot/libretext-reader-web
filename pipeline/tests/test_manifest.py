@@ -474,7 +474,8 @@ def test_display_equation_is_its_own_sentence_with_pauses(math_manifest):
 def test_site_quirks_are_spoken(math_manifest):
     ex = next(s for s in _sentences(math_manifest) if "Example" in s["display"])
     assert "1.4.1" in ex["speech"]
-    # SRE reads the \ref target "12.4.1a" as \text{12.4.1a}, and its own
+    # The bridge's preprocess rewrites the \ref target "12.4.1a" to
+    # \text{12.4.1a} (scripts/math-speech.mjs), and SRE's own
     # mtext-splitting rule puts a space before a letter that trails a digit run
     # (already observed for \PageIndex above, where the digit-dot-digit form is
     # cleaned by pipeline.math_phrasing.SPLIT_DOTTED_RE; the trailing bare letter
