@@ -30,8 +30,13 @@ def math_token(span: str) -> str:
     return "[[latex:" + base64.b64encode(span.encode("utf-8")).decode("ascii") + "]]"
 
 
+def math_token_span(token: str) -> str:
+    """`[[latex:XChFXCk=]]` -> `\\(E\\)`, delimiters and all."""
+    return base64.b64decode(token[len("[[latex:"):-2]).decode("utf-8")
+
+
 def decode_math_token(token: str) -> tuple[str, bool]:
-    span = base64.b64decode(token[len("[[latex:"):-2]).decode("utf-8")
+    span = math_token_span(token)
     display = span.startswith("\\[")
     return span[2:-2].strip(), display
 
@@ -161,6 +166,12 @@ def tokenize_math(text: str) -> str:
     return MATH_SPAN_RE.sub(swap, text)
 
 
+def detokenize_math(text: str) -> str:
+    """Inverse of tokenize_math for every span it keeps: each token back to its
+    span, delimiters and all."""
+    return MATH_TOKEN_RE.sub(lambda m: math_token_span(m.group(0)), text)
+
+
 def preamble_definitions(html: str) -> list[str]:
     """Every `\\newcommand` span in the document, in order, without delimiters.
 
@@ -209,6 +220,75 @@ SKIP_CLASSES = {
 
 UNREADABLE_TEXT = {"", "No headers", "Table of Contents"}
 
+# LT-537: an image's alt text is read as its own `image` block, spoken as
+# "Image: <alt>" and highlighted by outlining the <img> (src/highlight.mjs).
+IMAGE_LEAD = "Image: "
+
+# HTML's own whitespace, ASCII only, so src/highlight.mjs's imageText can
+# collapse it with the identical character class. Python's str.split() would
+# also eat U+00A0 and \x1c-\x1f, which the browser's side would not.
+_HTML_SPACE_RE = re.compile(r"[ \t\n\r\f]+")
+
+# Alt text that describes nothing. Measured on the staged books (2026-11-11):
+# of 648 images with alt text, 449 were a filename, 53 a placeholder word and
+# 33 MindTouch's thumbnail stand-in; reading those aloud is noise.
+_IMAGE_FILE_RE = re.compile(r"\.(?:png|jpe?g|gif|svg|webp|bmp|tiff?|avif)$", re.IGNORECASE)
+_HEX_NAME_RE = re.compile(r"^[0-9a-f]{16,}$", re.IGNORECASE)
+_PLACEHOLDER_ALTS = {
+    "alt", "image", "img", "photo", "picture", "figure", "graphic", "thumbnail", "icon", "logo",
+}
+_SILENT_ROLES = {"presentation", "none"}
+
+
+def _aria_hidden(tag: Tag) -> bool:
+    """aria-hidden="true" hides the element and everything inside it from a
+    screen reader, so an image under such an ancestor stays silent too."""
+    return (tag.get("aria-hidden") or "").strip().lower() == "true"
+
+
+def image_alt(alt: str | None) -> str | None:
+    """The alt text worth reading aloud, collapsed, or None for none.
+
+    None for an empty alt (the HTML way to mark an image decorative), for junk
+    (a filename, a bare hash, a placeholder word, MindTouch's
+    `mindtouch.page#thumbnail`), and for an alt that already holds something
+    shaped like a math token, which no page writes and which may not decode.
+
+    A formula in the alt (`\\(F\\)`) becomes a math token, exactly as in a
+    paragraph, so build_manifest speaks it in words. MathJax never typesets an
+    attribute, so the browser reads the raw TeX back and decodes the tokens to
+    compare (src/highlight.mjs, mountImage). An alt the tokens cannot round-trip
+    to -- a definition-only span tokenize_math drops, an unclosed `\\(`, or
+    `$$`, which is not a delimiter here -- is None, as raw TeX would be read
+    aloud as code.
+    """
+    text = _HTML_SPACE_RE.sub(" ", alt or "").strip(" ")
+    if not text.strip():  # str.strip, so alt of only U+00A0 counts as empty too
+        return None
+    if _IMAGE_FILE_RE.search(text) or _HEX_NAME_RE.match(text):
+        return None
+    if text.lower().strip(" .:;,!?-_") in _PLACEHOLDER_ALTS:
+        return None
+    if "mindtouch.page#" in text or MATH_TOKEN_RE.search(text):
+        return None
+    tokenized = tokenize_math(text)
+    if detokenize_math(tokenized) != text:
+        return None
+    if "\\(" in tokenized or "\\[" in tokenized or "$$" in tokenized:
+        return None
+    return tokenized
+
+
+def _image_block(img: Tag, main: Tag) -> "Block | None":
+    if (img.get("role") or "").strip().lower() in _SILENT_ROLES:
+        return None
+    if any(_aria_hidden(tag) for tag in (img, *img.parents)):
+        return None
+    alt = image_alt(img.get("alt"))
+    if alt is None:
+        return None
+    return Block(id="", kind="image", text=IMAGE_LEAD + alt, path=_element_path(img, main))
+
 
 @dataclass
 class Block:
@@ -231,7 +311,9 @@ def _element_path(element: Tag, root: Tag) -> list:
     node = element
     while node is not root and node.parent is not None:
         siblings = [c for c in node.parent.children if isinstance(c, Tag)]
-        path.append(siblings.index(node))
+        # By identity: Beautiful Soup counts tags with the same markup as equal,
+        # so `siblings.index(node)` would pick the first of two identical tags.
+        path.append(next(i for i, sibling in enumerate(siblings) if sibling is node))
         node = node.parent
     return list(reversed(path))
 
@@ -406,9 +488,10 @@ def extract_blocks(html: str) -> list[Block]:
 
     blocks: list[Block] = []
     counter = 0
+    image_counter = 0
     seen_tables: set[int] = set()
 
-    for element in main.find_all(list(READABLE_TAGS) + ["table"]):
+    for element in main.find_all(list(READABLE_TAGS) + ["table", "img"]):
         if _is_skipped(element, main):
             continue
 
@@ -430,6 +513,19 @@ def extract_blocks(html: str) -> list[Block]:
 
         # A readable element inside a table is part of that table, not prose.
         if element.find_parent("table") is not None:
+            continue
+
+        # After the containing paragraph, if any: find_all is document order,
+        # and an <img> inside a <p> comes after the <p> itself.
+        # Images number in their own series: a saved place is a sentence id
+        # (src/position.mjs), so sharing the `b` series would shift every later
+        # block's id on the first rebuild after LT-537.
+        if element.name == "img":
+            block = _image_block(element, main)
+            if block is not None:
+                block.id = f"i{image_counter}"
+                image_counter += 1
+                blocks.append(block)
             continue
 
         text = _text_of(element)
