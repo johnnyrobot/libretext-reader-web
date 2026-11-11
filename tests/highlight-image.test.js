@@ -75,6 +75,21 @@ describe('image blocks (LT-537)', () => {
     expect(dropped).toEqual([['b0', 'text-mismatch'], ['b1', 'text-mismatch']]);
   });
 
+  it('matches a formula in the alt through its math token, as the pipeline wrote it', () => {
+    // MathJax never typesets an attribute, so the alt still holds `\\(F_{μ}\\)`
+    // while the manifest holds its token (UTF-8 base64, as pipeline/extract.py).
+    const span = '\\(F_{μ}\\)';
+    const token = `[[latex:${Buffer.from(span, 'utf8').toString('base64')}]]`;
+    const root = mainWith(`<img alt="The force ${span} between charges">`);
+    const dropped = [];
+    const map = mountSentences(root, [
+      imageBlock('i0', [0], `Image: The force ${token} between charges`),
+      imageBlock('i1', [0], 'Image: The force \\(G\\) between charges'),
+    ], { onDrop: (block, why) => dropped.push([block.id, why]) });
+    expect(map.get('i0s0')).toBe(root.querySelector('img'));
+    expect(dropped).toEqual([['i1', 'text-mismatch']]);
+  });
+
   it('outlines the current image and puts the page back exactly on unmount', () => {
     const root = mainWith('<img alt="A flask"><img class="wide" alt="A cat" title="Kitty"><p>One.</p>');
     const before = root.innerHTML;

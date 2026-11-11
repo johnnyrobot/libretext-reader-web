@@ -4,7 +4,7 @@ The page HTML here is made up for the test; the shapes of the junk alt text are
 the ones measured on the staged books (filenames, the word "alt", MindTouch's
 thumbnail placeholder).
 """
-from pipeline.extract import IMAGE_LEAD, extract_blocks, image_alt
+from pipeline.extract import IMAGE_LEAD, MATH_TOKEN_RE, extract_blocks, image_alt, math_token
 from pipeline.tts_manifest import build_manifest
 
 
@@ -62,7 +62,9 @@ def test_decorative_and_junk_alt_text_stays_silent():
         "imageedit_4_8699029754.PNG",
         "alt", "Image", "photo.",
         "mindtouch.page#thumbnail",
-        "The force \\(F\\) between two charges",
+        "Figure \\(\\PageIndex{2}\\).jpg",   # a filename, formula or not
+        "A charge \\(q",                    # an unclosed formula
+        "Cost $$5$$",
         "d71acaa48cd342f37bce4740c48239b6",
     ]
     for alt in junk:
@@ -116,3 +118,39 @@ def test_images_number_separately_so_every_other_block_keeps_its_id():
     ))
     assert [b.id for b in with_images if b.kind != "image"] == [b.id for b in without]
     assert [b.id for b in with_images if b.kind == "image"] == ["i0", "i1"]
+
+
+class _WordSpeaker:
+    """Speaks any TeX as "the letter F", so this needs no node process."""
+
+    def reset(self, macros):
+        pass
+
+    def define(self, tex):
+        pass
+
+    def speak(self, tex, display):
+        return "the letter " + tex
+
+
+def test_a_formula_in_the_alt_is_spoken_in_words_like_any_other_equation():
+    """The one real case on the staged books (Chem 4B, 3.2). The display text
+    keeps the formula as a token, as a paragraph's does; the speech has words."""
+    alt = "The absolute value of the force \\(F\\) between two point charges"
+    blocks = extract_blocks(page(f'<img alt="{alt}"/>'))
+    assert kinds(blocks) == [
+        ("image", "Image: The absolute value of the force " + math_token("\\(F\\)")
+         + " between two point charges"),
+    ]
+    manifest = build_manifest(page(f'<img alt="{alt}"/>'), page_id="p", title="t",
+                              speaker=_WordSpeaker())
+    (sentence,) = manifest["blocks"][0]["sentences"]
+    assert sentence["speech"] == "Image: The absolute value of the force the letter F between two point charges"
+    assert manifest["math"] == {"spoken": 1, "failed": 0}
+
+
+def test_an_alt_with_only_a_macro_definition_stays_silent_rather_than_mismatch():
+    """tokenize_math drops a definition-only span, so the text would no longer
+    match the alt the browser reads back; better silent than dropped later."""
+    assert image_alt("A circle \\(\\newcommand{\\R}{x}\\)") is None
+    assert MATH_TOKEN_RE.search(image_alt("A circle \\(r\\)"))

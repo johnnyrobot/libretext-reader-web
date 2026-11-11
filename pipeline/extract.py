@@ -161,6 +161,13 @@ def tokenize_math(text: str) -> str:
     return MATH_SPAN_RE.sub(swap, text)
 
 
+def detokenize_math(text: str) -> str:
+    """Inverse of tokenize_math for every span it keeps: each token back to its
+    span, delimiters and all."""
+    return MATH_TOKEN_RE.sub(
+        lambda m: base64.b64decode(m.group(0)[len("[[latex:"):-2]).decode("utf-8"), text)
+
+
 def preamble_definitions(html: str) -> list[str]:
     """Every `\\newcommand` span in the document, in order, without delimiters.
 
@@ -234,8 +241,15 @@ def image_alt(alt: str | None) -> str | None:
 
     None for an empty alt (the HTML way to mark an image decorative), for junk
     (a filename, a bare hash, a placeholder word, MindTouch's
-    `mindtouch.page#thumbnail`), and for alt carrying TeX delimiters, which
-    would be spoken as raw LaTeX.
+    `mindtouch.page#thumbnail`).
+
+    A formula in the alt (`\\(F\\)`) becomes a math token, exactly as in a
+    paragraph, so build_manifest speaks it in words. MathJax never typesets an
+    attribute, so the browser reads the raw TeX back and decodes the tokens to
+    compare (src/highlight.mjs, mountImage). An alt the tokens cannot round-trip
+    to -- a definition-only span tokenize_math drops, an unclosed `\\(`, or
+    `$$`, which is not a delimiter here -- is None, as raw TeX would be read
+    aloud as code.
     """
     text = _HTML_SPACE_RE.sub(" ", alt or "").strip(" ")
     if not text.strip():  # str.strip, so alt of only U+00A0 counts as empty too
@@ -246,9 +260,12 @@ def image_alt(alt: str | None) -> str | None:
         return None
     if "mindtouch.page#" in text:
         return None
-    if "\\(" in text or "\\[" in text or "$$" in text:
+    tokenized = tokenize_math(text)
+    if detokenize_math(tokenized) != text:
         return None
-    return text
+    if "\\(" in tokenized or "\\[" in tokenized or "$$" in tokenized:
+        return None
+    return tokenized
 
 
 def _image_block(img: Tag, main: Tag) -> "Block | None":

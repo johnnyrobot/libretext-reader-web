@@ -175,9 +175,22 @@ function isImage(element) {
 // An image is highlighted by outlining the <img> itself: there is no text to
 // wrap, and wrapping the image in a span would break `figure > img` styles.
 // Every sentence of the description maps to the same element.
+// A formula in an alt stays raw TeX on the page (MathJax never typesets an
+// attribute) but is a math token in the manifest, so the pipeline speaks it in
+// words. Decoding the tokens back to their spans lets the two compare.
+// Payloads are UTF-8 base64, as pipeline/extract.py's math_token writes them.
+function decodeMathTokens(text) {
+  return text.replace(MATH_TOKEN_G, (token) => {
+    const bytes = Uint8Array.from(atob(token.slice('[[latex:'.length, -2)), (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  });
+}
+
 function mountImage(block, element, elements, onDrop) {
   if (!element) { onDrop(block, 'unresolved-path'); return; }
-  if (imageText(element) !== block.text) { onDrop(block, 'text-mismatch'); return; }
+  if (typeof block.text !== 'string' || imageText(element) !== decodeMathTokens(block.text)) {
+    onDrop(block, 'text-mismatch'); return;
+  }
   if (!element.hasAttribute('class')) addedClassAttr.add(element);
   for (const sentence of block.sentences) elements.set(sentence.id, element);
 }
