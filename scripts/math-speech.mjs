@@ -49,10 +49,14 @@ function ensureEngine() {
  * need equation tags to resolve, and tags wrap every equation in a one-row
  * table that Clearspeak announces as "1 lines Line 1:" -- so both are rewritten
  * as text before MathJax sees them.
+ *
+ * A \ref becomes its bare name. Authors write the word themselves --
+ * "Equation \(\ref{Ex1.1}\)" is 218 of the 231 refs in the staged books -- so
+ * prefixing "Equation" here said it twice (LT-538).
  */
 function preprocess(tex, prefix) {
   let out = tex.replace(/\\label\{[^}]*\}/g, '');
-  out = out.replace(/\\ref\{([^}]*)\}/g, '\\text{Equation $1}');
+  out = out.replace(/\\ref\{([^}]*)\}/g, '\\text{$1}');
   if (prefix !== undefined) {
     out = out.replace(/\\PageIndex\{([^}]*)\}/g, (_, n) => `\\text{${prefix}.${n}}`);
   }

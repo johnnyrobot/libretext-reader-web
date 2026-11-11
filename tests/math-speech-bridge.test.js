@@ -33,11 +33,13 @@ describe('math-speech bridge', () => {
     expect(converter.speak('\\PageIndex{1}', false).replace(/\s+/g, '')).toBe('1.4.1');
   });
 
-  it('speaks a ref as "Equation X" and never as question marks', () => {
+  it('speaks a ref as its name alone and never as question marks', () => {
     const out = converter.speak('\\ref{12.4.2}', false);
     // SRE reads a two-decimal-point number as "12.4" then ".2" with a space between,
     // the same digit-grouping quirk pinned in the PageIndex test above.
-    expect(out).toBe('Equation 12.4 .2');
+    // No "Equation" in front (LT-538): the books write that word themselves,
+    // "Equation \\(\\ref{…}\\)", so adding one said it twice.
+    expect(out).toBe('12.4 .2');
     expect(out).not.toMatch(/question mark/);
   });
 

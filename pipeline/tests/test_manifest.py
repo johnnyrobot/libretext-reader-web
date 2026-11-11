@@ -474,13 +474,15 @@ def test_display_equation_is_its_own_sentence_with_pauses(math_manifest):
 def test_site_quirks_are_spoken(math_manifest):
     ex = next(s for s in _sentences(math_manifest) if "Example" in s["display"])
     assert "1.4.1" in ex["speech"]
-    # SRE reads the \ref target "12.4.1a" as \text{Equation 12.4.1a}, and its own
+    # SRE reads the \ref target "12.4.1a" as \text{12.4.1a}, and its own
     # mtext-splitting rule puts a space before a letter that trails a digit run
     # (already observed for \PageIndex above, where the digit-dot-digit form is
     # cleaned by pipeline.math_phrasing.SPLIT_DOTTED_RE; the trailing bare letter
     # is not). This is SRE's wording, not a dropped token or a missing feature --
     # pinned to what the bridge actually emits.
-    assert "Equation 12.4.1 a" in ex["speech"]
+    assert "uses Equation 12.4.1 a," in ex["speech"]
+    # LT-538: the page writes "Equation \(\ref{12.4.1a}\)"; the ref adds no word of its own.
+    assert "Equation Equation" not in ex["speech"]
     assert "question mark" not in ex["speech"]
     assert "Delta U equals q minus w" in ex["speech"]      # \dU from the preamble
 
