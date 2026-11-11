@@ -209,6 +209,58 @@ SKIP_CLASSES = {
 
 UNREADABLE_TEXT = {"", "No headers", "Table of Contents"}
 
+# LT-537: an image's alt text is read as its own `image` block, spoken as
+# "Image: <alt>" and highlighted by outlining the <img> (src/highlight.mjs).
+IMAGE_LEAD = "Image: "
+
+# HTML's own whitespace, ASCII only, so src/highlight.mjs's imageText can
+# collapse it with the identical character class. Python's str.split() would
+# also eat U+00A0 and \x1c-\x1f, which the browser's side would not.
+_HTML_SPACE_RE = re.compile(r"[ \t\n\r\f]+")
+
+# Alt text that describes nothing. Measured on the staged books (2026-11-11):
+# of 648 images with alt text, 449 were a filename, 53 a placeholder word and
+# 33 MindTouch's thumbnail stand-in; reading those aloud is noise.
+_IMAGE_FILE_RE = re.compile(r"\.(?:png|jpe?g|gif|svg|webp|bmp|tiff?|avif)$", re.IGNORECASE)
+_HEX_NAME_RE = re.compile(r"^[0-9a-f]{16,}$", re.IGNORECASE)
+_PLACEHOLDER_ALTS = {
+    "alt", "image", "img", "photo", "picture", "figure", "graphic", "thumbnail", "icon", "logo",
+}
+_SILENT_ROLES = {"presentation", "none"}
+
+
+def image_alt(alt: str | None) -> str | None:
+    """The alt text worth reading aloud, collapsed, or None for none.
+
+    None for an empty alt (the HTML way to mark an image decorative), for junk
+    (a filename, a bare hash, a placeholder word, MindTouch's
+    `mindtouch.page#thumbnail`), and for alt carrying TeX delimiters, which
+    would be spoken as raw LaTeX.
+    """
+    text = _HTML_SPACE_RE.sub(" ", alt or "").strip(" ")
+    if not text.strip():  # str.strip, so alt of only U+00A0 counts as empty too
+        return None
+    if _IMAGE_FILE_RE.search(text) or _HEX_NAME_RE.match(text):
+        return None
+    if text.lower().strip(" .:;,!?-_") in _PLACEHOLDER_ALTS:
+        return None
+    if "mindtouch.page#" in text:
+        return None
+    if "\\(" in text or "\\[" in text or "$$" in text:
+        return None
+    return text
+
+
+def _image_block(img: Tag, main: Tag) -> "Block | None":
+    if (img.get("role") or "").strip().lower() in _SILENT_ROLES:
+        return None
+    if (img.get("aria-hidden") or "").strip().lower() == "true":
+        return None
+    alt = image_alt(img.get("alt"))
+    if alt is None:
+        return None
+    return Block(id="", kind="image", text=IMAGE_LEAD + alt, path=_element_path(img, main))
+
 
 @dataclass
 class Block:
@@ -406,9 +458,10 @@ def extract_blocks(html: str) -> list[Block]:
 
     blocks: list[Block] = []
     counter = 0
+    image_counter = 0
     seen_tables: set[int] = set()
 
-    for element in main.find_all(list(READABLE_TAGS) + ["table"]):
+    for element in main.find_all(list(READABLE_TAGS) + ["table", "img"]):
         if _is_skipped(element, main):
             continue
 
@@ -430,6 +483,19 @@ def extract_blocks(html: str) -> list[Block]:
 
         # A readable element inside a table is part of that table, not prose.
         if element.find_parent("table") is not None:
+            continue
+
+        # After the containing paragraph, if any: find_all is document order,
+        # and an <img> inside a <p> comes after the <p> itself.
+        # Images number in their own series: a saved place is a sentence id
+        # (src/position.mjs), so sharing the `b` series would shift every later
+        # block's id on the first rebuild after LT-537.
+        if element.name == "img":
+            block = _image_block(element, main)
+            if block is not None:
+                block.id = f"i{image_counter}"
+                image_counter += 1
+                blocks.append(block)
             continue
 
         text = _text_of(element)

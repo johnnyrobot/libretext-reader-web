@@ -50,6 +50,10 @@ page: every sentence in two forms.
   Display Text and spoken in words (Speech Rule Engine, Clearspeak) in Speech Text. MathJax
   rewrites the span at typeset time, so the reader treats each `<mjx-container>` as one atom
   whose text is that token. Every translated track speaks the equation in English.
+- **Images** — an image with a real description is read as "Image: <alt text>", in page order
+  (so before its caption), and outlined while it is spoken; the image itself is never wrapped
+  or changed. Empty alt (decorative), `role="presentation"`, and alt that is only a filename,
+  a placeholder word or MindTouch's `mindtouch.page#thumbnail` stay silent (LT-537).
 
 At read time a ~1 KB boot script is all that loads. Pressing *Enter Reader Mode* is the
 first moment anything else is fetched: the reader consents to the model download, the page

@@ -149,11 +149,64 @@ function rangeFor(element, expected, offset, length) {
   return startSet ? range : null;
 }
 
+// LT-537. An `image` block's text is "Image: " plus the <img>'s alt, collapsed
+// exactly as pipeline/extract.py's image_alt collapses it: HTML's ASCII
+// whitespace only, so a U+00A0 survives on both sides. Which alt texts are
+// worth reading is the pipeline's call; this side only checks the image still
+// says what the manifest was built from.
+const IMAGE_LEAD = 'Image: ';
+
+export function imageText(element) {
+  if (element?.tagName?.toLowerCase() !== 'img') return null;
+  const alt = element.getAttribute('alt');
+  if (alt === null) return null;
+  const text = alt.replace(/[ \t\n\r\f]+/g, ' ').replace(/^ | $/g, '');
+  return text ? IMAGE_LEAD + text : null;
+}
+
+// Images we gave a class attribute they did not have, so unmount can take it
+// away again rather than leave `class=""` behind.
+const addedClassAttr = new WeakSet();
+
+function isImage(element) {
+  return element.tagName?.toLowerCase() === 'img';
+}
+
+// An image is highlighted by outlining the <img> itself: there is no text to
+// wrap, and wrapping the image in a span would break `figure > img` styles.
+// Every sentence of the description maps to the same element.
+function mountImage(block, element, elements, onDrop) {
+  if (!element) { onDrop(block, 'unresolved-path'); return; }
+  if (imageText(element) !== block.text) { onDrop(block, 'text-mismatch'); return; }
+  if (!element.hasAttribute('class')) addedClassAttr.add(element);
+  for (const sentence of block.sentences) elements.set(sentence.id, element);
+}
+
+function restoreImage(element) {
+  element.classList.remove('tts-current', 'tts-skipped');
+  if (addedClassAttr.has(element) && element.getAttribute('class') === '') {
+    element.removeAttribute('class');
+  }
+  addedClassAttr.delete(element);
+}
+
 export function mountSentences(root, blocks, { onDrop = () => {} } = {}) {
   const elements = new Map();
 
+  // Resolve every image before any sentence is wrapped. A child-index path is
+  // computed on the page as built, and an <img> inside a paragraph moves into
+  // a sentence span once that paragraph (earlier in reading order) is mounted.
+  const imageElements = new Map();
+  for (const block of blocks) {
+    if (block.kind === 'image') imageElements.set(block, resolveBlockElement(root, block.anchor?.path ?? []));
+  }
+
   for (const block of blocks) {
     if (block.kind === 'notice') continue;
+    if (block.kind === 'image') {
+      mountImage(block, imageElements.get(block), elements, onDrop);
+      continue;
+    }
 
     const element = resolveBlockElement(root, block.anchor?.path ?? []);
     if (!element) { onDrop(block, 'unresolved-path'); continue; }
@@ -231,6 +284,8 @@ export function mountSentences(root, blocks, { onDrop = () => {} } = {}) {
 export function unmountSentences(elements) {
   const touched = new Set();
   for (const span of elements.values()) {
+    // An image was never wrapped (LT-537): take our classes off, nothing else.
+    if (isImage(span)) { restoreImage(span); continue; }
     const parent = span.parentNode;
     if (!parent) continue;
     while (span.firstChild) parent.insertBefore(span.firstChild, span);
@@ -247,6 +302,8 @@ export function markSkipped(elements, id) {
   const element = elements.get(id);
   if (!element) return;
   element.classList.add('tts-skipped');
+  // The image's own title is the page's; unmount could not put it back.
+  if (isImage(element)) return;
   element.title = 'Not read aloud: the voice could not say this sentence clearly.';
 }
 

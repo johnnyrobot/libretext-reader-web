@@ -72,3 +72,14 @@
 @media (prefers-reduced-motion: reduce) {
   .tts-sentence, .tts-current { transition: none !important; }
 }
+
+/* LT-537: an image being described. There is no text to tint, so the image is
+   outlined; the outline sits outside it so the picture itself is unchanged.
+   Skipped first, so a current image that was also skipped shows as current. */
+img.tts-skipped { outline: 2px dotted #b45309; outline-offset: 3px; }
+img.tts-current {
+  background: none;
+  box-shadow: none;
+  outline: 3px solid #b45309;
+  outline-offset: 3px;
+}
