@@ -106,3 +106,13 @@ The one existing CodeRabbit review also found literal-dollar stamp expansion and
 ## Independent correctness follow-up
 
 A fresh review of e7235c2 found an expiry/reauthorization race and delayed countdown initialization. Both were reproduced with deterministic failing tests. The corrected continuation verifies the same actor still exists before revealing member controls, and the countdown uses the monotonic timestamp captured when server timing arrived rather than after thread-loading awaits. Expiry remains authoritative if it occurs during reauthorization. New timer4test suite and focused native expiry/warning checks pass. No WCAGconformance or actualAT claim follows from this fix.
+
+## Independent disposition at source5e554b8
+
+Accessibility Chief accepted the concrete corrections in6264ffc...5e554b8 at source-review level, found no additional confirmed introduced blocker in that scoped diff, and independently ran the timer suite4passed. This is not an independent browser/AT pass. Four source hashes and provisional archive hash were checked. Warning audit:4states with0recordedviolations;3states still have contrast checks requiring evaluation.
+
+Baseline inventory (94catalog-pinned static pages, not production1488):572images,4withoutalt,14genericthumbnailalt,153tables,3iframes,0missingdocumentlanguage/title. Detailed paths are in `.scratch/lt549/a11y/baseline-context-items.json`. Three unnamed frames are pronunciation embeds onchem_4b/AGENDA1. Three no-alt images have no src in chemistry exercises; one no-alt JPEG occurs in6.01 Classifications of Acids and Bases. Context must determine meaning/decorative status; do not invent descriptions or change source revisions silently.
+
+Scanner incomplete targets: generic `.sponsors` div with aria-label but no explicit role; two symbol-only `.corner-tools` spans; Learning Objectives and System Justification heading spans whose backgrounds were obscured during capture. These require contextual/visual evaluation, not automatic pass/fail from the scanner.
+
+ActualAT release gate: [operator script](LT-549-MANUAL-AT.md) is ready but NOT RUN. A permitted screen-reader/spoken-output route was not established under background-only host-control rules. Chief must arrange an authorized operator or obtain explicit foreground/VoiceOver authorization. Complete workflow announcements and final-artifact AT cannot be inferred from AX snapshots, application TTS, source review or native browser tests. Deployment remains held pending that evidence and baseline contextual disposition.
