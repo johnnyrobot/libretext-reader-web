@@ -170,6 +170,26 @@ test("existing textbook selection, two accounts, reload, restore and cross-book 
   expect(await page.locator("main#main-content").innerHTML()).toBe(original);
 });
 
+test("retains a draft through unsupported selection", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  const input = page.getByRole("textbox", { name: "Your question", exact: true });
+  await input.fill("Keep this unsent draft");
+  await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+  await page.evaluate(() => {
+    const ps = document.querySelectorAll("main p");
+    const range = document.createRange();
+    range.setStart(ps[0], 0);
+    range.setEnd(ps[1], 1);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  });
+  await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
+  await page.getByRole("button", { name: "Use whole passage", exact: true }).click();
+  await expect(input).toHaveValue("Keep this unsent draft");
+});
+
 test("rejects unsupported selections and clears drafts when another tab changes account", async ({
   page,
 }) => {
@@ -242,6 +262,7 @@ test("reconciles a lost acknowledgment and distinguishes saved data from failed 
     .getByRole("button", { name: "Post question", exact: true })
     .click();
   await expect(page.getByRole("status")).toContainText("outcome unknown");
+  await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeDisabled();
   await page
     .getByRole("button", { name: "Close discussion", exact: true })
     .click();

@@ -186,6 +186,8 @@ export function mountAnnotations({
   const lock = () => {
     for (const b of panel.querySelectorAll("button"))
       if (b !== close) b.disabled = busy;
+    for (const composer of panel.querySelectorAll("textarea"))
+      composer.disabled = busy || !!pending;
     post.disabled = busy || !!pending || !selected;
     use.disabled = busy || !!pending;
     chooser.disabled = busy || !!pending;
@@ -241,6 +243,7 @@ export function mountAnnotations({
     lock();
   }
   function closePanel() {
+    if (selected) drafts.set(key(), input.value);
     panel.hidden = true;
     delete doc.documentElement.dataset.srComposing;
     delete doc.documentElement.dataset.srPanel;
@@ -379,12 +382,7 @@ export function mountAnnotations({
       result = receipt ?? (await client.command(original.command));
     } catch (e) {
       if (e.code === "IDENTITY_CHANGED") {
-        actor = null;
-        member.hidden = true;
-        login.hidden = false;
-        threads.replaceChildren();
-        drafts.clear();
-        input.value = "";
+        revoke();
       } else if (e.status && e.status < 500) {
         pending = null;
         throw e;
