@@ -39,6 +39,68 @@ async function selection(page) {
     .getByRole("button", { name: "Discuss selected text", exact: true })
     .click();
 }
+test("delayed authentication honors immediate keyboard reopen and final close", async ({ page }) => {
+  await page.goto(URL);
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; });
+  const requestStarted = new Promise(resolve => { started = resolve; });
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    started();
+    await gate;
+    await route.fulfill({ response });
+  }, { times: 1 });
+  try {
+    await page.locator("#sr-entry").focus();
+    await page.keyboard.press("Enter");
+    await requestStarted;
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#sr-entry")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#sr-panel")).toBeVisible({ timeout: 1000 });
+    await expect(page.getByRole("button", { name: "Close discussion", exact: true })).toBeFocused();
+    await page.keyboard.press("Escape");
+    release();
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true, includeHidden: true })).toBeEnabled();
+    await expect(page.locator("#sr-panel")).toBeHidden();
+    await expect(page.locator("#sr-entry")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#sr-panel")).toBeVisible();
+  } finally { release(); }
+});
+
+test("stale authentication cannot reveal private content after sign-out", async ({ page }) => {
+  await page.goto(URL);
+  const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
+  await page.request.post("/social-reading/api/login", {
+    headers: { Origin: "http://127.0.0.1:8788" },
+    data: { username: "alice", password: credentials.alice },
+  });
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; });
+  const requestStarted = new Promise(resolve => { started = resolve; });
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    started();
+    await gate;
+    await route.fulfill({ response });
+  }, { times: 1 });
+  try {
+    await page.locator("#sr-entry").click();
+    await requestStarted;
+    await page.request.post("/social-reading/api/logout", { headers: { Origin: "http://127.0.0.1:8788" }, data: {} });
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#sr-panel")).toBeVisible({ timeout: 1000 });
+    release();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
+    await expect(page.locator(".sr-thread")).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeHidden();
+  } finally { release(); }
+});
+
 test("existing textbook selection, two accounts, reload, restore and cross-book denial", async ({
   page,
 }, info) => {

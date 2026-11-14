@@ -175,6 +175,8 @@ export function mountAnnotations({
     actor = null,
     pending = null,
     busy = false,
+    viewGeneration = 0,
+    queuedOpen = null,
     threadLoadGeneration = 0,
     restore = null;
   const drafts = new Map();
@@ -209,15 +211,23 @@ export function mountAnnotations({
   async function run(action) {
     if (busy) return;
     busy = true;
+    const generation = viewGeneration;
     lock();
     try {
       await action();
     } catch (e) {
-      if (e.status === 401 || e.status === 403) revoke();
-      say(e.message);
+      if (generation === viewGeneration) {
+        if (e.status === 401 || e.status === 403) revoke();
+        say(e.message);
+      }
     } finally {
       busy = false;
       lock();
+      if (queuedOpen && !panel.hidden) {
+        const next = queuedOpen;
+        queuedOpen = null;
+        void open(next.value, true);
+      }
     }
   }
   function blockSelection(id) {
@@ -245,6 +255,8 @@ export function mountAnnotations({
     lock();
   }
   function closePanel() {
+    viewGeneration++;
+    queuedOpen = null;
     if (selected) drafts.set(key(), input.value);
     panel.hidden = true;
     delete doc.documentElement.dataset.srComposing;
@@ -256,18 +268,22 @@ export function mountAnnotations({
     }
   }
   async function authorize() {
+    const generation = viewGeneration;
     const previous = actor;
     const signedActor = await client.session();
+    if (generation !== viewGeneration || panel.hidden) return;
     if (previous && previous.id !== signedActor.id) revoke();
     actor = signedActor;
+    const authorizedView = viewGeneration;
+    await loadThreads();
+    if (authorizedView !== viewGeneration || panel.hidden) return;
     member.hidden = false;
     login.hidden = true;
     identity.textContent = `Signed in as ${actor.name}`;
-    await loadThreads();
   }
-  async function open(value) {
-    if (busy) return;
-    restore = {
+  async function open(value, replay = false) {
+    viewGeneration++;
+    if (!replay) restore = {
       focus: doc.activeElement,
       x: window.scrollX,
       y: window.scrollY,
@@ -278,6 +294,13 @@ export function mountAnnotations({
     threads.replaceChildren();
     doc.documentElement.dataset.srComposing = "true";
     doc.documentElement.dataset.srPanel = "open";
+    if (busy) {
+      queuedOpen = { value };
+      login.hidden = true;
+      say("Checking sign-in…");
+      close.focus({ preventScroll: true });
+      return;
+    }
     if (pending) say("Check the pending submission before changing passages.");
     else if (value?.error) {
       selected = null;
@@ -303,6 +326,7 @@ export function mountAnnotations({
   }
   async function loadThreads() {
     if (!selected || !actor) return;
+    const view = viewGeneration;
     const expectedActor = actor.id;
     const verifyActor = async () => {
       const current = await client.session();
@@ -312,9 +336,11 @@ export function mountAnnotations({
       }
     };
     await verifyActor();
+    if (view !== viewGeneration || panel.hidden) return;
     const generation = ++threadLoadGeneration,
       c = context();
     const loaded = await client.threads(c);
+    if (view !== viewGeneration || panel.hidden) return;
     await verifyActor();
     if (generation !== threadLoadGeneration || !actor) return;
     threads.replaceChildren();
