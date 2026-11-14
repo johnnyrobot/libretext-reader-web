@@ -185,6 +185,39 @@ for (const account of ["alice", "bob"]) {
   });
 }
 
+test("expiry during reauthorization cannot restore a member view", async ({ page }) => {
+  await page.clock.install();
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 3000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; });
+  const requestStarted = new Promise(resolve => { started = resolve; });
+  await page.route("**/social-reading/api/threads?*", async route => {
+    const response = await route.fetch();
+    started();
+    await gate;
+    await route.fulfill({ response });
+  }, { times: 1 });
+  try {
+    await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+    await page.locator("#sr-entry").click();
+    await requestStarted;
+    await page.clock.runFor(2100);
+    release();
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible({ timeout: 1000 });
+    await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeHidden();
+  } finally { release(); }
+});
+
 test("server validation error is associated with the question field", async ({ page }) => {
   await page.goto(URL);
   await page.locator("#sr-entry").click();

@@ -433,6 +433,7 @@ export function mountAnnotations({
     const generation = viewGeneration;
     const previous = actor;
     const signedActor = await client.session();
+    const receivedAt = performance.now();
     if (generation !== viewGeneration || panel.hidden) return;
     if (previous && previous.id !== signedActor.id) revoke();
     actor = signedActor;
@@ -445,14 +446,15 @@ export function mountAnnotations({
     }
     const authorizedView = viewGeneration;
     await loadThreads();
-    if (authorizedView !== viewGeneration || panel.hidden) return;
-    member.hidden = false;
-    login.hidden = true;
-    identity.textContent = `Signed in as ${actor.name}`;
+    if (authorizedView !== viewGeneration || panel.hidden || actor?.id !== signedActor.id) return;
     staySignedIn.hidden = false;
     sessionMessage.textContent = "Your discussion session ends soon. Stay signed in to keep working.";
     sessionNotice.hidden = true;
-    sessionTimer.update(actor.timing);
+    sessionTimer.update(actor.timing, receivedAt);
+    if (actor?.id !== signedActor.id) return;
+    member.hidden = false;
+    login.hidden = true;
+    identity.textContent = `Signed in as ${actor.name}`;
   }
   async function open(value, replay = false) {
     viewGeneration++;

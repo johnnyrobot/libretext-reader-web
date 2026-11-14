@@ -21,11 +21,11 @@ export function createSessionTimer({ now = () => performance.now(), onWarning, o
     }
     task = setTimeout(check, Math.min(2147483647, Math.max(1, (warned ? deadline : warningAt) - current)));
   }
-  function update(timing) {
+  function update(timing, receivedAt = now()) {
     clear();
-    if (!timing || !Number.isFinite(timing.serverNow) || !Number.isFinite(timing.expiresAt) ||
+    if (!Number.isFinite(receivedAt) || !timing || !Number.isFinite(timing.serverNow) || !Number.isFinite(timing.expiresAt) ||
         !Number.isFinite(timing.warningSeconds) || timing.warningSeconds < 20) return false;
-    deadline = now() + timing.expiresAt - timing.serverNow;
+    deadline = receivedAt + timing.expiresAt - timing.serverNow;
     warningAt = deadline - timing.warningSeconds * 1000;
     check();
     return true;

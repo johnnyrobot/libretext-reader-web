@@ -35,4 +35,14 @@ describe("server-relative session timing", () => {
     const timer = createSessionTimer({ onWarning: vi.fn(), onExpired: vi.fn() });
     expect(timer.update({ expiresAt: NaN })).toBe(false);
   });
+  it("does not add thread-loading delay to the server deadline", () => {
+    vi.useFakeTimers();
+    const warn = vi.fn();
+    const timer = createSessionTimer({ now: () => Date.now(), onWarning: warn, onExpired: vi.fn() });
+    const receivedAt = Date.now();
+    vi.advanceTimersByTime(120000);
+    timer.update({ serverNow: 1000, expiresAt: 601000, warningSeconds: 300 }, receivedAt);
+    vi.advanceTimersByTime(180000);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
 });
