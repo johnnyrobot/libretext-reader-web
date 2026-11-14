@@ -91,6 +91,13 @@ test("existing textbook selection, two accounts, reload, restore and cross-book 
     .locator(".sr-thread")
     .filter({ hasText: question })
     .scrollIntoViewIfNeeded();
+  const layout = await page.evaluate(() => ({
+    railRight: document.querySelector(".side-rail").getBoundingClientRect().right,
+    mainLeft: document.querySelector("main").getBoundingClientRect().left,
+    closeTop: document.querySelector(".sr-header button").getBoundingClientRect().top,
+  }));
+  expect(layout.mainLeft).toBeGreaterThanOrEqual(layout.railRight);
+  expect(layout.closeTop).toBeGreaterThanOrEqual(0);
   await page.screenshot({ path: info.outputPath("desktop-panel.png") });
   const cross = await page.evaluate(
     async ({ thread }) => {

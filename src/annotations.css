@@ -34,6 +34,19 @@
 html[data-sr-panel="open"] body {
   padding-right: 23rem;
 }
+@media (min-width: 901px) {
+  html[data-sr-panel="open"] body:has(.side-rail) {
+    padding-left: 24px;
+  }
+}
+#sr-panel .sr-header {
+  position: sticky;
+  top: -1.25rem;
+  z-index: 1;
+  background: #fff;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--lt-line, #b8d7e8);
+}
 #sr-panel h2 {
   font-size: 1.3rem;
   margin: 0 0 0.75rem;

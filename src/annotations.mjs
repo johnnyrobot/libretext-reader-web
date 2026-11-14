@@ -76,6 +76,9 @@ export function mountAnnotations({
   panel.setAttribute("aria-label", "Textbook discussion");
   const heading = make("h2", "Discuss this passage");
   const close = button("Close discussion", () => closePanel());
+  const header = make("div");
+  header.className = "sr-header";
+  header.append(heading, close);
   const status = make("p");
   status.setAttribute("role", "status");
   const quote = make("blockquote");
@@ -155,8 +158,7 @@ export function mountAnnotations({
   threads.id = "sr-threads";
   member.append(identity, signOut, refresh, question, recover, threads);
   panel.append(
-    heading,
-    close,
+    header,
     make(
       "p",
       "Private discussion · invented demonstration course and accounts",
