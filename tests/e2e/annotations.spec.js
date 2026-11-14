@@ -63,7 +63,7 @@ test("keyboard exact quote and repeated occurrence are available without page dr
   await expect(page.getByRole("status")).toContainText("Exact quote selected");
   await page.getByRole("spinbutton", { name: "Quote occurrence", exact: true }).fill("2");
   await page.getByRole("button", { name: "Use exact quote", exact: true }).click();
-  await expect(page.getByRole("textbox", { name: "Exact quote (optional)", exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("spinbutton", { name: "Quote occurrence", exact: true })).toHaveAttribute("aria-invalid", "true");
   await expect(page.locator("#sr-quote-error")).toContainText("not in this passage");
 });
 
@@ -86,6 +86,34 @@ test("session warning allows extension without losing a draft", async ({ page })
   await expect(page.getByRole("status")).toContainText("Session extended");
 });
 
+test("session warning stays operable at 320px with enlarged spaced text", async ({ page }) => {
+  await page.clock.install();
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 61000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+    for (const el of document.querySelectorAll("#sr-panel,#sr-panel *")) {
+      el.style.setProperty("line-height", "1.5", "important");
+      el.style.setProperty("letter-spacing", ".12em", "important");
+      el.style.setProperty("word-spacing", ".16em", "important");
+      if (el.tagName === "P") el.style.setProperty("margin-bottom", "2em", "important");
+    }
+  });
+  await page.getByRole("button", { name: "Stay signed in", exact: true }).click({ timeout: 1500 });
+  await expect(page.locator("#sr-session-notice")).toBeHidden();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click({ timeout: 1500 });
+  await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+});
+
 test("failed session extension keeps warning draft and keyboard focus", async ({ page }) => {
   await page.route("**/social-reading/api/session", async route => {
     const response = await route.fetch();
@@ -100,14 +128,37 @@ test("failed session extension keeps warning draft and keyboard focus", async ({
   await login(page, "alice");
   const input = page.getByRole("textbox", { name: "Your question", exact: true });
   await input.fill("Do not lose this draft");
+  await page.getByRole("button", { name: "Close discussion", exact: true }).click();
   const extend = page.getByRole("button", { name: "Stay signed in", exact: true });
   await extend.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("status")).toContainText("Extension unavailable");
+  await expect(page.locator("#sr-session-notice")).toContainText("Extension unavailable");
   await expect(extend).toBeFocused();
   await expect(page.locator("#sr-session-notice")).toBeVisible();
+  await page.locator("#sr-entry").click();
   await expect(input).toHaveValue("Do not lose this draft");
 });
+
+for (const closed of [false, true]) {
+  test(`expiry restores focus from warning with panel ${closed ? "closed" : "open"}`, async ({ page }) => {
+    await page.clock.install();
+    await page.route("**/social-reading/api/session", async route => {
+      const response = await route.fetch();
+      if (response.status() !== 200) return route.fulfill({ response });
+      const body = await response.json();
+      body.timing = { serverNow: 1000, expiresAt: 3000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+      await route.fulfill({ response, json: body });
+    });
+    await page.goto(URL);
+    await page.locator("#sr-entry").click();
+    await login(page, "alice");
+    if (closed) await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+    await page.getByRole("button", { name: "Stay signed in", exact: true }).focus();
+    await page.clock.runFor(2100);
+    await expect(closed ? page.locator("#sr-entry") : page.locator("#sr-panel input[name=username]")).toBeFocused({ timeout: 1000 });
+    await expect(page.locator("#sr-session-notice")).toContainText("expired");
+  });
+}
 
 for (const account of ["alice", "bob"]) {
   test(`expiry keeps drafts private until reauthentication as ${account}`, async ({ page }) => {
@@ -496,13 +547,22 @@ test("refresh revokes drafts when another tab changes accounts", async ({ page }
   await login(page, "alice");
   const input = page.getByRole("textbox", { name: "Your question", exact: true });
   await input.fill("Alice private draft must not survive account switch");
+  await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+  await page.evaluate(() => {
+    const ps = document.querySelectorAll("main p"), range = document.createRange();
+    range.setStart(ps[0], 0);
+    range.setEnd(ps[1], 1);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  });
+  await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
   await page.request.post("/social-reading/api/login", {
     headers: { Origin: "http://127.0.0.1:8788" },
     data: { username: "bob", password: credentials.bob },
   });
   await page.getByRole("button", { name: "Refresh discussion", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Account changed");
+  await expect(page.getByRole("status")).toContainText("Account changed", { timeout: 1000 });
   await expect(page.locator(".sr-thread")).toHaveCount(0);
   await login(page, "bob");
   await expect(input).toHaveValue("");
@@ -585,4 +645,22 @@ test("reconciles a lost acknowledgment and distinguishes saved data from failed 
   await expect(
     page.getByRole("button", { name: "Check pending submission", exact: true }),
   ).toBeHidden();
+});
+
+test("missing receipt is HTTP 200 null and safely retries the original command", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  await page.route("**/social-reading/api/commands", route => route.abort(), { times: 1 });
+  const question = "Missing receipt regression " + Date.now();
+  await page.getByRole("textbox", { name: "Your question", exact: true }).fill(question);
+  await page.getByRole("button", { name: "Post question", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("outcome unknown");
+  const receipt = page.waitForResponse(response => response.url().includes("/api/receipts/"));
+  await page.getByRole("button", { name: "Check pending submission", exact: true }).click();
+  const response = await receipt;
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toBe(null);
+  await expect(page.getByRole("status")).toContainText("Saved and acknowledged");
+  await expect(page.locator(".sr-thread").filter({ hasText: question })).toHaveCount(1);
 });

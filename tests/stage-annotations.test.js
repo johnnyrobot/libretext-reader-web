@@ -12,12 +12,11 @@ import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 const sha = (x) => createHash("sha256").update(x).digest("hex");
-function fixture() {
+function fixture(quote = "A complete textbook paragraph.") {
   const root = mkdtempSync(join(tmpdir(), "reader-stamp-"));
   const stage = join(root, "stage");
   mkdirSync(join(stage, "book"), { recursive: true });
-  const html =
-    '<html><body><main id="main-content"><p>A complete textbook paragraph.</p></main></body></html>';
+  const html = `<html><body><main id="main-content"><p>${quote}</p></main></body></html>`;
   writeFileSync(join(stage, "book/index.html"), html);
   const data = {
     schema: 1,
@@ -32,7 +31,7 @@ function fixture() {
             revision: "a".repeat(64),
             sourceSha256: sha(html),
             passages: [
-              { block: "p-0", quote: "A complete textbook paragraph." },
+              { block: "p-0", quote },
             ],
           },
         ],
@@ -54,6 +53,17 @@ function fixture() {
   ];
   return { root, stage, html, args };
 }
+it("preserves dollar sequences literally in the context stamp", () => {
+  const text = "Math $$x$$ and $& dollars.";
+  const f = fixture(text);
+  try {
+    execFileSync(process.execPath, f.args);
+    const html = readFileSync(join(f.stage, "book/index.html"), "utf8");
+    const stamp = JSON.parse(html.match(/id="sr-page-context">([\s\S]*?)<\/script>/)[1]);
+    expect(stamp.blocks[0].quote).toBe(text);
+    expect(stamp.blocks[0].quoteSha256).toBe(sha(text));
+  } finally { rmSync(f.root, { recursive: true }); }
+});
 it("stamps public metadata outside unchanged main and publishes final file hashes", () => {
   const f = fixture();
   try {

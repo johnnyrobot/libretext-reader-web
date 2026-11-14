@@ -139,16 +139,26 @@ export function mountAnnotations({
   const quoteError = make("p");
   quoteError.id = "sr-quote-error";
   exactQuote.setAttribute("aria-describedby", quoteError.id);
+  occurrence.setAttribute("aria-describedby", quoteError.id);
   const useQuote = button("Use exact quote", () => {
+    let invalidControl = exactQuote;
+    exactQuote.removeAttribute("aria-invalid");
+    occurrence.removeAttribute("aria-invalid");
     try {
       const value = blockSelection(chooser.value), text = value.block.quote;
       const needle = exactQuote.value, count = Number(occurrence.value);
-      if (!needle || !Number.isSafeInteger(count) || count < 1 || count > text.length)
-        throw Error("Enter text from the passage and an occurrence number of at least 1.");
+      if (!needle) throw Error("Enter text from the passage.");
+      if (!Number.isSafeInteger(count) || count < 1 || count > text.length) {
+        invalidControl = occurrence;
+        throw Error("Enter a valid occurrence number of at least 1.");
+      }
       let start = -1;
       for (let i = 0; i < count; i++) {
         start = text.indexOf(needle, start + 1);
-        if (start < 0) throw Error("That quote occurrence is not in this passage. Check the text and occurrence number.");
+        if (start < 0) {
+          if (i > 0) invalidControl = occurrence;
+          throw Error("That quote occurrence is not in this passage. Check the text and occurrence number.");
+        }
       }
       const selector = { start, end: start + needle.length, quote: needle };
       if (!validSelector(text, selector)) throw Error("Select complete characters from the passage.");
@@ -158,7 +168,7 @@ export function mountAnnotations({
       say("Exact quote selected.");
       if (actor) run(loadThreads);
     } catch (error) {
-      exactQuote.setAttribute("aria-invalid", "true");
+      invalidControl.setAttribute("aria-invalid", "true");
       quoteError.textContent = error.message;
       say(error.message);
     }
@@ -306,6 +316,7 @@ export function mountAnnotations({
   function revoke(preserveDrafts = false) {
     const focused = doc.activeElement;
     const hadMemberFocus = member.contains(focused);
+    const hadWarningFocus = sessionNotice.contains(focused);
     if (preserveDrafts && actor) {
       if (selected) drafts.set(key(), input.value);
       suspendedDrafts = { actor: actor.id, entries: [...drafts] };
@@ -326,8 +337,9 @@ export function mountAnnotations({
       sessionNotice.hidden = false;
     }
     lock();
-    if (!panel.hidden && hadMemberFocus && (doc.activeElement === focused || doc.activeElement === doc.body))
-      username.focus();
+    if ((hadWarningFocus || (!panel.hidden && hadMemberFocus)) &&
+        (doc.activeElement === focused || doc.activeElement === doc.body))
+      (panel.hidden ? entry : username).focus();
   }
   async function run(action) {
     if (busy) return;
@@ -335,7 +347,7 @@ export function mountAnnotations({
     const replyThread = initiator?.closest(".sr-thread")?.dataset.srThread;
     let userMoved = false;
     const moved = event => {
-      if (event.target !== initiator && event.target !== doc.body) userMoved = true;
+      if (event.target !== initiator && (event.type === "pointerdown" || event.target !== doc.body)) userMoved = true;
     };
     doc.addEventListener("focusin", moved);
     doc.addEventListener("pointerdown", moved);
@@ -348,6 +360,11 @@ export function mountAnnotations({
       if (generation === viewGeneration) {
         if (e.status === 401 || e.status === 403) revoke(e.status === 401);
         say(e.message);
+        if (initiator === staySignedIn) {
+          sessionMessage.textContent = `${e.message} ${actor ? "Your session extension was not confirmed. You can try again." : "Reopen discussion to sign in again."}`;
+          staySignedIn.hidden = !actor;
+          sessionNotice.hidden = false;
+        }
       }
     } finally {
       busy = false;
@@ -363,7 +380,7 @@ export function mountAnnotations({
         const reply = [...threads.querySelectorAll(".sr-thread")]
           .find(row => row.dataset.srThread === replyThread)?.querySelector("textarea");
         const survivingInitiator = initiator?.isConnected && !initiator.closest("[hidden]") && !initiator.disabled ? initiator : null;
-        const target = survivingInitiator ?? (actor ? (reply ?? (pending ? recover : input)) : username);
+        const target = survivingInitiator ?? (panel.hidden ? entry : actor ? (reply ?? (pending ? recover : input)) : username);
         (target.disabled ? close : target).focus();
       }
       if (queuedOpen && !panel.hidden) {
@@ -483,7 +500,7 @@ export function mountAnnotations({
     };
   }
   async function loadThreads() {
-    if (!selected || !actor) return;
+    if (!actor) return;
     const view = viewGeneration;
     const expectedActor = actor.id;
     const verifyActor = async () => {
@@ -494,6 +511,7 @@ export function mountAnnotations({
       }
     };
     await verifyActor();
+    if (!selected) return;
     if (view !== viewGeneration || panel.hidden) return;
     const generation = ++threadLoadGeneration,
       c = context();

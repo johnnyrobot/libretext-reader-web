@@ -67,7 +67,7 @@ for (const book of catalog.books)
       blocks: page.passages.map((p) => ({ ...p, quoteSha256: sha(p.quote) })),
     };
     const stamp = `<script type="application/json" id="sr-page-context">${JSON.stringify(manifest).replaceAll("<", "\\u003c")}</script>\n<link rel="stylesheet" href="/_assets/reader/annotations.css">\n<script type="module" src="/_assets/reader/annotations.mjs"></script>\n`;
-    const result = prefix + suffix.replace("</body>", stamp + "</body>");
+    const result = prefix + suffix.replace("</body>", () => stamp + "</body>");
     pages.push({ target, page, result });
   }
 // Validate every page before changing any page; a stale source must not partly stamp a stage.

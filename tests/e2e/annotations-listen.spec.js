@@ -86,7 +86,7 @@ test("Listen selection does not seek; discussion preserves playback and Escape o
   await page.locator("[data-act=toggle]").click();
   await page.waitForFunction(
     (previous) =>
-      document.querySelector(".tts-current")?.dataset.ttsId !== previous,
+      [...document.querySelectorAll(".tts-current")].some(current => current.dataset.ttsId && current.dataset.ttsId !== previous),
     before,
     { timeout: 60000 },
   );
