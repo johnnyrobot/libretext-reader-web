@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 test("Spanish playback preserves discussion and excludes panel text", async ({ page }) => {
+  test.skip(!process.env.SR_CREDENTIALS_FILE, "Designated synthetic credentials required");
   await page.addInitScript(() => {
     window.srAudioStarts = 0;
     window.srWorkerText = [];
@@ -24,7 +26,15 @@ test("Spanish playback preserves discussion and excludes panel text", async ({ p
   const original = await page.locator("main#main-content").textContent();
   await page.locator("#sr-entry").click();
   await expect(page.locator("#sr-panel")).toBeVisible();
-  await page.locator("#sr-panel input[name=username]").fill("PRIVATE_PANEL_SENTINEL_549");
+  const credentials = JSON.parse(readFileSync(process.env.SR_CREDENTIALS_FILE, "utf8"));
+  await page.locator("#sr-panel input[name=username]").fill("alice");
+  await page.locator("#sr-panel input[name=password]").fill(credentials.alice);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
+  const privateText = "PRIVATE_PANEL_SENTINEL_549_" + Date.now();
+  await page.getByRole("textbox", { name: "Your question", exact: true }).fill(privateText);
+  await page.getByRole("button", { name: "Post question", exact: true }).click();
+  await expect(page.locator(".sr-thread").filter({ hasText: privateText })).toHaveCount(1);
   await page.locator("[data-act=lang]").selectOption("es");
   await expect(page.locator(".tts-dialog h2")).toHaveText("Listen in español");
   await page.locator("[data-act=accept]").click();

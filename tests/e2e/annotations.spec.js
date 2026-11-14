@@ -238,6 +238,24 @@ test("rejects unsupported selections and clears drafts when another tab changes 
   ).toBeDisabled();
 });
 
+test("refresh revokes drafts when another tab changes accounts", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  const input = page.getByRole("textbox", { name: "Your question", exact: true });
+  await input.fill("Alice private draft must not survive account switch");
+  const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
+  await page.request.post("/social-reading/api/login", {
+    headers: { Origin: "http://127.0.0.1:8788" },
+    data: { username: "bob", password: credentials.bob },
+  });
+  await page.getByRole("button", { name: "Refresh discussion", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("Account changed");
+  await expect(page.locator(".sr-thread")).toHaveCount(0);
+  await login(page, "bob");
+  await expect(input).toHaveValue("");
+});
+
 test("reconciles a lost acknowledgment and distinguishes saved data from failed refresh", async ({
   page,
 }) => {

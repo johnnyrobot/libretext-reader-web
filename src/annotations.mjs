@@ -185,7 +185,7 @@ export function mountAnnotations({
   };
   const lock = () => {
     for (const b of panel.querySelectorAll("button"))
-      if (b !== close) b.disabled = busy;
+      if (b !== close) b.disabled = busy || (b.dataset.srReply !== undefined && (!!pending || b.dataset.srReply === "orphan"));
     for (const composer of panel.querySelectorAll("textarea"))
       composer.disabled = busy || !!pending;
     post.disabled = busy || !!pending || !selected;
@@ -301,9 +301,19 @@ export function mountAnnotations({
   }
   async function loadThreads() {
     if (!selected || !actor) return;
+    const expectedActor = actor.id;
+    const verifyActor = async () => {
+      const current = await client.session();
+      if (current.id !== expectedActor) {
+        revoke();
+        throw Error("Account changed. Sign in again; private drafts were cleared.");
+      }
+    };
+    await verifyActor();
     const generation = ++threadLoadGeneration,
       c = context();
     const loaded = await client.threads(c);
+    await verifyActor();
     if (generation !== threadLoadGeneration || !actor) return;
     threads.replaceChildren();
     if (!loaded.length)
@@ -321,6 +331,7 @@ export function mountAnnotations({
       reply.required = true;
       reply.maxLength = 4000;
       submit.type = "submit";
+      submit.dataset.srReply = t.orphan ? "orphan" : "active";
       const draftKey = `reply:${t.id}`;
       reply.value = drafts.get(draftKey) ?? "";
       reply.addEventListener("input", () => drafts.set(draftKey, reply.value));
