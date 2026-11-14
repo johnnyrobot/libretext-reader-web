@@ -39,6 +39,45 @@ async function selection(page) {
     .getByRole("button", { name: "Discuss selected text", exact: true })
     .click();
 }
+test("keyboard focus survives login and logout", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
+  await page.locator("#sr-panel input[name=username]").fill("alice");
+  await page.locator("#sr-panel input[name=password]").fill(credentials.alice);
+  await page.getByRole("button", { name: "Sign in", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeFocused({ timeout: 1000 });
+  await page.getByRole("button", { name: "Sign out", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+});
+
+test("panel remains operable with 320px reflow, enlarged text and spacing", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("#sr-panel,#sr-panel *")) {
+      el.style.setProperty("line-height", "1.5", "important");
+      el.style.setProperty("letter-spacing", ".12em", "important");
+      el.style.setProperty("word-spacing", ".16em", "important");
+      if (el.tagName === "P") el.style.setProperty("margin-bottom", "2em", "important");
+    }
+  });
+  const quote = page.getByRole("blockquote", { name: "Selected passage" });
+  await quote.focus();
+  await page.keyboard.press("End");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+  const width = await page.locator("#sr-panel").evaluate(el => ({ client: el.clientWidth, scroll: el.scrollWidth }));
+  expect(width.scroll).toBeLessThanOrEqual(width.client);
+  await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+  await expect(page.locator("#sr-entry")).toBeFocused();
+});
+
 test("delayed authentication honors immediate keyboard reopen and final close", async ({ page }) => {
   await page.goto(URL);
   let release, started;
@@ -135,6 +174,7 @@ test("existing textbook selection, two accounts, reload, restore and cross-book 
   await expect(page.getByRole("status")).toContainText(
     "Saved and acknowledged",
   );
+  await expect(page.locator(".sr-thread").filter({ hasText: question }).getByRole("textbox", { name: "Your reply", exact: true })).toBeFocused();
   await page.reload();
   await page
     .getByRole("button", { name: "Discuss this page", exact: true })
@@ -299,7 +339,7 @@ test("rejects unsupported selections and clears drafts when another tab changes 
   await page
     .getByRole("button", { name: "Selection unavailable", exact: true })
     .click();
-  await expect(page.locator("#sr-panel > blockquote")).toContainText(
+  await expect(page.locator("#sr-panel .sr-content > blockquote")).toContainText(
     "one supported paragraph",
   );
   await expect(

@@ -57,6 +57,7 @@ export function mountAnnotations({
     manifest.normalization !== "js-whitespace-v1"
   )
     return;
+  doc.documentElement.dataset.srEnabled = "true";
   const make = (tag, text) => {
     const e = doc.createElement(tag);
     if (text !== undefined) e.textContent = text;
@@ -70,6 +71,8 @@ export function mountAnnotations({
   };
   const entry = button("Discuss this page", () => open(captured));
   entry.id = "sr-entry";
+  entry.setAttribute("aria-controls", "sr-panel");
+  entry.setAttribute("aria-expanded", "false");
   const panel = make("aside");
   panel.id = "sr-panel";
   panel.hidden = true;
@@ -81,11 +84,14 @@ export function mountAnnotations({
   header.append(heading, close);
   const status = make("p");
   status.setAttribute("role", "status");
+  status.setAttribute("aria-atomic", "true");
   const quote = make("blockquote");
+  quote.tabIndex = 0;
+  quote.setAttribute("aria-label", "Selected passage");
   const chooser = make("select");
   chooser.setAttribute("aria-label", "Choose a passage");
   for (const b of manifest.blocks) {
-    const o = make("option", b.quote.slice(0, 100));
+    const o = make("option", `Passage ${manifest.blocks.indexOf(b) + 1}: ${b.quote}`);
     o.value = b.block;
     chooser.append(o);
   }
@@ -115,6 +121,7 @@ export function mountAnnotations({
   const signIn = make("button", "Sign in");
   signIn.type = "submit";
   login.append(
+    make("p", "Both sign-in fields are required."),
     field("Username", username),
     field("Password", password),
     signIn,
@@ -136,7 +143,7 @@ export function mountAnnotations({
   input.maxLength = 4000;
   const post = make("button", "Post question");
   post.type = "submit";
-  question.append(field("Your question", input), post);
+  question.append(make("p", "A question is required; maximum 4,000 characters."), field("Your question", input), post);
   const recover = button("Check pending submission", () =>
     run(async () => {
       if (!pending) return;
@@ -157,8 +164,9 @@ export function mountAnnotations({
   const threads = make("div");
   threads.id = "sr-threads";
   member.append(identity, signOut, refresh, question, recover, threads);
-  panel.append(
-    header,
+  const content = make("div");
+  content.className = "sr-content";
+  content.append(
     make(
       "p",
       "Private discussion · invented demonstration course and accounts",
@@ -170,6 +178,7 @@ export function mountAnnotations({
     login,
     member,
   );
+  panel.append(header, content);
   doc.body.append(entry, panel);
   let selected = null,
     actor = null,
@@ -210,6 +219,8 @@ export function mountAnnotations({
   }
   async function run(action) {
     if (busy) return;
+    const initiator = doc.activeElement;
+    const replyThread = initiator?.closest(".sr-thread")?.dataset.srThread;
     busy = true;
     const generation = viewGeneration;
     lock();
@@ -223,6 +234,15 @@ export function mountAnnotations({
     } finally {
       busy = false;
       lock();
+      const active = doc.activeElement;
+      const lostFocus = !initiator?.isConnected || !!initiator?.closest("[hidden]");
+      if (!panel.hidden && generation === viewGeneration && lostFocus &&
+          (active === initiator || active === doc.body || !active?.isConnected)) {
+        const reply = [...threads.querySelectorAll(".sr-thread")]
+          .find(row => row.dataset.srThread === replyThread)?.querySelector("textarea");
+        const target = actor ? (reply ?? (pending ? recover : input)) : username;
+        (target.disabled ? close : target).focus();
+      }
       if (queuedOpen && !panel.hidden) {
         const next = queuedOpen;
         queuedOpen = null;
@@ -259,6 +279,7 @@ export function mountAnnotations({
     queuedOpen = null;
     if (selected) drafts.set(key(), input.value);
     panel.hidden = true;
+    entry.setAttribute("aria-expanded", "false");
     delete doc.documentElement.dataset.srComposing;
     delete doc.documentElement.dataset.srPanel;
     threadLoadGeneration++;
@@ -289,6 +310,7 @@ export function mountAnnotations({
       y: window.scrollY,
     };
     panel.hidden = false;
+    entry.setAttribute("aria-expanded", "true");
     member.hidden = true;
     login.hidden = false;
     threads.replaceChildren();
@@ -349,9 +371,13 @@ export function mountAnnotations({
     for (const t of loaded) {
       const row = make("section");
       row.className = "sr-thread";
+      row.dataset.srThread = t.id;
       row.append(make("h3", t.name), make("p", t.text));
-      if (t.anchor.selector)
-        row.append(make("blockquote", t.anchor.selector.quote));
+      if (t.anchor.selector) {
+        const threadQuote = make("blockquote", t.anchor.selector.quote);
+        threadQuote.tabIndex = 0;
+        row.append(threadQuote);
+      }
       for (const r of t.replies) row.append(make("p", `${r.name}: ${r.text}`));
       const form = make("form"),
         reply = make("textarea"),
@@ -364,7 +390,7 @@ export function mountAnnotations({
       reply.value = drafts.get(draftKey) ?? "";
       reply.addEventListener("input", () => drafts.set(draftKey, reply.value));
       submit.disabled = t.orphan || !!pending;
-      form.append(field("Your reply", reply), submit);
+      form.append(make("p", "A reply is required; maximum 4,000 characters."), field("Your reply", reply), submit);
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         run(() =>
