@@ -79,6 +79,7 @@ for (const name of [
   "_assets/reader/social-reading",
   "_assets/reader/annotations.mjs",
   "_assets/reader/annotations.css",
+  "_assets/reader/session-timer.mjs",
   "_assets/reader/social-reading/client.mjs",
   "_assets/reader/social-reading/anchor.mjs",
 ]) {
@@ -93,6 +94,7 @@ await mkdir(join(assetRoot, "social-reading"), { recursive: true });
 for (const name of [
   "annotations.mjs",
   "annotations.css",
+  "session-timer.mjs",
   "social-reading/client.mjs",
   "social-reading/anchor.mjs",
 ])

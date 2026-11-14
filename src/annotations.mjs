@@ -1,5 +1,6 @@
 import { createClient } from "./social-reading/client.mjs";
 import { normalizeText, validSelector } from "./social-reading/anchor.mjs";
+import { createSessionTimer } from "./session-timer.mjs";
 
 export function canonicalText(node) {
   if (node.nodeType === 3) return node.textContent;
@@ -113,11 +114,55 @@ export function mountAnnotations({
   password.type = "password";
   password.autocomplete = "current-password";
   password.required = true;
+  let fieldCount = 0;
   const field = (name, input) => {
+    input.id = `sr-input-${++fieldCount}`;
     const label = make("label", name);
-    label.append(input);
-    return label;
+    label.htmlFor = input.id;
+    const error = make("p");
+    error.id = `${input.id}-error`;
+    input.setAttribute("aria-describedby", `${input.getAttribute("aria-describedby") ?? ""} ${error.id}`.trim());
+    input.addEventListener("input", () => {
+      input.removeAttribute("aria-invalid");
+      error.textContent = "";
+    });
+    const wrapper = make("div");
+    wrapper.append(label, input, error);
+    return wrapper;
   };
+  const exactQuote = make("input");
+  exactQuote.type = "text";
+  const occurrence = make("input");
+  occurrence.type = "number";
+  occurrence.min = "1";
+  occurrence.value = "1";
+  const quoteError = make("p");
+  quoteError.id = "sr-quote-error";
+  exactQuote.setAttribute("aria-describedby", quoteError.id);
+  const useQuote = button("Use exact quote", () => {
+    try {
+      const value = blockSelection(chooser.value), text = value.block.quote;
+      const needle = exactQuote.value, count = Number(occurrence.value);
+      if (!needle || !Number.isSafeInteger(count) || count < 1 || count > text.length)
+        throw Error("Enter text from the passage and an occurrence number of at least 1.");
+      let start = -1;
+      for (let i = 0; i < count; i++) {
+        start = text.indexOf(needle, start + 1);
+        if (start < 0) throw Error("That quote occurrence is not in this passage. Check the text and occurrence number.");
+      }
+      const selector = { start, end: start + needle.length, quote: needle };
+      if (!validSelector(text, selector)) throw Error("Select complete characters from the passage.");
+      pick({ ...value, selector });
+      quoteError.textContent = "";
+      exactQuote.removeAttribute("aria-invalid");
+      say("Exact quote selected.");
+      if (actor) run(loadThreads);
+    } catch (error) {
+      exactQuote.setAttribute("aria-invalid", "true");
+      quoteError.textContent = error.message;
+      say(error.message);
+    }
+  });
   const signIn = make("button", "Sign in");
   signIn.type = "submit";
   login.append(
@@ -136,6 +181,14 @@ export function mountAnnotations({
       say("Signed out. Page drafts were cleared.");
     }),
   );
+  const sessionNotice = make("aside");
+  sessionNotice.id = "sr-session-notice";
+  sessionNotice.setAttribute("aria-label", "Session warning");
+  sessionNotice.hidden = true;
+  const sessionMessage = make("p", "Your discussion session ends soon. Stay signed in to keep working.");
+  sessionMessage.setAttribute("role", "alert");
+  const staySignedIn = button("Stay signed in", () => run(extendSession));
+  sessionNotice.append(sessionMessage, staySignedIn);
   const refresh = button("Refresh discussion", () => run(loadThreads));
   const question = make("form");
   const input = make("textarea");
@@ -173,13 +226,18 @@ export function mountAnnotations({
     ),
     chooser,
     use,
+    make("p", "To discuss part of a passage using the keyboard, enter its exact text. If it appears more than once, choose the occurrence."),
+    field("Exact quote (optional)", exactQuote),
+    field("Quote occurrence", occurrence),
+    useQuote,
+    quoteError,
     quote,
     status,
     login,
     member,
   );
   panel.append(header, content);
-  doc.body.append(entry, panel);
+  doc.body.append(entry, panel, sessionNotice);
   let selected = null,
     actor = null,
     pending = null,
@@ -189,6 +247,41 @@ export function mountAnnotations({
     threadLoadGeneration = 0,
     restore = null;
   const drafts = new Map();
+  let suspendedDrafts = null;
+  const sessionTimer = createSessionTimer({
+    onWarning: () => { if (actor) sessionNotice.hidden = false; },
+    onExpired: () => {
+      if (!actor) return;
+      revoke(true);
+      sessionMessage.textContent = "Your discussion session expired. Reopen discussion and sign in with the same account to recover your draft.";
+      staySignedIn.hidden = true;
+      sessionNotice.hidden = false;
+      say("Session expired. Sign in with the same account to recover your draft.");
+    },
+  });
+  doc.addEventListener("visibilitychange", () => sessionTimer.check());
+  async function extendSession() {
+    if (!actor) return;
+    const expected = actor.id, previousExpiry = actor.timing?.expiresAt;
+    let current;
+    try { current = await client.extendSession(expected); }
+    catch (error) {
+      if (error.code === "IDENTITY_CHANGED") revoke();
+      if (error.status && error.status < 500) throw error;
+      current = await client.session();
+      if (!(current.timing?.expiresAt > previousExpiry)) throw error;
+    }
+    if (current.id !== expected) {
+      revoke();
+      throw Error("Account changed. Sign in again; private drafts were cleared.");
+    }
+    actor = current;
+    sessionTimer.update(current.timing);
+    sessionNotice.hidden = true;
+    say("Session extended. Your draft is unchanged.");
+    if (doc.activeElement === staySignedIn || doc.activeElement === doc.body)
+      (panel.hidden ? entry : close).focus({ preventScroll: true });
+  }
   const key = () =>
     selected
       ? JSON.stringify([selected.block.block, selected.selector ?? null])
@@ -197,16 +290,28 @@ export function mountAnnotations({
     status.textContent = text;
   };
   const lock = () => {
+    staySignedIn.disabled = busy;
     for (const b of panel.querySelectorAll("button"))
       if (b !== close) b.disabled = busy || (b.dataset.srReply !== undefined && (!!pending || b.dataset.srReply === "orphan"));
     for (const composer of panel.querySelectorAll("textarea"))
       composer.disabled = busy || !!pending;
     post.disabled = busy || !!pending || !selected;
     use.disabled = busy || !!pending;
+    useQuote.disabled = busy || !!pending;
+    exactQuote.disabled = busy || !!pending;
+    occurrence.disabled = busy || !!pending;
     chooser.disabled = busy || !!pending;
     recover.hidden = !pending;
   };
-  function revoke() {
+  function revoke(preserveDrafts = false) {
+    const focused = doc.activeElement;
+    const hadMemberFocus = member.contains(focused);
+    if (preserveDrafts && actor) {
+      if (selected) drafts.set(key(), input.value);
+      suspendedDrafts = { actor: actor.id, entries: [...drafts] };
+    } else if (!preserveDrafts) suspendedDrafts = null;
+    sessionTimer.clear();
+    sessionNotice.hidden = true;
     threadLoadGeneration++;
     actor = null;
     drafts.clear();
@@ -215,12 +320,25 @@ export function mountAnnotations({
     member.hidden = true;
     login.hidden = false;
     identity.textContent = "";
+    if (preserveDrafts && suspendedDrafts) {
+      sessionMessage.textContent = "Your discussion session expired. Reopen discussion and sign in with the same account to recover your draft.";
+      staySignedIn.hidden = true;
+      sessionNotice.hidden = false;
+    }
     lock();
+    if (!panel.hidden && hadMemberFocus && (doc.activeElement === focused || doc.activeElement === doc.body))
+      username.focus();
   }
   async function run(action) {
     if (busy) return;
     const initiator = doc.activeElement;
     const replyThread = initiator?.closest(".sr-thread")?.dataset.srThread;
+    let userMoved = false;
+    const moved = event => {
+      if (event.target !== initiator && event.target !== doc.body) userMoved = true;
+    };
+    doc.addEventListener("focusin", moved);
+    doc.addEventListener("pointerdown", moved);
     busy = true;
     const generation = viewGeneration;
     lock();
@@ -228,19 +346,24 @@ export function mountAnnotations({
       await action();
     } catch (e) {
       if (generation === viewGeneration) {
-        if (e.status === 401 || e.status === 403) revoke();
+        if (e.status === 401 || e.status === 403) revoke(e.status === 401);
         say(e.message);
       }
     } finally {
       busy = false;
       lock();
+      doc.removeEventListener("focusin", moved);
+      doc.removeEventListener("pointerdown", moved);
       const active = doc.activeElement;
-      const lostFocus = !initiator?.isConnected || !!initiator?.closest("[hidden]");
-      if (!panel.hidden && generation === viewGeneration && lostFocus &&
+      const lostFocus = !initiator?.isConnected || !!initiator?.closest("[hidden]") ||
+        (active === doc.body && initiator !== doc.body && (panel.contains(initiator) || sessionNotice.contains(initiator)));
+      const recoverableSurface = !panel.hidden || (!sessionNotice.hidden && sessionNotice.contains(initiator));
+      if (recoverableSurface && !userMoved && generation === viewGeneration && lostFocus &&
           (active === initiator || active === doc.body || !active?.isConnected)) {
         const reply = [...threads.querySelectorAll(".sr-thread")]
           .find(row => row.dataset.srThread === replyThread)?.querySelector("textarea");
-        const target = actor ? (reply ?? (pending ? recover : input)) : username;
+        const survivingInitiator = initiator?.isConnected && !initiator.closest("[hidden]") && !initiator.disabled ? initiator : null;
+        const target = survivingInitiator ?? (actor ? (reply ?? (pending ? recover : input)) : username);
         (target.disabled ? close : target).focus();
       }
       if (queuedOpen && !panel.hidden) {
@@ -279,6 +402,7 @@ export function mountAnnotations({
     queuedOpen = null;
     if (selected) drafts.set(key(), input.value);
     panel.hidden = true;
+    doc.body.append(sessionNotice);
     entry.setAttribute("aria-expanded", "false");
     delete doc.documentElement.dataset.srComposing;
     delete doc.documentElement.dataset.srPanel;
@@ -295,12 +419,23 @@ export function mountAnnotations({
     if (generation !== viewGeneration || panel.hidden) return;
     if (previous && previous.id !== signedActor.id) revoke();
     actor = signedActor;
+    if (suspendedDrafts) {
+      if (suspendedDrafts.actor === actor.id) {
+        for (const [name, value] of suspendedDrafts.entries) drafts.set(name, value);
+        input.value = drafts.get(key()) ?? "";
+      }
+      suspendedDrafts = null;
+    }
     const authorizedView = viewGeneration;
     await loadThreads();
     if (authorizedView !== viewGeneration || panel.hidden) return;
     member.hidden = false;
     login.hidden = true;
     identity.textContent = `Signed in as ${actor.name}`;
+    staySignedIn.hidden = false;
+    sessionMessage.textContent = "Your discussion session ends soon. Stay signed in to keep working.";
+    sessionNotice.hidden = true;
+    sessionTimer.update(actor.timing);
   }
   async function open(value, replay = false) {
     viewGeneration++;
@@ -310,6 +445,7 @@ export function mountAnnotations({
       y: window.scrollY,
     };
     panel.hidden = false;
+    header.append(sessionNotice);
     entry.setAttribute("aria-expanded", "true");
     member.hidden = true;
     login.hidden = false;
@@ -405,6 +541,7 @@ export function mountAnnotations({
               drafts.delete(draftKey);
               reply.value = "";
             },
+            reply,
           ),
         );
       });
@@ -412,7 +549,7 @@ export function mountAnnotations({
       threads.append(row);
     }
   }
-  async function submitCommand(command, clear) {
+  async function submitCommand(command, clear, field = input) {
     if (pending || !actor || !selected) return;
     blockSelection(selected.block.block);
     const c = context();
@@ -438,6 +575,8 @@ export function mountAnnotations({
         }),
       ),
       clear,
+      field,
+      draftKey: command.kind === "reply" ? `reply:${command.thread}` : key(),
     };
     await send(pending);
   }
@@ -449,6 +588,10 @@ export function mountAnnotations({
       if (e.code === "IDENTITY_CHANGED") {
         revoke();
       } else if (e.status && e.status < 500) {
+        if (e.body?.fieldErrors?.text) {
+          original.field.setAttribute("aria-invalid", "true");
+          original.field.nextElementSibling.textContent = e.body.fieldErrors.text;
+        }
         pending = null;
         throw e;
       }
@@ -460,13 +603,15 @@ export function mountAnnotations({
     }
     if (pending !== original) return;
     original.clear();
+    if (suspendedDrafts?.actor === original.command.actor)
+      suspendedDrafts.entries = suspendedDrafts.entries.filter(([name]) => name !== original.draftKey);
     pending = null;
     lock();
     try {
       await loadThreads();
       say(`Saved and acknowledged. Thread version ${result.version}.`);
     } catch (e) {
-      if (e.status === 401 || e.status === 403) revoke();
+      if (e.status === 401 || e.status === 403) revoke(e.status === 401);
       say(
         `Saved and acknowledged. Refresh discussion to see the result: ${e.message}`,
       );

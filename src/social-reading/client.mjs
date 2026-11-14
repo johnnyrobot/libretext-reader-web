@@ -11,7 +11,7 @@ export function createClient({
   baseURL = "/social-reading/api",
   fetch: transport = globalThis.fetch,
 } = {}) {
-  if (!/^\/[^/]/.test(baseURL) || /[?#\\]/.test(baseURL))
+  if (!/^\/[^/]/.test(baseURL) || /[\x00-\x1f\x7f?#\\]/.test(baseURL))
     throw new Error("A same-origin API path is required.");
   const base = baseURL.replace(/\/$/, "");
   async function request(path, body, query) {
@@ -19,6 +19,7 @@ export function createClient({
     const response = await transport(base + path + suffix, {
       method: body === undefined ? "GET" : "POST",
       credentials: "same-origin",
+      mode: "same-origin",
       cache: "no-store",
       redirect: "error",
       ...(body === undefined
@@ -34,6 +35,7 @@ export function createClient({
   }
   return Object.freeze({
     session: () => request("/session"),
+    extendSession: (actor) => request("/session/extend", { actor }),
     login: (username, password) => request("/login", { username, password }),
     logout: () => request("/logout", {}),
     books: () => request("/books"),

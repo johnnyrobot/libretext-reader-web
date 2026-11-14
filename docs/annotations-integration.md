@@ -2,7 +2,9 @@
 
 The annotation module mounts its controls and discussion panel outside `main#main-content`. It consumes a public `social-reading-page-v1` stamp; private text is fetched only after server authorization. It never replaces textbook content or injects discussion text into the speech manifest.
 
-`src/social-reading/client.mjs` and `anchor.mjs` are exact copies from johnnyrobot/social-reading commit `5578aec6b0a25423600bdcf04c79445e4b881bca`. Their SHA-256 digests are respectively `df0de35b4ba7b112bcae707164fa28efa7a5ce3dabdef2ef00e5726887188ea9` and `39d3a5307e54abc223359bf12d524f69326cbff284e3b97bfc4e4855dcb03c67`.
+`src/social-reading/client.mjs` is copied from social-reading commit `73ee211a41891c5bab6ce550cfc5edc30b52c358`, SHA256 `0f3e65a2be6e28b5bb40df49bdc9b4fc17c0ccf22d98fd20c66949de85ba1cdb`. It includes server-relative timing, deliberate session extension and field-error passthrough. `anchor.mjs` remains the exact `5578aec6b0a25423600bdcf04c79445e4b881bca` copy, SHA256 `39d3a5307e54abc223359bf12d524f69326cbff284e3b97bfc4e4855dcb03c67`.
+
+Session warnings remain available when the panel is closed. Extension is deliberate, preserves drafts, and reconciles uncertain transport failures through a session read. Expiry hides private content and keeps unsent drafts only in page memory, restoring them only to the same authenticated actor. Deliberate logout and a different actor discard them. Pending commands retain their original immutable identity/context/key. The keyboard exact-quote input and occurrence chooser create the same validated selector as native range selection.
 
 ## Local staging
 

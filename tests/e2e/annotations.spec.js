@@ -53,6 +53,149 @@ test("keyboard focus survives login and logout", async ({ page }) => {
   await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
 });
 
+test("keyboard exact quote and repeated occurrence are available without page dragging", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await page.getByRole("textbox", { name: "Exact quote (optional)", exact: true }).fill("Whether we cooperate");
+  await page.getByRole("button", { name: "Use exact quote", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("blockquote", { name: "Selected passage", exact: true })).toHaveText("Whether we cooperate");
+  await expect(page.getByRole("status")).toContainText("Exact quote selected");
+  await page.getByRole("spinbutton", { name: "Quote occurrence", exact: true }).fill("2");
+  await page.getByRole("button", { name: "Use exact quote", exact: true }).click();
+  await expect(page.getByRole("textbox", { name: "Exact quote (optional)", exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#sr-quote-error")).toContainText("not in this passage");
+});
+
+test("session warning allows extension without losing a draft", async ({ page }) => {
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 61000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  await page.getByRole("textbox", { name: "Your question", exact: true }).fill("Keep this timed draft");
+  await expect(page.locator("#sr-session-notice")).toBeVisible();
+  await page.getByRole("button", { name: "Stay signed in", exact: true }).click();
+  await expect(page.locator("#sr-session-notice")).toBeHidden();
+  await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toHaveValue("Keep this timed draft");
+  await expect(page.getByRole("status")).toContainText("Session extended");
+});
+
+test("failed session extension keeps warning draft and keyboard focus", async ({ page }) => {
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 61000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.route("**/social-reading/api/session/extend", route => route.fulfill({ status: 503, json: { error: "Extension unavailable. Try again.", code: "REQUEST_FAILED" } }));
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  const input = page.getByRole("textbox", { name: "Your question", exact: true });
+  await input.fill("Do not lose this draft");
+  const extend = page.getByRole("button", { name: "Stay signed in", exact: true });
+  await extend.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toContainText("Extension unavailable");
+  await expect(extend).toBeFocused();
+  await expect(page.locator("#sr-session-notice")).toBeVisible();
+  await expect(input).toHaveValue("Do not lose this draft");
+});
+
+for (const account of ["alice", "bob"]) {
+  test(`expiry keeps drafts private until reauthentication as ${account}`, async ({ page }) => {
+    await page.clock.install();
+    await page.route("**/social-reading/api/session", async route => {
+      const response = await route.fetch();
+      if (response.status() !== 200) return route.fulfill({ response });
+      const body = await response.json();
+      body.timing = { serverNow: 1000, expiresAt: 3000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+      await route.fulfill({ response, json: body });
+    });
+    await page.goto(URL);
+    await page.locator("#sr-entry").click();
+    await login(page, "alice");
+    const input = page.getByRole("textbox", { name: "Your question", exact: true });
+    await input.fill("Private expiry draft");
+    await page.clock.runFor(2100);
+    await expect(input).toBeHidden();
+    await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+    await expect(page.locator(".sr-thread")).toHaveCount(0);
+    await page.unroute("**/social-reading/api/session");
+    await login(page, account);
+    await expect(input).toHaveValue(account === "alice" ? "Private expiry draft" : "");
+  });
+}
+
+test("server validation error is associated with the question field", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  const input = page.getByRole("textbox", { name: "Your question", exact: true });
+  await input.fill("   ");
+  await page.getByRole("button", { name: "Post question", exact: true }).click();
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  const described = await input.getAttribute("aria-describedby");
+  await expect(page.locator(`#${described}`)).toContainText("4000");
+  await input.fill("Corrected question");
+  await expect(input).not.toHaveAttribute("aria-invalid", "true");
+});
+
+test("failed sign-in retains keyboard focus on the surviving submit control", async ({ page }) => {
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await page.locator("#sr-panel input[name=username]").fill("alice");
+  await page.locator("#sr-panel input[name=password]").fill("intentionally-invalid-test-password");
+  const submit = page.getByRole("button", { name: "Sign in", exact: true });
+  await submit.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toContainText("Sign-in failed");
+  await expect(submit).toBeFocused();
+});
+
+test("expiry during an acknowledged submission does not restore the posted draft", async ({ page }) => {
+  await page.clock.install();
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 3000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  let release, started;
+  const gate = new Promise(resolve => { release = resolve; });
+  const requestStarted = new Promise(resolve => { started = resolve; });
+  await page.route("**/social-reading/api/commands", async route => {
+    const response = await route.fetch();
+    started();
+    await gate;
+    await route.fulfill({ response });
+  }, { times: 1 });
+  try {
+    const input = page.getByRole("textbox", { name: "Your question", exact: true });
+    await input.fill("Expiry acknowledgment regression " + Date.now());
+    await page.getByRole("button", { name: "Post question", exact: true }).click();
+    await requestStarted;
+    await page.clock.runFor(2100);
+    await expect(input).toBeHidden();
+    release();
+    await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeEnabled();
+    await page.unroute("**/social-reading/api/session");
+    await login(page, "alice");
+    await expect(input).toHaveValue("");
+  } finally { release(); }
+});
+
 test("panel remains operable with 320px reflow, enlarged text and spacing", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 800 });
   await page.goto(URL);

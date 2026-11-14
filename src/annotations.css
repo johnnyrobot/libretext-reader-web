@@ -5,6 +5,22 @@
   color: #111;
   box-sizing: border-box;
 }
+#sr-session-notice {
+  position: fixed;
+  inset: auto 1rem 5.5rem 1rem;
+  z-index: 46;
+  padding: 0.75rem;
+  border: 2px solid #0372a6;
+  background: white;
+  color: #111;
+  font: inherit;
+}
+#sr-session-notice[hidden] { display: none; }
+#sr-session-notice button { font: inherit; padding: 0.5rem; }
+#sr-panel #sr-session-notice {
+  position: static;
+  margin-block: 0.5rem;
+}
 html[data-sr-enabled] .side-rail {
   background: #3574ad;
 }
