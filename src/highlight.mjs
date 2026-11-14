@@ -334,7 +334,7 @@ export function setCurrent(elements, id, { scroll = true } = {}) {
   if (!element) return;
   element.classList.add('tts-current');
 
-  if (!scroll) return;
+  if (!scroll || document.documentElement.dataset.srComposing === 'true') return;
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
   element.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
 }
