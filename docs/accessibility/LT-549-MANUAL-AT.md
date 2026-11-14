@@ -1,6 +1,6 @@
 # LT-549 actual screen-reader acceptance script
 
-Status: NOT RUN. Release remains held. Accessibility-tree snapshots, automated keyboard input, axe and the application's Listen audio do not count as this evidence.
+Status: NOT RUN. Current code pin:5e554b86e13cf67f345423580352c0f8d9d36ae3. Native/browser audit used Chromium151.0.7922.34; that is not the Safari/VoiceOver or NVDA/browser combination to be recorded by the operator. Release remains held. Accessibility-tree snapshots, automated keyboard input, axe and the application's Listen audio do not count as this evidence.
 
 Record before testing: operator, date, reader source SHA from `source-evidence.json`, stage asset hashes, OS version, browser version, screen-reader version, viewport/zoom, input method, and any extensions. Use actual VoiceOver with Safari or NVDA with Firefox/Chrome. Use the authorized local textbook stage and designated synthetic accounts; never record passwords, cookies or authentication headers. Do not activate global VoiceOver or switch the user's foreground app without authorization.
 
