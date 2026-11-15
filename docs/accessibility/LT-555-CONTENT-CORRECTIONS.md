@@ -27,3 +27,9 @@ All fourteen affected-page manifests have nonzero sentence counts in the actual 
 ## Verifier review corrections
 
 PR-Agent review/improve on e2f1a81 completed with two verifier findings ($0.3973). Both were confirmed and corrected before publication: native evidence destinations now resolve real parents and must be disjoint from both source roots; every recorded local HTTP failure now invalidates the case. A native CLI regression reproduced an output directory created inside a synthetic source root before the fix and proves refusal afterward, including parent aliases. A controlled missing-CSS server demonstrated old false passes and corrected failures; focused original/fixed runs cover all three engines, with fresh process exits0and1respectively. The normal final42paired cases pass with zero missing local resources. No approved page bytes or bundle hashes changed in these verifier fixes.
+
+## Independent review disposition
+
+Standards, Spec and fresh-context Correctness independently reviewed c07a385 against fixed base9f4026b, including verifier corrections from e2f1a81: each reports zero critical, major or concrete minor findings. Reviewers inspected source and pinned artifacts; they did not rerun browser/speech/test suites. Reader rechecked all six summary evidence hashes on return. No duplicate paid review was run.
+
+Canonical storage fix PR19 is merged as82c8fdf979486a4ceca6ef4d90e0d51f1c8d7e7f. Its exactd37af6a head passed hosted Python/JavaScript and its single CodeRabbit full review; both PR-Agent stages completed clean ($0.0625 total). Final composition must use that canonical runtime, with no competing storage patch. Source-only correction publication/final PR-Agent, one new CodeRabbit and hosted CI remain pending.
