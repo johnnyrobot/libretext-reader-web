@@ -54,6 +54,22 @@ let session = null;
 // after the consent dialog and the download, so on its own it lets a second press
 // start a second entry and stack a second dialog (LT-223).
 let entering = null;
+let persistencePending = false;
+
+/** Retention is optional: a browser permission prompt must not gate listening. */
+function requestStoragePersistence() {
+  if (persistencePending) return;
+  try {
+    const storage = navigator.storage;
+    if (typeof storage?.persist !== 'function') return;
+    persistencePending = true;
+    const settled = () => { persistencePending = false; };
+    Promise.resolve(storage.persist()).then(settled, settled);
+  } catch {
+    // Unsupported/denied persistence leaves the existing best-effort cache usable.
+    persistencePending = false;
+  }
+}
 
 async function loadSpeechManifest() {
   const res = await fetch(new URL('speech.json', location.href).pathname);
@@ -286,7 +302,7 @@ async function runEntry() {
   if (!(await modelsPresent(PHONON_MANIFEST_URL, PHONON_CACHE_NAME))) {
     const { required, sufficient } = await checkQuota(PHONON_MANIFEST_URL);
     if (!(await requestConsent({ requiredBytes: required, quotaSufficient: sufficient }))) return;
-    await navigator.storage?.persist?.();
+    requestStoragePersistence();
   }
 
   openOverlay();
@@ -430,7 +446,7 @@ async function runEntry() {
       licence: hosted.licence ?? 'a permissive licence',
       voiceBytes: voice,
     });
-    if (accepted) await navigator.storage?.persist?.();
+    if (accepted) requestStoragePersistence();
     return accepted;
   }
 
