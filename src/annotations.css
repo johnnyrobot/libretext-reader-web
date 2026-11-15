@@ -241,11 +241,27 @@ html[data-sr-panel="open"] body {
 @media(max-width:760px) { #sr-panel { padding: .75rem 1rem; } #sr-panel .sr-header h2 { font-size: 1.1rem; } #sr-quick-actions { right: .5rem; left: .5rem; justify-content: center; } }
 
 /* Keep each author attached to their message; indentation also works without colour. */
-#sr-panel .sr-thread > h3 { color: #174b65; margin-bottom: .4rem; }
+#sr-panel .sr-thread > h3 { margin-bottom: .4rem; }
 #sr-panel .sr-thread > h3 + p { margin-top: .4rem; line-height: 1.6; }
-#sr-panel .sr-reply { margin: 1rem 0 1rem 1rem; padding: .75rem; border-inline-start: 1px solid #8ca9b8; background: #f3f6f8; overflow-wrap: anywhere; }
-#sr-panel .sr-reply strong { color: #174b65; font-size: .9rem; }
+#sr-panel .sr-reply { margin: 1rem 0 1rem 1rem; padding: .75rem; border-inline-start: 1px solid #8ca9b8; overflow-wrap: anywhere; }
+#sr-panel .sr-reply strong { font-size: .9rem; }
 #sr-panel .sr-reply p { margin: .35rem 0 0; line-height: 1.6; }
 #sr-panel .sr-thread:focus-within { border-top-color: #005d85; }
 #sr-panel .sr-thread textarea:focus-visible { outline: 2px solid #005d85; outline-offset: 2px; }
 @media (max-width: 480px) { #sr-panel .sr-reply { margin-inline-start: .5rem; } }
+
+#sr-panel .sr-author { display: flex; align-items: center; gap: .5rem; color: var(--sr-author-ink); overflow-wrap: anywhere; }
+#sr-panel .sr-author > span:last-child { min-width: 0; }
+#sr-panel .sr-author-0 { --sr-author-ink: #174b65; --sr-author-fill: #e7f1f7; }
+#sr-panel .sr-author-1 { --sr-author-ink: #68412c; --sr-author-fill: #f7ece5; }
+#sr-panel .sr-author-2 { --sr-author-ink: #405a32; --sr-author-fill: #edf3e7; }
+#sr-panel .sr-author-3 { --sr-author-ink: #62446e; --sr-author-fill: #f3ebf7; }
+#sr-panel .sr-initials { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 2rem; height: 2rem; border-radius: 50%; background: var(--sr-author-fill); font-size: .75rem; }
+#sr-panel blockquote[aria-label="Selected passage"] { border-inline-start: 1px solid #005d85; background: #edf5fa; max-height: 8rem; }
+#sr-panel .sr-question { margin: 1.25rem 0 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #d7e1e7; }
+#sr-panel .sr-question h3 { margin-bottom: .5rem; font-size: 1rem; }
+#sr-panel .sr-question > p { font-size: .85rem; color: #425766; }
+#sr-panel .sr-question textarea { min-height: 6rem; }
+#sr-panel .sr-thread button[type=submit] { background: white; color: #005d85; }
+#sr-panel .sr-thread button[type=submit]:hover { background: #e7f1f7; }
+@media (forced-colors: active) { #sr-panel .sr-initials { border: 1px solid CanvasText; } #sr-panel .sr-author { color: CanvasText; } }
