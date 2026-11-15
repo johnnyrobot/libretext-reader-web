@@ -502,7 +502,16 @@ export function mountAnnotations({
       if (savedNote) { note.value = savedNote.text; topics.value = savedNote.tags; editingMark = savedNote.editing; saveMark.textContent = editingMark ? "Save changes" : "Save highlight"; }
     }
     exactQuote.value = value.selector?.quote ?? "";
-    occurrence.value = "1";
+    let occurrenceIndex = 1;
+    if (value.selector) {
+      let position = value.block.quote.indexOf(value.selector.quote);
+      while (position >= 0 && position < value.selector.start) {
+        occurrenceIndex++;
+        position = value.block.quote.indexOf(value.selector.quote, position + 1);
+      }
+    }
+    occurrence.value = String(occurrenceIndex);
+    captured = value;
     exactQuote.removeAttribute("aria-invalid");
     occurrence.removeAttribute("aria-invalid");
     quoteError.textContent = "";
@@ -956,6 +965,7 @@ export function mountAnnotations({
       threadLoadGeneration++;
       threads.replaceChildren();
       quote.textContent = value.error;
+      captured = value;
       exactQuote.value = "";
       say(value.error);
       lock();

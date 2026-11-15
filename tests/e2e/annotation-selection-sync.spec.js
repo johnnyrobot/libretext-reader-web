@@ -130,10 +130,12 @@ test('a pending submission keeps its passage when the reader selects elsewhere (
  await signIn(page);
  await drag(page,A);await openWith(page,'Discuss',A.quote);
  let release;const held=new Promise(resolve=>{release=resolve;});
- await page.route('**/social-reading/api/commands',async route=>{if(route.request().method()==='POST')await held;await route.continue();});
+ let entered;const commandEntered=new Promise(resolve=>{entered=resolve;});
+ await page.route('**/social-reading/api/commands',async route=>{if(route.request().method()==='POST'){entered();await held;}await route.continue();});
  const nonce=`lt560-p-${browserName}-${Date.now()}`;
  await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Pending question '+nonce);
  await page.getByRole('button',{name:'Post question',exact:true}).click();
+ await commandEntered;
  await drag(page,OTHER);
  await page.waitForTimeout(300);
  await expect(passage(page)).toHaveText(A.quote);
