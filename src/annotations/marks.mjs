@@ -83,8 +83,9 @@ export function createMarkRenderer({ document: doc, main, manifest, onSelect = (
       const value = resolve(record);
       if (!value) continue;
       groups.get(record.kind === "course" || record.context?.course ? "sr-course" : "sr-personal").push(value.range);
-      if (record === active) groups.get("sr-active").push(value.range);
     }
+    const chosen = active && resolve(active);
+    if (chosen) groups.get("sr-active").push(chosen.range);
     for (const [name, ranges] of groups) {
       if (!ranges.length) continue;
       const highlight = new HighlightClass(...ranges);

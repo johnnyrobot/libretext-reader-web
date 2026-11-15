@@ -38,6 +38,16 @@ describe("exact passage mark rendering", () => {
   });
 });
 
+it("paints the selected exact quote when a list record is a clone of the rendered mark", () => {
+  setup();
+  const selected = record({ start: 2, end: 9, quote: "cell 🧬" });
+  main.querySelector("p").scrollIntoView = vi.fn();
+  renderer.render([{ ...selected }]);
+  expect(renderer.jump(selected)).toBe(true);
+  expect(highlights.get("sr-active")?.size).toBe(1);
+  expect([...highlights.get("sr-active")][0].toString()).toBe("cell 🧬");
+});
+
 it("returns every overlapping exact mark at the clicked text point", () => {
   const onSelect = setup();
   const personal = record({ start: 2, end: 9, quote: "cell 🧬" });

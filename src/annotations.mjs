@@ -576,7 +576,7 @@ export function mountAnnotations({
       close.focus({ preventScroll: true });
       return;
     }
-    if (pending) say("Check the pending submission before changing passages.");
+    if (pending || highlightPending) say(highlightPending ? "Check the pending highlight before changing passages." : "Check the pending submission before changing passages.");
     else if (value?.error) {
       selected = null;
       quote.textContent = value.error;

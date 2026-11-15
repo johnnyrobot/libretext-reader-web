@@ -1,3 +1,26 @@
+# Annotation redesign verification — current closeout
+
+Scope: LT-556–558, five approved capabilities and the scoped Passage notes redesign. Backend is merged67b381b (reviewed f919b01) with successful source/postmergeCI. UI runtime baseline eac3d89 has63verified committed-suite passes:21distinct cases per installed Chromium/Firefox/WebKit, corroborated by six terminal logs and verified-shard-results.json. The earlier9-case and open-review statements below are historical, not current acceptance.
+
+Chief review and evidence ruling: /Users/johnnyrobot/code/social-reading-plan/ANNOTATION-REDESIGN-CHIEF-REVIEW-2026-11-15.md. Its accepted native substitution applies only to exercised behavior; TestSprite run b98717b8-8d74-4a29-b096-f77183e8fdd2 stays BLOCKED,0.5credit, no paid rerun.
+
+## Additional actual-pointer evidence
+
+`tests/e2e/annotation-pointer-drag.spec.js` uses browser mouse move/down/move/up from rendered text coordinates. A detached Range measures glyph geometry only and is never installed in Selection; no set/add/remove-selection API creates the selected quote. Each engine actually drags “we cooperate”, checks exact nonempty selection and Highlight/Discuss discovery, saves an owner-private note, reloads, explicitly posts a separate course question on the same quote, and verifies Bob's private exclusion/course visibility. Targeted Chromium/Firefox/WebKit receipts each exit0. Initial edge coordinates incorrectly selected navigation text; those failures are preserved separately from the corrected in-paragraph runs. Screenshots real-drag-{chromium,firefox,webkit}.png and terminal logs are in task evidence.
+
+## Single external review and correction coverage
+
+UI CodeRabbit full review5909948219completed at eac3d89, no critical/major findings, two Minor findings (one inline4577745894, one outside diff). No second request or fallback. Both are being closed in the current correction range: cloned list records now paint the resolved active exact range; reopening an uncertain highlight preserves its passage and original draft key through receipt reconciliation. Each has a failing→passing regression receipt. Final source/merge/postmerge and package pins follow the owning release packet; no old candidate is a final deployment input.
+
+The63baseline cases are not rerun merely for new pointer evidence. Targeted real-drag and correction tests, current unit results, narrow independent fix review, final sourceCI, merged-tree equivalence and package replay provide composed final-head coverage. Actual VoiceOver remains SKIPPED BY OWNER; no whole-site WCAG or spoken-delivery claim. ReaderLT555/PR20and LT551stay excluded, all1488original pages/anchors and private records remain preserved. No host writes/deployment authority is added.
+
+## Remaining gates at this source checkpoint
+
+Narrow independent correction review, final sourceCI/merge/postmerge and admitted source/runtime/rehearsal pins remain open. Chief has accepted the bounded native substitution for the covered actions while retaining TestSprite BLOCKED. Deployment/live smoke remain owner-only and unperformed here.
+
+<details>
+<summary>Historical implementation, failed runs and superseded source-gate receipts</summary>
+
 # Annotation redesign verification
 
 Scope is LT-556 (private highlights/explicit course discussion), LT-557 (visibility, overlap, jump, tags and scoped search), LT-558 (authorized JSON), on existing Reader base82c8fdf and backend base85c229b. This record is evidence collected during implementation, not release acceptance.
@@ -65,3 +88,5 @@ Keyboard finishing check reproduced a lost-focus case introduced by the selectio
 
 
 WebKit finishing run initially passed20cases and failed the new keyboard selection-action case before reaching the panel. Focusing the action collapses the DOM selection there. The annotation controls now retain the already validated capture while they own keyboard focus, and clear a collapsed capture when focus leaves. The same WebKit keyboard case passes after this scoped correction; the failed full-shard receipt remains retained. No Reader/Listen code changes were needed; its existing hotkey guard already excludes buttons.
+
+</details>

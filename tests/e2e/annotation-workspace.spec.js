@@ -362,3 +362,21 @@ test('keyboard selection actions return focus to a visible annotation entry on c
  await expect(page.locator('#sr-panel')).toBeHidden();
  await expect(page.locator('#sr-entry')).toBeFocused({timeout:1500});
 });
+
+test('reopening an uncertain highlight preserves its passage until receipt recovery',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ const originalQuote=await page.evaluate(()=>getSelection().toString());
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ const note='pending-reopen-'+Date.now();await page.getByRole('textbox',{name:'Personal note (optional)',exact:true}).fill(note);
+ await page.route('**/social-reading/api/highlights',async route=>{if(route.request().method()!=='POST')return route.continue();await route.fetch();await route.abort('failed');},{times:1});
+ await page.getByRole('button',{name:'Save highlight',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Highlight outcome unknown');
+ await page.getByRole('button',{name:'Close discussion',exact:true}).click();await page.locator('#sr-entry').click();
+ await expect(page.getByRole('blockquote',{name:'Selected passage',exact:true})).toHaveText(originalQuote,{timeout:1500});
+ await page.getByRole('button',{name:'Check pending highlight',exact:true}).click();
+ await expect(page.locator('#sr-highlight-list')).toContainText(note);
+ await page.getByRole('button',{name:'Close discussion',exact:true}).click();await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Personal note (optional)',exact:true})).toHaveValue('');
+});
