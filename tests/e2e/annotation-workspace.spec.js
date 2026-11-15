@@ -118,6 +118,9 @@ test('personal notes edit and author search stay explicit at desktop and mobile 
  await page.getByRole('textbox',{name:'Author (optional)',exact:true}).fill('alice');
  await page.getByRole('button',{name:'Search annotations',exact:true}).click();
  await expect(page.locator('#sr-search-results')).toContainText(note+'-edited');
+ await page.locator('#sr-search-results .sr-mark').filter({hasText:note+'-edited'}).getByRole('button',{name:'Edit personal note',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Personal note (optional)',exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Personal note (optional)',exact:true})).toHaveValue(note+'-edited');
  const exported=await(await page.request.get('/social-reading/api/annotation-export?book=social_psychology')).json();
  for(const item of exported.items){
   expect(item.type).toBe('Annotation');expect(item.target.type).toBe('SpecificResource');
@@ -142,6 +145,10 @@ test('sign-out clears an unsaved personal note and topics before another account
  const note=page.getByRole('textbox',{name:'Personal note (optional)',exact:true});
  await note.fill('Alice private unsaved thought');
  await page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true}).fill('alice-private-topic');
+ await page.getByRole('button',{name:'Discuss',exact:true}).click();
+ await page.getByText('Add topics',{exact:true}).click();
+ await page.locator('#sr-course').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true}).fill('alice-unposted-course-topic');
+ await page.getByRole('button',{name:'My highlights',exact:true}).click();
  await page.getByRole('button',{name:'Sign out',exact:true}).click();
  const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
  await page.locator('input[name=username]').fill('bob');await page.locator('input[name=password]').fill(credentials.bob);
@@ -150,4 +157,6 @@ test('sign-out clears an unsaved personal note and topics before another account
  await page.getByRole('button',{name:'My highlights',exact:true}).click();
  await expect(note).toHaveValue('');
  await expect(page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('');
+ await page.getByRole('button',{name:'Discuss',exact:true}).click();
+ await expect(page.locator('#sr-course').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('');
 });

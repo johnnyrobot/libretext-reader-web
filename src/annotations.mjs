@@ -387,7 +387,7 @@ export function mountAnnotations({
     const hadMemberFocus = member.contains(focused);
     const hadWarningFocus = sessionNotice.contains(focused);
     if (preserveDrafts && actor) {
-      if (selected) drafts.set(key(), input.value);
+      if (selected) { drafts.set(key(), input.value); drafts.set(`topics:${key()}`, courseTopics.value); }
       suspendedDrafts = { actor: actor.id, entries: [...drafts] };
     } else if (!preserveDrafts) suspendedDrafts = null;
     sessionTimer.clear();
@@ -400,6 +400,7 @@ export function mountAnnotations({
     actor = null;
     drafts.clear();
     input.value = "";
+    courseTopics.value = "";
     threads.replaceChildren();
     member.hidden = true;
     login.hidden = false;
@@ -479,7 +480,7 @@ export function mountAnnotations({
   function pick(value) {
     if (pending || highlightPending)
       throw Error("Check the pending submission before changing passages.");
-    if (selected) { drafts.set(key(), input.value); saveNoteDraft(); }
+    if (selected) { drafts.set(key(), input.value); drafts.set(`topics:${key()}`, courseTopics.value); saveNoteDraft(); }
     selected = value;
     editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
     if (actor) {
@@ -489,6 +490,7 @@ export function mountAnnotations({
     chooser.value = value.block.block;
     quote.textContent = value.selector?.quote ?? value.block.quote;
     input.value = drafts.get(key()) ?? "";
+    courseTopics.value = drafts.get(`topics:${key()}`) ?? "";
     threads.replaceChildren();
     lock();
   }
@@ -496,7 +498,7 @@ export function mountAnnotations({
     finishChecking(checkingStatus, "");
     viewGeneration++;
     queuedOpen = null;
-    if (selected) { drafts.set(key(), input.value); saveNoteDraft(); }
+    if (selected) { drafts.set(key(), input.value); drafts.set(`topics:${key()}`, courseTopics.value); saveNoteDraft(); }
     panel.hidden = true;
     doc.body.append(sessionNotice);
     entry.setAttribute("aria-expanded", "false");
@@ -523,6 +525,7 @@ export function mountAnnotations({
       if (suspendedDrafts.actor === actor.id) {
         for (const [name, value] of suspendedDrafts.entries) drafts.set(name, value);
         input.value = drafts.get(key()) ?? "";
+        courseTopics.value = drafts.get(`topics:${key()}`) ?? "";
       }
       suspendedDrafts = null;
     }
@@ -697,7 +700,7 @@ export function mountAnnotations({
     row.append(button("Jump to passage", () => { if (!renderer.jump(mark)) { say("This passage cannot be located in the current reading view. Return to the original source."); return; } say("Passage located in the reading."); }),
       button(mark.kind === "course" ? "Open discussion" : "Discuss this highlight", () => run(async () => { pick(markSelection(mark)); chooseView("course"); await loadThreads(); const target = mark.kind === "course" ? [...threads.querySelectorAll(".sr-thread")].find(row => row.dataset.srThread === mark.id)?.querySelector("h3") : input; if (target) { target.tabIndex = target.tabIndex || 0; target.focus({ preventScroll: true }); target.scrollIntoView({block:"nearest"}); } })));
     if (mark.kind !== "course") {
-      row.append(button("Edit personal note", () => { try { pick(markSelection(mark)); editingMark = mark; note.value = mark.text; topics.value = mark.tags.join(", "); saveMark.textContent = "Save changes"; noteDetails.open = true; note.focus({ preventScroll: true }); } catch(e) { say(e.message); } }),
+      row.append(button("Edit personal note", () => { try { pick(markSelection(mark)); chooseView("personal"); editingMark = mark; note.value = mark.text; topics.value = mark.tags.join(", "); saveMark.textContent = "Save changes"; noteDetails.open = true; note.focus({ preventScroll: true }); } catch(e) { say(e.message); } }),
         button("Delete my highlight", () => run(() => writeHighlight({ kind: "delete", highlight: mark.id, version: mark.version, context: mark.context }))));
     }
     return row;
@@ -823,7 +826,7 @@ export function mountAnnotations({
     if (pending !== original) return;
     original.clear();
     if (suspendedDrafts?.actor === original.command.actor)
-      suspendedDrafts.entries = suspendedDrafts.entries.filter(([name]) => name !== original.draftKey);
+      suspendedDrafts.entries = suspendedDrafts.entries.filter(([name]) => name !== original.draftKey && name !== `topics:${original.draftKey}`);
     pending = null;
     lock();
     try {
@@ -855,6 +858,8 @@ export function mountAnnotations({
       submitCommand({ kind: "question", text: input.value, tags: parseTopics(courseTopics.value) }, () => {
         input.value = "";
         drafts.delete(key());
+        courseTopics.value = "";
+        drafts.delete(`topics:${key()}`);
       }),
     );
   });

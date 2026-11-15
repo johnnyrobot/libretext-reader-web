@@ -260,6 +260,9 @@ for (const account of ["alice", "bob"]) {
     await login(page, "alice");
     const input = page.getByRole("textbox", { name: "Your question", exact: true });
     await input.fill("Private expiry draft");
+    await page.getByText("Add topics", { exact: true }).click();
+    const courseTopics = page.locator("#sr-course").getByRole("textbox", { name: "Topics (optional, comma separated)", exact: true });
+    await courseTopics.fill("private-expiry-topic");
     await page.clock.runFor(2100);
     await expect(input).toBeHidden();
     await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
@@ -267,6 +270,7 @@ for (const account of ["alice", "bob"]) {
     await page.unroute("**/social-reading/api/session");
     await login(page, account);
     await expect(input).toHaveValue(account === "alice" ? "Private expiry draft" : "");
+    await expect(courseTopics).toHaveValue(account === "alice" ? "private-expiry-topic" : "");
   });
 }
 
