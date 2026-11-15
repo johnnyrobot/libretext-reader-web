@@ -513,7 +513,9 @@ export function mountAnnotations({
     delete doc.documentElement.dataset.srPanel;
     threadLoadGeneration++;
     if (restore) {
-      restore.focus?.focus({ preventScroll: true });
+      const original = restore.focus;
+      const target = original?.isConnected && original !== doc.body && !original.closest("[hidden]") ? original : entry;
+      target.focus?.({ preventScroll: true });
       window.scrollTo(restore.x, restore.y);
     }
   }

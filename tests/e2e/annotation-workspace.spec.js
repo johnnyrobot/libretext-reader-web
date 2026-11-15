@@ -353,3 +353,12 @@ test('a delayed visibility check cannot cancel a newer foreground search',async(
   await expect(page.locator('#sr-search-results')).toContainText(note,{timeout:1500});
  }finally{if(!page.isClosed())await page.evaluate(()=>{window.releaseSession?.();window.releaseSearch?.();}).catch(()=>{});}
 });
+
+test('keyboard selection actions return focus to a visible annotation entry on close',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).focus();await page.keyboard.press('Enter');
+ await expect(page.getByRole('button',{name:'Save highlight',exact:true})).toBeEnabled();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#sr-panel')).toBeHidden();
+ await expect(page.locator('#sr-entry')).toBeFocused({timeout:1500});
+});
