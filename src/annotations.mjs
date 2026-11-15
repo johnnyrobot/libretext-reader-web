@@ -65,6 +65,19 @@ export function mountAnnotations({
     if (text !== undefined) e.textContent = text;
     return e;
   };
+  const authorHeading = (tag, person) => {
+    const name = String(person.name ?? person.author ?? "Participant");
+    const identity = String(person.author ?? name);
+    let hash = 2166136261;
+    for (const character of identity) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
+    const heading = make(tag);
+    heading.className = `sr-author sr-author-${hash % 4}`;
+    const initials = make("span", name.trim().split(/\s+/u).slice(0, 2).map(word => [...word][0]).join(""));
+    initials.className = "sr-initials";
+    initials.setAttribute("aria-hidden", "true");
+    heading.append(initials, make("span", name));
+    return heading;
+  };
   const button = (text, action) => {
     const e = make("button", text);
     e.type = "button";
@@ -92,6 +105,7 @@ export function mountAnnotations({
   const quote = make("blockquote");
   quote.tabIndex = 0;
   quote.setAttribute("aria-label", "Selected passage");
+  quote.className = "sr-selected-passage";
   const chooser = make("select");
   chooser.setAttribute("aria-label", "Choose a passage");
   for (const b of manifest.blocks) {
@@ -204,12 +218,14 @@ export function mountAnnotations({
   sessionNotice.append(sessionMessage, staySignedIn);
   const refresh = button("Refresh discussion", () => run(async () => { await loadThreads(); await loadMarks(); }));
   const question = make("form");
+  question.className = "sr-question";
+  question.setAttribute("aria-label", "Ask about this passage");
   const input = make("textarea");
   input.required = true;
   input.maxLength = 4000;
   const post = make("button", "Post question");
   post.type = "submit";
-  question.append(make("p", "A question is required; maximum 4,000 characters."), field("Your question", input), post);
+  question.append(make("h3", "Ask about this passage"), field("Your question", input), make("p", "A question is required; maximum 4,000 characters."), post);
   const recover = button("Check pending submission", () =>
     run(async () => {
       if (!pending) return;
@@ -648,14 +664,19 @@ export function mountAnnotations({
       const row = make("section");
       row.className = "sr-thread";
       row.dataset.srThread = t.id;
-      row.append(make("h3", t.name), make("p", t.text));
+      row.append(authorHeading("h3", t), make("p", t.text));
       if (t.tags?.length) row.append(make("p", t.tags.map(tag => `#${tag}`).join(" ")));
       if (t.anchor.selector) {
         const threadQuote = make("blockquote", t.anchor.selector.quote);
         threadQuote.tabIndex = 0;
         row.append(threadQuote);
       }
-      for (const r of t.replies) row.append(make("p", `${r.name}: ${r.text}`));
+      for (const r of t.replies) {
+        const message = make("div");
+        message.className = "sr-reply";
+        message.append(authorHeading("strong", r), make("p", r.text));
+        row.append(message);
+      }
       const form = make("form"),
         reply = make("textarea"),
         submit = make("button", "Post reply");
