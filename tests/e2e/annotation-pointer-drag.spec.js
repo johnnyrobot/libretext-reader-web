@@ -1,0 +1,61 @@
+import {test,expect} from '@playwright/test';
+import {readFileSync,mkdirSync} from 'node:fs';
+const path='/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/';
+const credentialsFile=process.env.SR_CREDENTIALS_FILE;
+test.skip(!credentialsFile,'Designated isolated synthetic credentials required');
+test.use({screenshot:'off',trace:'off',video:'off'});
+test('actual pointer drag saves an exact private passage and explicitly discusses it',async({page,browserName})=>{
+ const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+ await page.goto(path);
+ async function login(actor){
+  const response=await page.request.post('/social-reading/api/login',{headers:{Origin:new URL(page.url()).origin},data:{username:actor,password:credentials[actor]}});
+  expect(response.status()).toBe(200);
+ }
+ await login('alice');await page.reload();
+ const expectedQuote='we cooperate';
+ const points=await page.evaluate(length=>{
+  const manifest=JSON.parse(document.querySelector('#sr-page-context').textContent);
+  const paragraph=document.querySelectorAll('main p')[Number(manifest.blocks[0].block.slice(2))];
+  paragraph.scrollIntoView({block:'center'});
+  const text=document.createTreeWalker(paragraph,NodeFilter.SHOW_TEXT).nextNode();
+  // Measurement only: this Range is never attached to the document Selection.
+  const measurement=document.createRange();measurement.setStart(text,8);measurement.setEnd(text,8+length);
+  const rect=measurement.getClientRects()[0];
+  return {start:{x:rect.left+0.2,y:rect.top+rect.height/2},end:{x:rect.right+0.2,y:rect.top+rect.height/2}};
+ },expectedQuote.length);
+ await page.mouse.move(points.start.x,points.start.y);await page.mouse.down();
+ await page.mouse.move(points.end.x,points.end.y,{steps:20});await page.mouse.up();
+ await expect.poll(()=>page.evaluate(()=>getSelection().toString().replace(/\s+/g,' ').trim())).toBe(expectedQuote);
+ await expect(page.locator('#sr-quick-actions').getByRole('button',{name:'Highlight',exact:true})).toBeVisible();
+ await expect(page.locator('#sr-quick-actions').getByRole('button',{name:'Discuss',exact:true})).toBeVisible();
+ mkdirSync('.scratch/annotation-redesign/evidence',{recursive:true});
+ await page.screenshot({path:`.scratch/annotation-redesign/evidence/real-drag-${browserName}.png`});
+ await page.locator('#sr-quick-actions').getByRole('button',{name:'Highlight',exact:true}).click();
+ await expect(page.getByRole('blockquote',{name:'Selected passage',exact:true})).toHaveText(expectedQuote);
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ const nonce=Date.now()+'-'+browserName,privateNote='Pointer-private note '+nonce,courseText='Pointer course question '+nonce;
+ await page.getByRole('textbox',{name:'Personal note (optional)',exact:true}).fill(privateNote);
+ await page.getByRole('button',{name:'Save highlight',exact:true}).click();
+ await expect(page.locator('#sr-highlight-list')).toContainText(privateNote);
+ const manifest=await page.locator('#sr-page-context').evaluate(node=>JSON.parse(node.textContent));
+ const query=new URLSearchParams({book:manifest.book,page:manifest.page,q:nonce});
+ const beforeShare=await(await page.request.get('/social-reading/api/annotation-search?'+query)).json();
+ expect(beforeShare.highlights).toHaveLength(1);expect(beforeShare.threads).toHaveLength(0);
+ expect(beforeShare.highlights[0].anchor.selector.quote).toBe(expectedQuote);
+ const savedId=beforeShare.highlights[0].id;
+ await page.reload();await page.locator('#sr-entry').click();await page.getByRole('button',{name:'My highlights',exact:true}).click();
+ const row=page.locator('.sr-mark').filter({hasText:privateNote});await expect(row).toBeVisible();
+ await row.getByRole('button',{name:'Discuss this highlight',exact:true}).click();
+ await expect(page.getByRole('blockquote',{name:'Selected passage',exact:true})).toHaveText(expectedQuote);
+ await expect(page.locator('#sr-course')).toContainText('Course discussion');
+ await page.getByRole('textbox',{name:'Your question',exact:true}).fill(courseText);
+ await page.getByRole('button',{name:'Post question',exact:true}).click();
+ await expect(page.locator('.sr-thread').filter({hasText:courseText})).toContainText(expectedQuote);
+ await login('bob');
+ const other=await(await page.request.get('/social-reading/api/annotation-search?'+query)).json();
+ expect(other.highlights).toHaveLength(0);expect(other.threads).toHaveLength(1);
+ expect(other.threads[0].anchor.selector.quote).toBe(expectedQuote);
+ expect(JSON.stringify(other)).not.toContain(privateNote);
+ await login('alice');const retained=await(await page.request.get('/social-reading/api/highlights')).json();
+ expect(retained.some(mark=>mark.id===savedId&&mark.text===privateNote)).toBe(true);
+});

@@ -67,7 +67,7 @@ for (const [width, height, textScale] of [[1440, 1000, 1], [320, 1000, 1], [320,
     await page.evaluate(scale => { document.documentElement.style.fontSize = `${scale * 100}%`; }, textScale);
     await page.locator("#sr-entry").focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true, includeHidden: true })).toBeEnabled();
     await page.keyboard.press("Shift+Tab");
     await expect.poll(() => page.evaluate(() => {
       const e = document.activeElement, r = e.getBoundingClientRect();
@@ -94,7 +94,7 @@ test("WebKit keeps enlarged short-viewport source focus above the panel", async 
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     await page.locator("#sr-entry").focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true, includeHidden: true })).toBeEnabled();
     await page.keyboard.press("Shift+Tab");
     await expect.poll(() => page.evaluate(() => {
       const e = document.activeElement, r = e.getBoundingClientRect();
@@ -107,6 +107,7 @@ test("WebKit keeps enlarged short-viewport source focus above the panel", async 
 test("keyboard exact quote and repeated occurrence are available without page dragging", async ({ page }) => {
   await page.goto(URL);
   await page.locator("#sr-entry").click();
+  await page.getByText("Choose a passage with the keyboard", {exact:true}).click();
   await page.getByRole("textbox", { name: "Exact quote (optional)", exact: true }).fill("Whether we cooperate");
   await page.getByRole("button", { name: "Use exact quote", exact: true }).focus();
   await page.keyboard.press("Enter");
@@ -259,6 +260,9 @@ for (const account of ["alice", "bob"]) {
     await login(page, "alice");
     const input = page.getByRole("textbox", { name: "Your question", exact: true });
     await input.fill("Private expiry draft");
+    await page.getByText("Add topics", { exact: true }).click();
+    const courseTopics = page.locator("#sr-course").getByRole("textbox", { name: "Topics (optional, comma separated)", exact: true });
+    await courseTopics.fill("private-expiry-topic");
     await page.clock.runFor(2100);
     await expect(input).toBeHidden();
     await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
@@ -266,6 +270,7 @@ for (const account of ["alice", "bob"]) {
     await page.unroute("**/social-reading/api/session");
     await login(page, account);
     await expect(input).toHaveValue(account === "alice" ? "Private expiry draft" : "");
+    await expect(courseTopics).toHaveValue(account === "alice" ? "private-expiry-topic" : "");
   });
 }
 
@@ -296,7 +301,7 @@ test("expiry during reauthorization preserves its error status and cannot restor
     await requestStarted;
     await page.clock.runFor(2100);
     release();
-    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true, includeHidden: true })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible({ timeout: 1000 });
     await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeHidden();
     await expect(page.getByRole("status")).toContainText("Session expired.");
@@ -604,6 +609,7 @@ test("retains a draft through unsupported selection", async ({ page }) => {
     getSelection().addRange(range);
   });
   await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
+  await page.getByText("Choose a passage with the keyboard", {exact:true}).click();
   await page.getByRole("button", { name: "Use whole passage", exact: true }).click();
   await expect(input).toHaveValue("Keep this unsent draft");
 });
@@ -668,6 +674,7 @@ test("refresh revokes drafts when another tab changes accounts", async ({ page }
     getSelection().addRange(range);
   });
   await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
   await accountRequest(page, "login", { username: "bob", password: credentials.bob });
   await page.getByRole("button", { name: "Refresh discussion", exact: true }).click();
