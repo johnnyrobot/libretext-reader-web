@@ -4,6 +4,16 @@
 
 Current tested executable source:`ef34231dc174b875b286529e59458eb73fb93602` (a928295sourcefix); later changes only tests/evidence. Mirror297976ca5518f9a786867bde9a557fe063342fd7. Current635-file AT stage `/Users/johnnyrobot/code/lt549-at-status-fix`; source/inventory hashes in .scratch/lt549/status-fix/stage.json. Previous5e554b8audits/AT retain their own pins. Source review and native DOM status checks do not establish automatic speech.
 
+## Current contextual candidate — 2026-11-14
+
+Local candidate `67b6dc21ea2b9592825cf921264c4ca057c15213` changes annotation CSS and layout tests after `828dfb7`; therefore the executable-equivalence statement below applies only to the prior status-fix checkpoint. Current stage is `/Users/johnnyrobot/code/lt549-at-context-fix` (665 files); exact hashes, page/state dispositions and finite blockers R1–R13 are in [contextual release checks](LT-549-CONTEXTUAL-RELEASE-CHECKS.md). All 94 sampled catalog revisions/passages remain unchanged; this is not evidence of 1,488-page conformance.
+
+Recorded checks: 36 discussion/status, 2 Listen, 1,711 JavaScript and 14 Chromium/WebKit geometry/focus/wheel cases pass. Standards, Spec and fresh Correctness found no major/critical issues. The warning-scroll/covered-focus/short-entry defects are corrected in this candidate. SC1.4.10/2.1.1/2.4.7 still have the confirmed pre-existing narrow Listen failure LT-553. SC1.1.1/1.3.1 have the specific source-owner image/table dispositions; embedded-frame/media, math production applicability and final-process AT remain open. Geometry and root-text emulation do not supply actual zoom, touch-device or speech acceptance.
+
+SC4.1.3 remains PARTIAL: credential-login/save/loading audible speech is unconfirmed. The existing three-step [operator check](LT-549-STATUS-OPERATOR-CHECK.md) remains ready; use the candidate stage and verify its CSS/runtime pins before starting. Historical status traces remain valid for unchanged JavaScript only. No forced-focus workaround or proxy speech acceptance.
+
+PR18 hosted Python/JavaScript SUCCESS applies to `828dfb7`, not local `67b6dc2`. Publication and exact-head source gates remain pending. Release HOLD remains.
+
 Sources checked2026-11-14: [WCAG2.1](https://www.w3.org/TR/WCAG21/) and [WAI quick reference restricted to2.1](https://www.w3.org/WAI/WCAG21/quickref/?versions=2.1). All50A/AA criteria are accounted for. No2.2-only requirements are imported. PASS is limited to the named scope/browser/state; a sampled or component pass is not whole-page/process conformance. NOT TESTED is an evidence gap, not automatically a failure.
 
 Scope: annotation login/logout, keyboard/pointer passage selection, exact quote/occurrence, question/reply/persistence, errors/loading/unknown receipts, timing/reauthentication, close/reopen, mobile and original/translated Listen. Moderation controls are absent; any required separate moderation journey is untested. Existing textbook baseline conformance is not assumed.
