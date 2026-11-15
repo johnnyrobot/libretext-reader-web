@@ -67,7 +67,7 @@ export function mountAnnotations({
   };
   const authorHeading = (tag, person) => {
     const name = String(person.name ?? person.author ?? "Participant");
-    const identity = String(person.author ?? person.id ?? name);
+    const identity = String(person.author ?? name);
     let hash = 2166136261;
     for (const character of identity) hash = Math.imul(hash ^ character.codePointAt(0), 16777619) >>> 0;
     const heading = make(tag);
@@ -105,6 +105,7 @@ export function mountAnnotations({
   const quote = make("blockquote");
   quote.tabIndex = 0;
   quote.setAttribute("aria-label", "Selected passage");
+  quote.className = "sr-selected-passage";
   const chooser = make("select");
   chooser.setAttribute("aria-label", "Choose a passage");
   for (const b of manifest.blocks) {
