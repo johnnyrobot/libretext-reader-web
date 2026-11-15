@@ -305,3 +305,58 @@ test('opening the panel from a selection does not announce a refused reselection
  await drag(page,A);await openWith(page,'Discuss',A.quote);
  await expect(statusLine(page),'nothing is pending, so the refusal must not be announced').not.toHaveText(UNCHANGED,{timeout:3000});
 });
+
+// Queue cancellation: a reselection made while the previous one is still loading is queued;
+// returning to the passage that is already current cancels the queued one.
+test('returning to the current passage during a load cancels the queued reselection',async({page})=>{
+ await signIn(page);
+ await drag(page,A);await openWith(page,'Discuss',A.quote);
+ await passage(page).evaluate(node=>{window.__seen=[];new MutationObserver(()=>window.__seen.push(node.textContent)).observe(node,{childList:true,characterData:true,subtree:true});});
+ await page.route(/social-reading\/api\/(session|threads)/,async route=>{await new Promise(r=>setTimeout(r,1500));await route.continue();});
+ await drag(page,OTHER);
+ await expect(passage(page)).toHaveText(OTHER.quote,{timeout:5000});
+ await drag(page,SAME);          // queued: the OTHER load is still running
+ await drag(page,OTHER);         // back to the current passage: cancels the queued SAME
+ await page.unroute(/social-reading\/api\/(session|threads)/);
+ await page.waitForLoadState('networkidle');
+ await page.waitForTimeout(500);
+ await expect(passage(page)).toHaveText(OTHER.quote);
+ expect(await page.evaluate(()=>window.__seen),'the cancelled SAME selection must never be shown').not.toContain(SAME.quote);
+ await expect(statusLine(page)).not.toHaveText(UNCHANGED);
+});
+
+// Revocation while a reselection is queued (observed 2026-11-15 at 7a6d4b5): the queued
+// selection is dropped with the session, nothing can be posted while signed out, and after
+// signing in again the box and the posted anchor agree. Clearing the queue on identity
+// revocation is intended; retaining it across accounts is not required.
+test('session revoked during a queued reselection drops the queue and posts only what the box shows',async({page,browserName})=>{
+ await signIn(page);
+ await drag(page,A);await openWith(page,'Discuss',A.quote);
+ let revoked=true;
+ await page.route('**/social-reading/api/session',async route=>{
+  if(!revoked||route.request().method()!=='GET')return route.continue();
+  await new Promise(r=>setTimeout(r,1500));
+  await route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:'Session expired'})});
+ });
+ await drag(page,OTHER);await adopt(page,OTHER.quote);   // its reload hits the revoked session
+ await drag(page,SAME);                                  // queued behind that reload
+ const panel=page.locator('#sr-panel');
+ await expect(panel.getByRole('button',{name:'Sign in',exact:true})).toBeVisible({timeout:10000});
+ await expect(panel.getByRole('button',{name:'Post question',exact:true})).toBeHidden();
+ await page.waitForTimeout(300);
+ await expect(passage(page),'queued selection must not be applied after revocation').toHaveText(OTHER.quote);
+ revoked=false;
+ const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+ await panel.getByLabel('Username',{exact:true}).fill('alice');
+ await panel.getByLabel('Password',{exact:true}).fill(credentials.alice);
+ await panel.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(panel.getByRole('button',{name:'Post question',exact:true})).toBeVisible({timeout:10000});
+ const shown=await passage(page).textContent();
+ const nonce=`lt560-r-${browserName}-${Date.now()}`;
+ await panelBox(page,'Your question').fill('After revoke '+nonce);
+ await panel.getByRole('button',{name:'Post question',exact:true}).click();
+ await expect(page.locator('.sr-thread').filter({hasText:nonce})).toContainText(shown);
+ const found=await search(page,nonce);
+ expect(found.threads).toHaveLength(1);
+ expect(found.threads[0].anchor.selector.quote,'posted anchor must equal the quotation the box showed').toBe(shown);
+});
