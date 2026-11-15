@@ -266,10 +266,6 @@ test('unknown highlight outcome keeps the immutable target and says why a resele
  await expect.poll(async()=>(await search(page,nonce)).highlights?.map(h=>h.anchor.selector.quote),{timeout:10000}).toEqual([A.quote]);
 });
 
-// KNOWN SOURCE BUG (QA, 2026-11-15, ad79455): syncOpenSelection refuses any reselection while
-// `busy` (the thread reload started by the previous reselection) and never re-applies it, so
-// the second selection is dropped and "Check the pending operation..." is shown with nothing
-// pending. Fails in Chromium, Firefox and WebKit. Remove test.fail once the source is fixed.
 test('a fast second reselection while the first is still loading ends on the latest passage',async({page})=>{
  await signIn(page);
  await drag(page,A);await openWith(page,'Discuss',A.quote);
@@ -304,10 +300,6 @@ test('selecting text inside panel form fields does not replace the quotation (gu
  await expect(question).toHaveValue(/typed words/);
 });
 
-// KNOWN SOURCE BUG (QA, 2026-11-15, ad79455), Chromium only: while open() awaits authorize
-// (`busy`), Chromium fires selectionchange with the reading selection still live, so
-// syncOpenSelection announces the refusal and that also suppresses "Signed in.". Firefox and
-// WebKit pass. Remove test.fail once the source is fixed.
 test('opening the panel from a selection does not announce a refused reselection',async({page,browserName})=>{
  await signIn(page);
  await drag(page,A);await openWith(page,'Discuss',A.quote);
