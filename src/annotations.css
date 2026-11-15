@@ -283,14 +283,14 @@ html[data-sr-panel="open"] body {
 #sr-panel .sr-question { border-bottom: 0; padding-block: .25rem; }
 #sr-panel .sr-conversations { padding-block: .25rem; }
 #sr-panel .sr-thread { margin-block-start: 1.5rem; padding-block-start: 1.25rem; border-top: 1px solid #8ca9b8; }
-#sr-panel .sr-thread:first-child { margin-block-start: 0; padding-block-start: 0; border-top: 0; }
+#sr-panel .sr-thread:first-child { margin-block-start: 0; padding-block-start: .75rem; }
 #sr-panel .sr-thread > h3 { font-size: 1rem; }
 #sr-panel .sr-reply,
 #sr-panel .sr-reply-composer { margin-inline: 1.5rem 0; padding-inline: .75rem 0; border-inline-start: 2px solid #718391; }
 #sr-panel .sr-reply { margin-block: 1.25rem; padding-block: .25rem; }
 #sr-panel .sr-reply-composer { margin-block: 1.5rem .5rem; padding-block: .25rem; }
 #sr-panel .sr-reply-composer > p:first-child { margin-block-start: 0; }
-#sr-panel #sr-search { border-block-start: 1px solid #8ca9b8; padding-block-start: .75rem; margin-block-start: 1.5rem; }
+#sr-panel #sr-search { padding-block-start: .75rem; margin-block-start: 1.5rem; }
 @media (max-width: 480px) {
   #sr-panel .sr-passage, #sr-panel .sr-question, #sr-panel .sr-conversations { padding-inline-start: .75rem; }
   #sr-panel .sr-reply, #sr-panel .sr-reply-composer { margin-inline-start: 1.25rem; }

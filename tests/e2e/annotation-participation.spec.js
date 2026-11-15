@@ -8,13 +8,12 @@ test.beforeEach(async({page})=>{
 for(const width of [1440,360])test(`participation is separated from utilities at ${width}`,async({page},info)=>{
  await page.setViewportSize({width,height:1000});await page.goto('/annotation-focus-fixture.html');
  await expect(page.locator('.sr-author')).toHaveCount(3);
- await page.locator('#sr-panel').screenshot({path:`.scratch/participation/evidence/${process.env.CAPTURE_PHASE||'after'}-${info.project.name||'chromium'}-${width}.png`});
- if(process.env.CAPTURE_PHASE==='before')return;
+ await page.locator('#sr-panel').screenshot({path:`.scratch/participation/evidence/after-${info.project.name||'chromium'}-${width}.png`});
  for(const selector of ['.sr-passage','.sr-question','.sr-conversations']){
   const e=page.locator(selector);await expect(e).toHaveCSS('border-inline-start-width','4px');
   expect(await e.evaluate(e=>parseFloat(getComputedStyle(e).paddingInlineStart))).toBeGreaterThanOrEqual(12);
  }
- await expect(page.getByRole('heading',{name:'Selected passage',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Passage context',exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Conversations',exact:true})).toBeVisible();
  const thread=page.locator('.sr-thread'),reply=page.locator('.sr-reply').first();
  expect((await reply.boundingBox()).x-(await thread.boundingBox()).x).toBeGreaterThanOrEqual(20);

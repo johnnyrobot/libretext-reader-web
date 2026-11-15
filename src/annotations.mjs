@@ -316,7 +316,7 @@ export function mountAnnotations({
     make("p", "Choose a whole passage, or enter an exact quote. Choose its occurrence when the text repeats."),
     field("Exact quote (optional)", exactQuote), field("Quote occurrence", occurrence), useQuote, quoteError);
   const passage = make("section"); passage.className = "sr-passage";
-  passage.append(make("h3", "Selected passage"), quote);
+  passage.append(make("h3", "Passage context"), quote);
   const content = make("div");
   content.className = "sr-content";
   content.append(
