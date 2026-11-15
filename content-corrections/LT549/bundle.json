@@ -1,0 +1,1405 @@
+{
+  "schema": "lt549-exact-source-patch-v1",
+  "packetSha256": "9b4f2d7cfd49f96d04db50f62455033db51baafe304189438682d331755a0841",
+  "rulingSha256": "d42c115bf63ef2153531910947f55897a12db6d1b65440d70fab3fa3fc37e546",
+  "pages": [
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_I:_Chemical_Thermodynamics/II:_Principles_of_Thermodynamics_(Entropy_and_Gibbs_Energy)/2.04:_Entropy_Changes_and_Spontaneity/index.html",
+      "beforeSha256": "e6a3a04a1881a6a94e87b73cf03b78db4f5910ee6e19458249034f07824a169a",
+      "edits": [
+        {
+          "id": "R7-map-1",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 1,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading\">\\(&Delta;S_{univ} &gt; 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading\" scope=\"row\">\\(&Delta;S_{univ} &gt; 0\\)</th>",
+          "offset": 8920
+        },
+        {
+          "id": "R7-map-2",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading\">\\(&Delta;S_{univ} &lt; 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading\" scope=\"row\">\\(&Delta;S_{univ} &lt; 0\\)</th>",
+          "offset": 9115
+        },
+        {
+          "id": "R7-map-3",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading\">\\(&Delta;S_{univ} = 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading\" scope=\"row\">\\(&Delta;S_{univ} = 0\\)</th>",
+          "offset": 9349
+        }
+      ],
+      "afterSha256": "8b945f42b6c9b844c9f1676c3fea537e9b3c4dda04b6a92bb65923824f7f1c89"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_III:_Chemical_Equilibria/V:_Chemical_Equilibrium/5.E:_Chemical_Equilibrium_(Exercises)/index.html",
+      "beforeSha256": "d64ef274d3ae4906beb991df08a7fc69def694ee143e66569e2ae9375425efea",
+      "edits": [
+        {
+          "id": "R6-1",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading\">\\(\\ce{CO2 (g)}\\)</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\\(\\ce{CO2 (g)}\\)</th>",
+          "offset": 28737
+        },
+        {
+          "id": "R6-2",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading\">\\(\\ce{CO (g)}\\)</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\\(\\ce{CO (g)}\\)</th>",
+          "offset": 28800
+        },
+        {
+          "id": "R6-3",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\"><span>Initial</span></td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\"><span>Initial</span></th>",
+          "offset": 28897
+        },
+        {
+          "id": "R6-4",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">Change</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">Change</th>",
+          "offset": 29098
+        },
+        {
+          "id": "R6-5",
+          "kind": "cell",
+          "target": {
+            "table": 1,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\"><span>Equilibrium</span></td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\"><span>Equilibrium</span></th>",
+          "offset": 29293
+        },
+        {
+          "id": "R6-6",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading\">\\(\\ce{H2&nbsp;(g)}\\)</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\\(\\ce{H2&nbsp;(g)}\\)</th>",
+          "offset": 37462
+        },
+        {
+          "id": "R6-7",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading\">\\(\\ce{F2 (g)}\\)</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\\(\\ce{F2 (g)}\\)</th>",
+          "offset": 37529
+        },
+        {
+          "id": "R6-8",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 1,
+            "column": 4
+          },
+          "before": "<td class=\"mt-noheading\">\\(\\ce{2HF (g)}\\)</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\\(\\ce{2HF (g)}\\)</th>",
+          "offset": 37591
+        },
+        {
+          "id": "R6-9",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">I</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">I</th>",
+          "offset": 37689
+        },
+        {
+          "id": "R6-10",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">C</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">C</th>",
+          "offset": 37936
+        },
+        {
+          "id": "R6-11",
+          "kind": "cell",
+          "target": {
+            "table": 4,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">E</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">E</th>",
+          "offset": 38179
+        },
+        {
+          "id": "R6-12",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">\\(\\ce{2H2(g)}\\)</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">\\(\\ce{2H2(g)}\\)</th>",
+          "offset": 46816
+        },
+        {
+          "id": "R6-13",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">\\(\\ce{O2(g)}\\)</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">\\(\\ce{O2(g)}\\)</th>",
+          "offset": 46923
+        },
+        {
+          "id": "R6-14",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 1,
+            "column": 4
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">\\(\\ce{2H2O(l)}\\)</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">\\(\\ce{2H2O(l)}\\)</th>",
+          "offset": 47029
+        },
+        {
+          "id": "R6-15",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">Initial</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\">Initial</th>",
+          "offset": 47172
+        },
+        {
+          "id": "R6-16",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">Change</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\">Change</th>",
+          "offset": 47589
+        },
+        {
+          "id": "R6-17",
+          "kind": "cell",
+          "target": {
+            "table": 6,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">Equilibrium</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\">Equilibrium</th>",
+          "offset": 48014
+        },
+        {
+          "id": "R6-18",
+          "kind": "cell",
+          "target": {
+            "table": 7,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\">Al<sub>2</sub>Cl<sub>6</sub></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\">Al<sub>2</sub>Cl<sub>6</sub></th>",
+          "offset": 52445
+        },
+        {
+          "id": "R6-19",
+          "kind": "cell",
+          "target": {
+            "table": 7,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\">Al<sub>3</sub>Cl<sub>9</sub></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\">Al<sub>3</sub>Cl<sub>9</sub></th>",
+          "offset": 52566
+        },
+        {
+          "id": "R6-20",
+          "kind": "cell",
+          "target": {
+            "table": 7,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><strong>I</strong>nitial</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><strong>I</strong>nitial</th>",
+          "offset": 52722
+        },
+        {
+          "id": "R6-21",
+          "kind": "cell",
+          "target": {
+            "table": 7,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><strong>C</strong>hange</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><strong>C</strong>hange</th>",
+          "offset": 53087
+        },
+        {
+          "id": "R6-22",
+          "kind": "cell",
+          "target": {
+            "table": 7,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><strong>E</strong>quilibrium</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><strong>E</strong>quilibrium</th>",
+          "offset": 53437
+        },
+        {
+          "id": "R6-23",
+          "kind": "cell",
+          "target": {
+            "table": 8,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading\">P<sub>4</sub></td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">P<sub>4</sub></th>",
+          "offset": 61608
+        },
+        {
+          "id": "R6-24",
+          "kind": "cell",
+          "target": {
+            "table": 8,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading\">2 P<sub>2</sub></td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">2 P<sub>2</sub></th>",
+          "offset": 61668
+        },
+        {
+          "id": "R6-25",
+          "kind": "cell",
+          "target": {
+            "table": 8,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">I</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">I</th>",
+          "offset": 61765
+        },
+        {
+          "id": "R6-26",
+          "kind": "cell",
+          "target": {
+            "table": 8,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">C</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">C</th>",
+          "offset": 61950
+        },
+        {
+          "id": "R6-27",
+          "kind": "cell",
+          "target": {
+            "table": 8,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">E</td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">E</th>",
+          "offset": 62140
+        },
+        {
+          "id": "R6-28",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\">Temperature (&deg;C)</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" scope=\"row\">Temperature (&deg;C)</th>",
+          "offset": 77804
+        },
+        {
+          "id": "R6-29",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\">Equilibrium Constant (K<sub>eq</sub>)</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" scope=\"row\">Equilibrium Constant (K<sub>eq</sub>)</th>",
+          "offset": 78459
+        },
+        {
+          "id": "R6-30",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">300</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">300</th>",
+          "offset": 77886
+        },
+        {
+          "id": "R6-31",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">400</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">400</th>",
+          "offset": 77977
+        },
+        {
+          "id": "R6-32",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 4
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">450</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">450</th>",
+          "offset": 78068
+        },
+        {
+          "id": "R6-33",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 5
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">500</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">500</th>",
+          "offset": 78159
+        },
+        {
+          "id": "R6-34",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 6
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">550</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">550</th>",
+          "offset": 78250
+        },
+        {
+          "id": "R6-35",
+          "kind": "cell",
+          "target": {
+            "table": 9,
+            "row": 1,
+            "column": 7
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\">600</td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"col\">600</th>",
+          "offset": 78341
+        },
+        {
+          "id": "R6-36",
+          "kind": "cell",
+          "target": {
+            "table": 10,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\"><span><span>\\(\\ce{I_{2\\, (aq)}} \\)</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\"><span><span>\\(\\ce{I_{2\\, (aq)}} \\)</span></span></th>",
+          "offset": 82159
+        },
+        {
+          "id": "R6-37",
+          "kind": "cell",
+          "target": {
+            "table": 10,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\"><span><span>\\(\\ce{I_{2} (CCl_4)}\\)</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\"><span><span>\\(\\ce{I_{2} (CCl_4)}\\)</span></span></th>",
+          "offset": 82300
+        },
+        {
+          "id": "R6-38",
+          "kind": "cell",
+          "target": {
+            "table": 10,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>I</strong>nitial</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>I</strong>nitial</span></span></th>",
+          "offset": 82476
+        },
+        {
+          "id": "R6-39",
+          "kind": "cell",
+          "target": {
+            "table": 10,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>C</strong>hange</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>C</strong>hange</span></span></th>",
+          "offset": 82927
+        },
+        {
+          "id": "R6-40",
+          "kind": "cell",
+          "target": {
+            "table": 10,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>E</strong>quilibrium</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>E</strong>quilibrium</span></span></th>",
+          "offset": 83373
+        },
+        {
+          "id": "R6-41",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\"><span><span>\\(\\ce{I_{2\\, (aq)}} \\)</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\"><span><span>\\(\\ce{I_{2\\, (aq)}} \\)</span></span></th>",
+          "offset": 84820
+        },
+        {
+          "id": "R6-42",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\"><span><span>\\(\\ce{I_{2} (CCl_4)}\\)</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-10\" style=\"text-align:center;\" scope=\"col\"><span><span>\\(\\ce{I_{2} (CCl_4)}\\)</span></span></th>",
+          "offset": 84961
+        },
+        {
+          "id": "R6-43",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>I</strong>nitial</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>I</strong>nitial</span></span></th>",
+          "offset": 85137
+        },
+        {
+          "id": "R6-44",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>C</strong>hange</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>C</strong>hange</span></span></th>",
+          "offset": 85588
+        },
+        {
+          "id": "R6-45",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\"><span><span><strong>E</strong>quilibrium</span></span></td>",
+          "after": "<th class=\"mt-noheading mt-column-width-5\" style=\"text-align:center;\" scope=\"row\"><span><span><strong>E</strong>quilibrium</span></span></th>",
+          "offset": 86045
+        },
+        {
+          "id": "R6-46",
+          "kind": "cell",
+          "target": {
+            "table": 12,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading\">\n                <p>Lewis acid</p>\n                </td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\n                <p>Lewis acid</p>\n                </th>",
+          "offset": 121371
+        },
+        {
+          "id": "R6-47",
+          "kind": "cell",
+          "target": {
+            "table": 12,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading\">\n                <p>Lewis base</p>\n                </td>",
+          "after": "<th class=\"mt-noheading\" scope=\"col\">\n                <p>Lewis base</p>\n                </th>",
+          "offset": 121469
+        },
+        {
+          "id": "R6-48",
+          "kind": "cell",
+          "target": {
+            "table": 12,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">\n                <p>1.</p>\n                </td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">\n                <p>1.</p>\n                </th>",
+          "offset": 121602
+        },
+        {
+          "id": "R6-49",
+          "kind": "cell",
+          "target": {
+            "table": 12,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">\n                <p>2.</p>\n                </td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">\n                <p>2.</p>\n                </th>",
+          "offset": 121889
+        },
+        {
+          "id": "R6-50",
+          "kind": "cell",
+          "target": {
+            "table": 12,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading\">\n                <p>3.</p>\n                </td>",
+          "after": "<th class=\"mt-noheading\" scope=\"row\">\n                <p>3.</p>\n                </th>",
+          "offset": 122230
+        }
+      ],
+      "afterSha256": "8908ba93b56b5254207f9b62153de6a1a21cbface8dce747ec342f56bc179d7f"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_III:_Chemical_Equilibria/VI:_AcidBase_Equilibria/6.09:_Organic_Acids_and_Bases:_Structure_and_Reactivity/index.html",
+      "beforeSha256": "80a708191702601823c3e12ac087a51e6f31c9a6ddf120eef2531564c8b9a5ab",
+      "edits": [
+        {
+          "id": "R7-reaction-1",
+          "kind": "rowcells",
+          "target": {
+            "table": 2,
+            "row": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-6458\">HHe<sup>+</sup>(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&rarr;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">H<sup>+</sup>(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">+ He(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">+178 kJ/mol</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-6458\" scope=\"row\" colspan=\"4\">HHe<sup>+</sup>(<i>g</i>) &rarr; H<sup>+</sup>(<i>g</i>) + He(<i>g</i>)</th>\n<td class=\"mt-align-center mt-noheading lt-chem-6458\">+178 kJ/mol</td>",
+          "offset": 12623
+        },
+        {
+          "id": "R7-reaction-2",
+          "kind": "rowcells",
+          "target": {
+            "table": 2,
+            "row": 2
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-6458\">HHe<sup>+</sup>(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&rarr;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">HHe<sup>+</sup>(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&nbsp;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">+973 kJ/mol</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-6458\" scope=\"row\" colspan=\"4\">HHe<sup>+</sup>(<i>aq</i>) &rarr; HHe<sup>+</sup>(<i>g</i>)</th>\n<td class=\"mt-align-center mt-noheading lt-chem-6458\">+973 kJ/mol</td>",
+          "offset": 13089
+        },
+        {
+          "id": "R7-reaction-3",
+          "kind": "rowcells",
+          "target": {
+            "table": 2,
+            "row": 3
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-6458\">H<sup>+</sup>(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&rarr;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">H<sup>+</sup>(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&nbsp;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&minus;1530 kJ/mol</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-6458\" scope=\"row\" colspan=\"4\">H<sup>+</sup>(<i>g</i>) &rarr; H<sup>+</sup>(<i>aq</i>)</th>\n<td class=\"mt-align-center mt-noheading lt-chem-6458\">&minus;1530 kJ/mol</td>",
+          "offset": 13550
+        },
+        {
+          "id": "R7-reaction-4",
+          "kind": "rowcells",
+          "target": {
+            "table": 2,
+            "row": 4
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-6458\">He(<i>g</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&rarr;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">He(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&nbsp;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">+19 kJ/mol</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-6458\" scope=\"row\" colspan=\"4\">He(<i>g</i>) &rarr; He(<i>aq</i>)</th>\n<td class=\"mt-align-center mt-noheading lt-chem-6458\">+19 kJ/mol</td>",
+          "offset": 14014
+        },
+        {
+          "id": "R7-reaction-5",
+          "kind": "rowcells",
+          "target": {
+            "table": 2,
+            "row": 5
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-6458\">HHe<sup>+</sup>(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&rarr;</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">H<sup>+</sup>(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">+ He(<i>aq</i>)</td>\n            <td class=\"mt-align-center mt-noheading lt-chem-6458\">&minus;360 kJ/mol</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-6458\" scope=\"row\" colspan=\"4\">HHe<sup>+</sup>(<i>aq</i>) &rarr; H<sup>+</sup>(<i>aq</i>) + He(<i>aq</i>)</th>\n<td class=\"mt-align-center mt-noheading lt-chem-6458\">&minus;360 kJ/mol</td>",
+          "offset": 14448
+        }
+      ],
+      "afterSha256": "b80565d40ed59b17a045aa74de8c3a349918e247e9695720712843ff476e08f6"
+    },
+    {
+      "path": "chem_4b/Worksheets/04:_Second_and_Third_Laws_of_Thermodynamics__(Worksheet)/index.html",
+      "beforeSha256": "fbc29828e06a2fee59e0873b696732ceb2e830305de4c757567774228fe28faf",
+      "edits": [
+        {
+          "id": "R7-map-1",
+          "kind": "cell",
+          "target": {
+            "table": 3,
+            "row": 1,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-81619\">\\(&Delta;G^o &gt; 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-81619\" scope=\"row\">\\(&Delta;G^o &gt; 0\\)</th>",
+          "offset": 30374
+        },
+        {
+          "id": "R7-map-2",
+          "kind": "cell",
+          "target": {
+            "table": 3,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-81619\">\\(&Delta;G^o = 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-81619\" scope=\"row\">\\(&Delta;G^o = 0\\)</th>",
+          "offset": 30581
+        },
+        {
+          "id": "R7-map-3",
+          "kind": "cell",
+          "target": {
+            "table": 3,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"mt-align-center mt-noheading lt-chem-81619\">\\(&Delta;G^o &lt; 0\\)</td>",
+          "after": "<th class=\"mt-align-center mt-noheading lt-chem-81619\" scope=\"row\">\\(&Delta;G^o &lt; 0\\)</th>",
+          "offset": 30781
+        }
+      ],
+      "afterSha256": "c5753f19b48206ca890be308fa7ce4c48b8972417888c6aacb49d543ca0409a2"
+    },
+    {
+      "path": "chem_4b/Worksheets/05B:_Solutions_and_Vapor_Pressures_(Worksheet)/index.html",
+      "beforeSha256": "b76ef771f6f111215a9d147765d494a235bc214f5d2411c6b70f33d9e705cd90",
+      "edits": [
+        {
+          "id": "R6-1",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 1,
+            "column": 1
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" colspan=\"11\" rowspan=\"1\" style=\"text-align:center;\"><strong>Temperature (&deg;C)</strong></td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" colspan=\"11\" rowspan=\"1\" style=\"text-align:center;\" id=\"sr-vp-temperature\"><strong>Temperature (&deg;C)</strong></th>",
+          "offset": 23826
+        },
+        {
+          "id": "R6-2",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 1
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">0</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t1\" headers=\"sr-vp-temperature\">0</th>",
+          "offset": 23999
+        },
+        {
+          "id": "R6-3",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 2
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">10</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t2\" headers=\"sr-vp-temperature\">10</th>",
+          "offset": 24084
+        },
+        {
+          "id": "R6-4",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 3
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">20</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t3\" headers=\"sr-vp-temperature\">20</th>",
+          "offset": 24170
+        },
+        {
+          "id": "R6-5",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 4
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">30</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t4\" headers=\"sr-vp-temperature\">30</th>",
+          "offset": 24256
+        },
+        {
+          "id": "R6-6",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 5
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">40</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t5\" headers=\"sr-vp-temperature\">40</th>",
+          "offset": 24342
+        },
+        {
+          "id": "R6-7",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 6
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">50</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t6\" headers=\"sr-vp-temperature\">50</th>",
+          "offset": 24428
+        },
+        {
+          "id": "R6-8",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 7
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">60</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t7\" headers=\"sr-vp-temperature\">60</th>",
+          "offset": 24514
+        },
+        {
+          "id": "R6-9",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 8
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">70</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t8\" headers=\"sr-vp-temperature\">70</th>",
+          "offset": 24600
+        },
+        {
+          "id": "R6-10",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 9
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">80</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t9\" headers=\"sr-vp-temperature\">80</th>",
+          "offset": 24686
+        },
+        {
+          "id": "R6-11",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 10
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">90</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t10\" headers=\"sr-vp-temperature\">90</th>",
+          "offset": 24772
+        },
+        {
+          "id": "R6-12",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 2,
+            "column": 11
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">100</td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" id=\"sr-vp-t11\" headers=\"sr-vp-temperature\">100</th>",
+          "offset": 24858
+        },
+        {
+          "id": "R6-13",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 3,
+            "column": 1
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" colspan=\"11\" rowspan=\"1\" style=\"text-align:center;\"><strong>Vapor Pressure (mm Hg)</strong></td>",
+          "after": "<th class=\"lt-chem-78266 mt-noheading\" colspan=\"11\" rowspan=\"1\" style=\"text-align:center;\" id=\"sr-vp-pressure\"><strong>Vapor Pressure (mm Hg)</strong></th>",
+          "offset": 24972
+        },
+        {
+          "id": "R6-14",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 1
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">4.6</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t1 sr-vp-pressure\">4.6</td>",
+          "offset": 25147
+        },
+        {
+          "id": "R6-15",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 2
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">9.2</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t2 sr-vp-pressure\">9.2</td>",
+          "offset": 25234
+        },
+        {
+          "id": "R6-16",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 3
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">17.5</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t3 sr-vp-pressure\">17.5</td>",
+          "offset": 25321
+        },
+        {
+          "id": "R6-17",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 4
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">31.8</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t4 sr-vp-pressure\">31.8</td>",
+          "offset": 25409
+        },
+        {
+          "id": "R6-18",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 5
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">55.3</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t5 sr-vp-pressure\">55.3</td>",
+          "offset": 25497
+        },
+        {
+          "id": "R6-19",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 6
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">92.5</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t6 sr-vp-pressure\">92.5</td>",
+          "offset": 25585
+        },
+        {
+          "id": "R6-20",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 7
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">149.4</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t7 sr-vp-pressure\">149.4</td>",
+          "offset": 25673
+        },
+        {
+          "id": "R6-21",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 8
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">233.7</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t8 sr-vp-pressure\">233.7</td>",
+          "offset": 25762
+        },
+        {
+          "id": "R6-22",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 9
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">355.1</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t9 sr-vp-pressure\">355.1</td>",
+          "offset": 25851
+        },
+        {
+          "id": "R6-23",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 10
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">525.8</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t10 sr-vp-pressure\">525.8</td>",
+          "offset": 25940
+        },
+        {
+          "id": "R6-24",
+          "kind": "cell",
+          "target": {
+            "table": 2,
+            "row": 4,
+            "column": 11
+          },
+          "before": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\">760</td>",
+          "after": "<td class=\"lt-chem-78266 mt-noheading\" style=\"text-align:center;\" headers=\"sr-vp-temperature sr-vp-t11 sr-vp-pressure\">760</td>",
+          "offset": 26029
+        }
+      ],
+      "afterSha256": "cf8185244d784fec49dab271d85c64f73fcd270f438c569d9837e9edd8889198"
+    },
+    {
+      "path": "chem_4b/Worksheets/10:_Weak_Acid_and_Base_Equilibria_(Worksheet)/index.html",
+      "beforeSha256": "3ccd3a8349130eef51ac37254c425e3a4c01d2340d255611294959a4bf53c489",
+      "edits": [
+        {
+          "id": "R6-1",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 1
+          },
+          "before": "<td class=\"mt-noheading lt-chem-81630\">\\(\\ce{HCO2H}\\)</td>",
+          "after": "<th class=\"mt-noheading lt-chem-81630\" scope=\"col\">\\(\\ce{HCO2H}\\)</th>",
+          "offset": 69997
+        },
+        {
+          "id": "R6-2",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 2
+          },
+          "before": "<td class=\"mt-noheading lt-chem-81630\">\\(\\ce{CH3CO2H }\\)</td>",
+          "after": "<th class=\"mt-noheading lt-chem-81630\" scope=\"col\">\\(\\ce{CH3CO2H }\\)</th>",
+          "offset": 70068
+        },
+        {
+          "id": "R6-3",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 3
+          },
+          "before": "<td class=\"mt-noheading lt-chem-81630\">\\(\\ce{CH3CH2CO2H }\\)</td>",
+          "after": "<th class=\"mt-noheading lt-chem-81630\" scope=\"col\">\\(\\ce{CH3CH2CO2H }\\)</th>",
+          "offset": 70142
+        },
+        {
+          "id": "R6-4",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 4
+          },
+          "before": "<td class=\"mt-noheading lt-chem-81630\">\\(\\ce{CH3CH2CH2CO2H }\\)</td>",
+          "after": "<th class=\"mt-noheading lt-chem-81630\" scope=\"col\">\\(\\ce{CH3CH2CH2CO2H }\\)</th>",
+          "offset": 70219
+        },
+        {
+          "id": "R6-5",
+          "kind": "cell",
+          "target": {
+            "table": 11,
+            "row": 1,
+            "column": 5
+          },
+          "before": "<td class=\"mt-noheading lt-chem-81630\">\\(\\ce{HO2CCO2H }\\)</td>",
+          "after": "<th class=\"mt-noheading lt-chem-81630\" scope=\"col\">\\(\\ce{HO2CCO2H }\\)</th>",
+          "offset": 70299
+        },
+        {
+          "id": "R8-brace-6",
+          "kind": "literal",
+          "target": {},
+          "before": "\\(\\ce{M(OH)_n\\)",
+          "after": "\\(\\ce{M(OH)_n}\\)",
+          "offset": 27622
+        },
+        {
+          "id": "R8-brace-7",
+          "kind": "literal",
+          "target": {},
+          "before": "\\(\\ce[A^{&ndash;}]}\\)",
+          "after": "\\(\\ce{[A^{&ndash;}]}\\)",
+          "offset": 44596
+        }
+      ],
+      "afterSha256": "eda5c2f7db72842456e7219d6d95368040f9e396d48434ae34764f2ced00a9f4"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_II:_Physical_Equilibria/III:_Solids_Liquids_and_Phase_Transitions/3.E:_Solids_Liquids_and_Phase_Transitions_(Exercises)/index.html",
+      "beforeSha256": "295d6e4f47d73363269c9eaa82ff9f88ec265073b1729063e591afba04478138",
+      "edits": [
+        {
+          "id": "R3-Q26-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 5
+          },
+          "before": "<img style=\"width: 348px; height: 261px;\" width=\"348px\" height=\"261px\" class=\"mt-disabled\" rel=\"broken\" />",
+          "after": "",
+          "offset": 23141
+        }
+      ],
+      "afterSha256": "646f3f9495f7b64483463c77417a2c4fb6d95d8648a6b05c75c99e045d5f22cf"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_III:_Chemical_Equilibria/VI:_AcidBase_Equilibria/6.01:_Classifications_of_Acids_and_Bases/index.html",
+      "beforeSha256": "e35a59c6579d1aad0c4ee23d04d8f45eeec0449ba2544c2618bf2728aafc4ee9",
+      "edits": [
+        {
+          "id": "R4-title-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 16
+          },
+          "before": "<img height=\"197\" src=\"/_assets/imported/e2/e2546ec40253a8d4223a9a7a186b18a0289cf0a7e5a7529944da48adc73dd2fb.jpg\" style=\"width: 302px; height: 293px;\" width=\"203\" />",
+          "after": "<img alt=\"Boron trichloride-diethyl ether adduct\" height=\"197\" src=\"/_assets/imported/e2/e2546ec40253a8d4223a9a7a186b18a0289cf0a7e5a7529944da48adc73dd2fb.jpg\" style=\"width: 302px; height: 293px;\" width=\"203\" />",
+          "offset": 48758
+        }
+      ],
+      "afterSha256": "bfad8ba5eb7eb6b3c2027bedcaed9f788ac117dbe6c0d693e536963a622758fb"
+    },
+    {
+      "path": "chem_4b/AGENDA1/index.html",
+      "beforeSha256": "5fd7ef93afbd10d716a2e4ebbe217d9ec84cb2c9660e736c6b01f087493a3f54",
+      "edits": [
+        {
+          "id": "R5-title-1",
+          "kind": "element",
+          "target": {
+            "tag": "iframe",
+            "index": 1
+          },
+          "before": "<iframe class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l1-e1&lang=es&prompt=ala\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "after": "<iframe title=\"Spanish pronunciation practice: ala (es-u1-l1-e1)\" class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l1-e1&lang=es&prompt=ala\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "offset": 92410
+        },
+        {
+          "id": "R5-title-2",
+          "kind": "element",
+          "target": {
+            "tag": "iframe",
+            "index": 2
+          },
+          "before": "<iframe class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l3-e7&lang=es&prompt=buenos+d%C3%ADas\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "after": "<iframe title=\"Spanish pronunciation practice: buenos días (es-u1-l3-e7)\" class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l3-e7&lang=es&prompt=buenos+d%C3%ADas\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "offset": 92689
+        },
+        {
+          "id": "R5-title-3",
+          "kind": "element",
+          "target": {
+            "tag": "iframe",
+            "index": 3
+          },
+          "before": "<iframe class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l3-e12&lang=es&prompt=mucho+gusto\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "after": "<iframe title=\"Spanish pronunciation practice: mucho gusto (es-u1-l3-e12)\" class=\"pron-practice\" src=\"https://adapt.libretexts.dev/embed/pronunciation?exercise_id=es-u1-l3-e12&lang=es&prompt=mucho+gusto\" allow=\"microphone\" loading=\"lazy\" scrolling=\"no\" style=\"width:100%;height:210px;border:1px solid #b8d7e8;border-radius:10px;background:#fff\"></iframe>",
+          "offset": 92981
+        }
+      ],
+      "afterSha256": "7f930be00e23f22da759fa22771c29c51bcf5761dee466b03c1ede33910b934b"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_I:_Chemical_Thermodynamics/index.html",
+      "beforeSha256": "9044ed7f8d53146de80e6c8511392eed95d6b360e8ffa5214e4882e111f1ff34",
+      "edits": [
+        {
+          "id": "R4-thumbnail-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 3
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/e8/e849cd962c2b1f6c765bb40e93731a7403f5005919b8e25099735a6a568395c2.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/e8/e849cd962c2b1f6c765bb40e93731a7403f5005919b8e25099735a6a568395c2.jpg\" />",
+          "offset": 6725
+        },
+        {
+          "id": "R4-thumbnail-2",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 4
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/91/91b66a27d6a6bc09dd7b7f8e1c13a3cf0bd9bb1538677771d5b75942ece45bdd.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/91/91b66a27d6a6bc09dd7b7f8e1c13a3cf0bd9bb1538677771d5b75942ece45bdd.jpg\" />",
+          "offset": 7933
+        }
+      ],
+      "afterSha256": "991552f039a99753a43e306ab1b61300a785aa8532fb4140b9d4c68d4eaf0d54"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_II:_Physical_Equilibria/index.html",
+      "beforeSha256": "1a17b5329040c187968459bb186d9b28bc6ecc8a074c567eb00ca86583573e10",
+      "edits": [
+        {
+          "id": "R4-thumbnail-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 3
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/f7/f76ad168f7ce87e1e8ae723fb5d585259abd8f12a71c1613a04e5500cc6d9da1.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/f7/f76ad168f7ce87e1e8ae723fb5d585259abd8f12a71c1613a04e5500cc6d9da1.jpg\" />",
+          "offset": 5909
+        },
+        {
+          "id": "R4-thumbnail-2",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 4
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/2c/2cbc33d3dfeb2bf7bdaee728b0fec6d6c017b380086d0a71b1b093acf600ba86.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/2c/2cbc33d3dfeb2bf7bdaee728b0fec6d6c017b380086d0a71b1b093acf600ba86.jpg\" />",
+          "offset": 6763
+        }
+      ],
+      "afterSha256": "ed05b8b9c992094354cfdfddcc1aa35372bf91a0e675bb8f53ffb53933d8115e"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/Unit_III:_Chemical_Equilibria/index.html",
+      "beforeSha256": "deb94d543510f127670ea3fda890d853c632b0a36e6ae210f18179cc91acdced",
+      "edits": [
+        {
+          "id": "R4-thumbnail-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 3
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/f8/f8c9e579174253bfdd32544199b313f12b650083393e11bbdb951472a9eed3a6.png\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/f8/f8c9e579174253bfdd32544199b313f12b650083393e11bbdb951472a9eed3a6.png\" />",
+          "offset": 6096
+        },
+        {
+          "id": "R4-thumbnail-2",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 4
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/16/16e5623b24e0df3691c149ccd2ab6665836a327e7c68a3f07b7710a2db3f9fc4.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/16/16e5623b24e0df3691c149ccd2ab6665836a327e7c68a3f07b7710a2db3f9fc4.jpg\" />",
+          "offset": 7022
+        },
+        {
+          "id": "R4-thumbnail-3",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 5
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/af/af95436ac64d4a7ef0b201d2868bbe6697035c1da11776af15d28c2019761d6e.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/af/af95436ac64d4a7ef0b201d2868bbe6697035c1da11776af15d28c2019761d6e.jpg\" />",
+          "offset": 8174
+        }
+      ],
+      "afterSha256": "073156b354f0ba5890061f5eea1e9118e8dc880066141d0dbbf5659d0850add3"
+    },
+    {
+      "path": "chem_4b/Chem_4B_Textbook/index.html",
+      "beforeSha256": "5a5b894ee40c07f5c48fcbe49f205414c0ba049741eea54109bebd1a46fd3f80",
+      "edits": [
+        {
+          "id": "R4-thumbnail-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 3
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/e8/e849cd962c2b1f6c765bb40e93731a7403f5005919b8e25099735a6a568395c2.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/e8/e849cd962c2b1f6c765bb40e93731a7403f5005919b8e25099735a6a568395c2.jpg\" />",
+          "offset": 5928
+        },
+        {
+          "id": "R4-thumbnail-2",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 4
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/fc/fc1ae656864016de32edf19f2fea7b1805e6c063aeeac3c8c702d1f791b83212.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/fc/fc1ae656864016de32edf19f2fea7b1805e6c063aeeac3c8c702d1f791b83212.jpg\" />",
+          "offset": 6942
+        },
+        {
+          "id": "R4-thumbnail-3",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 5
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/f8/f8c9e579174253bfdd32544199b313f12b650083393e11bbdb951472a9eed3a6.png\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/f8/f8c9e579174253bfdd32544199b313f12b650083393e11bbdb951472a9eed3a6.png\" />",
+          "offset": 7883
+        }
+      ],
+      "afterSha256": "ffe6b52b8170a7f5cbf2f4afbb6f77e5574116fc52676fe2ce30d681c6a1034c"
+    },
+    {
+      "path": "chem_4b/index.html",
+      "beforeSha256": "42876386c03158a79b47c53ef688d52799f01528dca66f5ffc64882570af9de0",
+      "edits": [
+        {
+          "id": "R4-thumbnail-1",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 3
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/6a/6a47d1cbf504eae72b15187bfd8a95ea97d008e4e38d8f40fd9573128d4dd85b.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/6a/6a47d1cbf504eae72b15187bfd8a95ea97d008e4e38d8f40fd9573128d4dd85b.jpg\" />",
+          "offset": 3445
+        },
+        {
+          "id": "R4-thumbnail-2",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 4
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/7a/7a11940583b78ef2166b441eb53e973254afd73f1726b42c060300ad0f96609b.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/7a/7a11940583b78ef2166b441eb53e973254afd73f1726b42c060300ad0f96609b.jpg\" />",
+          "offset": 4434
+        },
+        {
+          "id": "R4-thumbnail-3",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 5
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/7a/7a11940583b78ef2166b441eb53e973254afd73f1726b42c060300ad0f96609b.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/7a/7a11940583b78ef2166b441eb53e973254afd73f1726b42c060300ad0f96609b.jpg\" />",
+          "offset": 4971
+        },
+        {
+          "id": "R4-thumbnail-4",
+          "kind": "element",
+          "target": {
+            "tag": "img",
+            "index": 6
+          },
+          "before": "<img class=\"internal\" alt=\"mindtouch.page#thumbnail\" loading=\"lazy\" src=\"/_assets/imported/ba/bad42901403f2fc7017d07cce873d502c4098f3e4abf353fda5505e4d8ffff68.jpg\" />",
+          "after": "<img class=\"internal\" alt=\"\" loading=\"lazy\" src=\"/_assets/imported/ba/bad42901403f2fc7017d07cce873d502c4098f3e4abf353fda5505e4d8ffff68.jpg\" />",
+          "offset": 5571
+        }
+      ],
+      "afterSha256": "3815e20dd0a24a941dc1e7b8bee5906a77f19b22760ccac2e29ce43df99f0131"
+    }
+  ]
+}

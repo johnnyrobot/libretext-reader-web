@@ -1,5 +1,14 @@
 # LT-549 WCAG 2.1 A/AA applicability and evidence matrix
 
+## Owner deployment disposition — 2026-11-14, 21:05 Pacific
+
+Remaining VoiceOver/listener/foreground acceptance checks are **SKIPPED BY OWNER**. Preserve prior actual observations and all unconfirmed speech states; no speech or whole-site conformance pass is inferred. No further listener readiness or foreground run is required. Chief performs the authorized deployment after introduced-defect, private-access/revision-safety, functional/native, review/CI, composition and host gates pass. Reader makes no live writes.
+
+Inherited Q19/Q69 graphs, uncertain extra Q26 illustration and R4 pairing are deferred known-content follow-up, not blockers for the added-interaction release. Current PageIndex recovery is actual MathJax4 source evidence, but no verified compatible3.2.2/per-page/licensed payload is supplied; retain the inherited limitation without a template migration or a new recovery wave. The approved exact source corrections are implemented under [LT-555](LT-555-CONTENT-CORRECTIONS.md); its new source/revision/speech/native evidence remains subject to source admission. PR19's existing single review/checkback chain is preserved.
+
+Earlier VoiceOver/source-content HOLD statements below are historical and superseded as release gates only by this owner disposition; their factual evidence remains unchanged.
+
+
 ## Authoritative release disposition — 2026-11-14
 
 Current findings and finite owner/action rows are consolidated in [final bounded release closeout](LT-549-FINAL-RELEASE-CLOSEOUT.md). Published Reader source24d83a8 is executable-equivalent to d3efb5d; LT-552/LT-553 and the Space major are corrected. R2 is closed as a source defect. R13 is a hosted-CI/source-merge/composition gate: the correct pull_request run exists, observed in progress once; no hosted pass, merge or deployment claimed. Earlier local/publication/CI-pending statements below are historical checkpoints.
@@ -98,7 +107,7 @@ Scope: annotation login/logout, keyboard/pointer passage selection, exact quote/
 | [3.3.4](https://www.w3.org/TR/WCAG21/#error-prevention-legal-financial-data) | Error Prevention (Legal, Financial, Data) | AA | Modification/deletion of stored user data | NOT TESTED | Question/reply creation and moderation semantics require applicability decision; annotation exposes no edit/delete/moderation controls currently. Backend moderation journey separately untested. |
 | [4.1.1](https://www.w3.org/TR/WCAG21/#parsing) | Parsing | A | Parsing in requested WCAG2.1 scope | SATISFIED for HTML per current WCAG2.1 guidance | Retained in all50rows. WCAG2.1 current Note1 treats HTML/XML parsing as satisfied; role/name/state defects still belong under other criteria. This is not importing WCAG2.2 removal. |
 | [4.1.2](https://www.w3.org/TR/WCAG21/#name-role-value) | Name, Role, Value | A | Controls and programmatic state | PARTIAL — programmatic controls and scoped actual AT | Actual VoiceOver entry expanded/collapsed, Close, occurrence invalid/required and Listen control names/states observed. All control/state paths and baseline iframe/semantic context remain incomplete. Sponsors advisory is not an automatically confirmed introduced failure. |
-| [4.1.3](https://www.w3.org/TR/WCAG21/#status-messages) | Status Messages | AA | Status/error announcements without focus theft | PARTIAL — defect fixed; speech gaps retained | Stale Checking progress fixed with revision/view ownership and native regressions. Current actual VoiceOver queued-reauthorization Signed in completion observed; earlier quote/sign-in-error/warning/expiry/closed-extension captions retained at their pins. Credential-login/save/loading speech remains unconfirmed; no full conformance claim. |
+| [4.1.3](https://www.w3.org/TR/WCAG21/#status-messages) | Status Messages | AA | Status/error announcements without focus theft | PARTIAL — remaining VoiceOver acceptance SKIPPED BY OWNER | 2026-11-14 21:05Pacific owner skip supersedes listener gate. Prior scoped observations retained; credential-login/save/loading automatic speech remains UNCONFIRMED, never PASS. Source/native regressions remain evidence, not audible proof. |
 
 ## Evidence ledger
 

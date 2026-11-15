@@ -1,5 +1,14 @@
 # LT-549 runtime handoff to Social Reading
 
+## Owner deployment disposition — 2026-11-14, 21:05 Pacific
+
+Remaining VoiceOver/listener/foreground acceptance checks are **SKIPPED BY OWNER**. Preserve prior actual observations and all unconfirmed speech states; no speech or whole-site conformance pass is inferred. No further listener readiness or foreground run is required. Chief performs the authorized deployment after introduced-defect, private-access/revision-safety, functional/native, review/CI, composition and host gates pass. Reader makes no live writes.
+
+Inherited Q19/Q69 graphs, uncertain extra Q26 illustration and R4 pairing are deferred known-content follow-up, not blockers for the added-interaction release. Current PageIndex recovery is actual MathJax4 source evidence, but no verified compatible3.2.2/per-page/licensed payload is supplied; retain the inherited limitation without a template migration or a new recovery wave. The approved exact source corrections are implemented under [LT-555](LT-555-CONTENT-CORRECTIONS.md); its new source/revision/speech/native evidence remains subject to source admission. PR19's existing single review/checkback chain is preserved.
+
+Earlier VoiceOver/source-content HOLD statements below are historical and superseded as release gates only by this owner disposition; their factual evidence remains unchanged.
+
+
 ## Authoritative release disposition — 2026-11-14
 
 Current findings and finite owner/action rows are consolidated in [final bounded release closeout](LT-549-FINAL-RELEASE-CLOSEOUT.md). Published Reader source24d83a8 is executable-equivalent to d3efb5d; LT-552/LT-553 and the Space major are corrected. R2 is closed as a source defect. R13 is a hosted-CI/source-merge/composition gate: the correct pull_request run exists, observed in progress once; no hosted pass, merge or deployment claimed. Earlier local/publication/CI-pending statements below are historical checkpoints.
