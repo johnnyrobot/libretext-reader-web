@@ -12,10 +12,14 @@
   display: none !important;
 }
 
+html[data-tts-reader="on"] {
+  scroll-padding-bottom: calc(var(--tts-bar-height, 6rem) + 1rem);
+}
+
 :root[data-tts-reader="on"] main {
   max-width: 34em;
   margin: 0 auto;
-  padding-bottom: 8rem;
+  padding-bottom: calc(var(--tts-bar-height, 6rem) + 2rem);
   line-height: 1.7;
 }
 
@@ -54,6 +58,10 @@
   z-index: 40;
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  max-height: 40dvh;
+  overflow: auto;
   align-items: center;
   padding: 10px 16px;
   background: #fff;
@@ -62,12 +70,16 @@
   font: 14px/1.4 "Atkinson Hyperlegible", Tahoma, Arial, sans-serif;
 }
 
+.tts-bar label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25em; min-width: 0; max-width: 100%; }
+.tts-bar button, .tts-bar select { font: inherit; }
+.tts-bar select { min-width: 0; max-width: 100%; }
+.tts-bar .tts-status { overflow-wrap: anywhere; min-width: 0; }
 .tts-bar button { min-width: 40px; min-height: 40px; cursor: pointer; }
 .tts-bar .tts-spacer { margin-inline-start: auto; }
 .tts-badge { font-size: 12px; color: #4c7898; border: 1px solid #b8d7e8; border-radius: 999px; padding: 2px 8px; }
 
 .tts-dialog { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgb(0 0 0 / 45%); }
-.tts-dialog-card { background: #fff; max-width: 32em; padding: 24px; border-radius: 8px; }
+.tts-dialog-card { background: #fff; width: min(32em, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); box-sizing: border-box; overflow: auto; padding: 24px; border-radius: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .tts-sentence, .tts-current { transition: none !important; }

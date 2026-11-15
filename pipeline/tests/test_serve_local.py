@@ -47,3 +47,43 @@ def test_weights_and_voices_are_immutable(base, path):
                                   "phonon-fr/tokenizer.json", "mt/pairs.json"])
 def test_code_and_manifests_revalidate(base, path):
     assert cache_control(f"{base}/_assets/tts/{path}") == "public, max-age=0, must-revalidate"
+
+
+def test_discussion_proxy_preserves_origin_cookie_body_and_denials(tmp_path):
+    import http.server
+    import json
+    import urllib.error
+    seen = []
+    class Backend(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            seen.append((self.path, self.headers.get('Origin'), self.headers.get('Cookie'),
+                         self.rfile.read(int(self.headers.get('Content-Length', 0))).decode()))
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Set-Cookie', 'sr_reader_session=; Max-Age=0; HttpOnly; SameSite=Strict')
+            self.end_headers()
+            self.wfile.write(b'{"error":"denied"}')
+        def log_message(self, *args):
+            pass
+    backend = serve_local.Server(('127.0.0.1', 0), Backend)
+    proxy = serve_local.Server(('127.0.0.1', 0), functools.partial(
+        serve_local.Handler, directory=str(tmp_path), api_port=backend.server_address[1]))
+    for server in (backend, proxy):
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        req = urllib.request.Request(f'http://127.0.0.1:{proxy.server_address[1]}/social-reading/api/commands',
+            data=b'{"key":"original"}', headers={'Origin':'http://127.0.0.1:8788',
+            'Cookie':'sr_reader_session=test', 'Content-Type':'application/json'})
+        with pytest.raises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(req)
+        response = error.value
+        assert response.code == 403
+        assert json.loads(response.read()) == {'error':'denied'}
+        assert response.headers['Cache-Control'] == 'no-store'
+        assert 'HttpOnly' in response.headers['Set-Cookie']
+        assert seen == [('/social-reading/api/commands', 'http://127.0.0.1:8788',
+                         'sr_reader_session=test', '{"key":"original"}')]
+    finally:
+        for server in (proxy, backend):
+            server.shutdown()
+            server.server_close()

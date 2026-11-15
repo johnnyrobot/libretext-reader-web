@@ -87,7 +87,11 @@ export function mountControls(host, {
   }
 
   const onKey = (event) => {
-    if (event.target?.matches?.('input, select, textarea')) return;
+    if (event.defaultPrevented) return;
+    if (event.target?.closest?.('input, select, textarea, [contenteditable]:not([contenteditable="false"])')) return;
+    // Native controls own Space/arrow activation, including discussion buttons.
+    // Escape remains the reader exit shortcut unless a dialog already handled it.
+    if (event.key !== 'Escape' && event.target?.closest?.('button, a[href], summary, [role="button"], [role="link"]')) return;
     if (event.key === ' ') { event.preventDefault(); (playing ? onPause : onPlay)(); }
     if (event.key === 'ArrowRight') { event.preventDefault(); onNext(); }
     if (event.key === 'ArrowLeft') { event.preventDefault(); onPrev(); }
@@ -96,6 +100,22 @@ export function mountControls(host, {
   document.addEventListener('keydown', onKey);
 
   host.appendChild(bar);
+
+  // Wrapped controls may change height with viewport, text or status updates.
+  // Share the actual occupied space with source scrolling and discussion CSS.
+  const root = document.documentElement;
+  const previousHeight = root.style.getPropertyValue('--tts-bar-height');
+  const previousPriority = root.style.getPropertyPriority('--tts-bar-height');
+  const measureBar = () => {
+    const value = `${bar.getBoundingClientRect().height}px`;
+    if (root.style.getPropertyValue('--tts-bar-height') !== value) {
+      root.style.setProperty('--tts-bar-height', value);
+    }
+  };
+  const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measureBar);
+  resizeObserver?.observe(bar);
+  window.addEventListener('resize', measureBar);
+  measureBar();
 
   return {
     setState({ playing: isPlaying, buffering, message }) {
@@ -132,6 +152,13 @@ export function mountControls(host, {
       entry.bytes = bytes;
       paintLanguage(entry);
     },
-    destroy() { document.removeEventListener('keydown', onKey); bar.remove(); },
+    destroy() {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', measureBar);
+      document.removeEventListener('keydown', onKey);
+      bar.remove();
+      if (previousHeight) root.style.setProperty('--tts-bar-height', previousHeight, previousPriority);
+      else root.style.removeProperty('--tts-bar-height');
+    },
   };
 }

@@ -691,6 +691,7 @@ async function runEntry() {
   }
 
   function onSentenceClick(event) {
+    if (!document.getSelection()?.isCollapsed) return;
     const id = event.target.closest('.tts-sentence')?.dataset.ttsId;
     if (id) seekAndCatchUp(id);
   }

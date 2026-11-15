@@ -17,6 +17,7 @@ Usage: scripts/serve-local.py [--root DIR] [--port 8788]
 import argparse
 import functools
 import http.server
+import http.client
 import mimetypes
 import re
 import socketserver
@@ -54,6 +55,52 @@ IMMUTABLE_PATHS = re.compile(r"/_assets/tts/phonon(-(fr|de|es|pt))?/(onnx|voices
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, api_port=None, **kwargs):
+        self.api_port = api_port
+        super().__init__(*args, **kwargs)
+
+    def proxy_api(self):
+        if not self.api_port or not self.path.startswith('/social-reading/api/'):
+            return False
+        # Fixed loopback destination; preserve Origin and cookies for backend authority.
+        if self.headers.get('Transfer-Encoding'):
+            self.send_error(400)
+            return True
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+        except ValueError:
+            size = -1
+        if size < 0 or size > 65536:
+            self.send_error(413)
+            return True
+        connection = http.client.HTTPConnection('127.0.0.1', self.api_port, timeout=15)
+        try:
+            body = self.rfile.read(size) if size else None
+            headers = {key: self.headers[key] for key in ('Origin', 'Cookie', 'Content-Type') if key in self.headers}
+            connection.request(self.command, self.path, body, headers)
+            response = connection.getresponse()
+            data = response.read()
+            self.send_response(response.status)
+            for key, value in response.getheaders():
+                if key.lower() in ('content-type', 'set-cookie', 'allow'):
+                    self.send_header(key, value)
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (OSError, http.client.HTTPException):
+            self.send_error(502, 'Discussion service unavailable')
+        finally:
+            connection.close()
+        return True
+
+    def do_GET(self):
+        if not self.proxy_api():
+            super().do_GET()
+
+    def do_POST(self):
+        if not self.proxy_api():
+            self.send_error(404)
+
     def end_headers(self):
         # Header scoping matches the live Caddyfile exactly. This used to send
         # COOP/COEP on every path, which is MORE uniform than production and hid
@@ -93,9 +140,13 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", default=".stage")
     parser.add_argument("--port", type=int, default=8788)
+    parser.add_argument("--api-port", type=int, default=None,
+                        help="Optional loopback Social Reading backend port")
     args = parser.parse_args()
 
-    handler = functools.partial(Handler, directory=args.root)
+    if args.api_port is not None and not 1 <= args.api_port <= 65535:
+        parser.error('api-port must be between 1 and 65535')
+    handler = functools.partial(Handler, directory=args.root, api_port=args.api_port)
     with Server(("127.0.0.1", args.port), handler) as httpd:
         print(f"serving {args.root} on http://127.0.0.1:{args.port} (cross-origin isolated)")
         httpd.serve_forever()
