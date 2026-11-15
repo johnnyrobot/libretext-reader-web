@@ -271,7 +271,6 @@ test('unknown highlight outcome keeps the immutable target and says why a resele
 // the second selection is dropped and "Check the pending operation..." is shown with nothing
 // pending. Fails in Chromium, Firefox and WebKit. Remove test.fail once the source is fixed.
 test('a fast second reselection while the first is still loading ends on the latest passage',async({page})=>{
- test.fail(true,'LT-560 source bug: reselection during a thread reload is dropped');
  await signIn(page);
  await drag(page,A);await openWith(page,'Discuss',A.quote);
  // Slow sign-in checks and thread loads, as on a real network, so the first sync is still busy.
@@ -310,7 +309,6 @@ test('selecting text inside panel form fields does not replace the quotation (gu
 // syncOpenSelection announces the refusal and that also suppresses "Signed in.". Firefox and
 // WebKit pass. Remove test.fail once the source is fixed.
 test('opening the panel from a selection does not announce a refused reselection',async({page,browserName})=>{
- test.fail(browserName==='chromium','LT-560 source bug: spurious refusal announced on open in Chromium');
  await signIn(page);
  await drag(page,A);await openWith(page,'Discuss',A.quote);
  await expect(statusLine(page),'nothing is pending, so the refusal must not be announced').not.toHaveText(UNCHANGED,{timeout:3000});
