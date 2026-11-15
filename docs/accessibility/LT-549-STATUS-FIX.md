@@ -65,3 +65,8 @@ Single corrected AT journey: open→Escape→Return during that delay. Actual Vo
 Source/native guards are now proven for anonymous/error/revoked/closed/newer-message cases; the earlier actual-AT warning/expiry/closed-extension observations retain their original5e554b8pins and were not blanket-rerun. Complete-process/final-artifact AT, baseline images/frames/tables/math, remaining contrast-incomplete/cross-browser context and Chief final acceptance remain release gates.
 
 Restoration: VO switch visually off, caption checkbox visibly unchecked; Safari/Settings/Utility processes absent; owned8796/4206/4207ports free; OpenMausBot7479foreground verified. No zoom/permission changes or new prompt; prior Python local-network denial preserved. Backend/proxy exit0,frontend130afterCtrl-C. No active LT549automation listed. Actual caption PNGs, environment/restoration images and fixture proof are under `.scratch/lt549/status-fix/at/`.
+
+
+## Release-evidence closeout after185cbfe
+
+Hosted Python and JavaScript checks succeeded on185cbfe(run43663442358); automatic CodeRabbit check skipped, no new review requested. Current source/native status diagnosis and finite audible-operator check are in LT-549-STATUS-OPERATOR-CHECK.md. Exact baseline content triage is in LT-549-BASELINE-TRIAGE.md. Runtime archive/manifest and staging dependencies are in LT-549-RUNTIME-HANDOFF.md. Product executable remains unchanged; documentation-only follow-up does not establish missing speech or whole-site acceptance.
