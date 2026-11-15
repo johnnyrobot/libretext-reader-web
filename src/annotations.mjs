@@ -86,6 +86,7 @@ export function mountAnnotations({
   const status = make("p");
   status.setAttribute("role", "status");
   status.setAttribute("aria-atomic", "true");
+  let statusRevision = 0, checkingStatus = null;
   const quote = make("blockquote");
   quote.tabIndex = 0;
   quote.setAttribute("aria-label", "Selected passage");
@@ -297,7 +298,13 @@ export function mountAnnotations({
       ? JSON.stringify([selected.block.block, selected.selector ?? null])
       : "";
   const say = (text) => {
+    checkingStatus = null;
     status.textContent = text;
+    return ++statusRevision;
+  };
+  const finishChecking = (revision, text) => {
+    if (revision !== null && checkingStatus === revision && statusRevision === revision)
+      say(text);
   };
   const lock = () => {
     staySignedIn.disabled = busy;
@@ -415,6 +422,7 @@ export function mountAnnotations({
     lock();
   }
   function closePanel() {
+    finishChecking(checkingStatus, "");
     viewGeneration++;
     queuedOpen = null;
     if (selected) drafts.set(key(), input.value);
@@ -431,10 +439,11 @@ export function mountAnnotations({
   }
   async function authorize() {
     const generation = viewGeneration;
+    const checking = checkingStatus;
     const previous = actor;
     const signedActor = await client.session();
     const receivedAt = performance.now();
-    if (generation !== viewGeneration || panel.hidden) return;
+    if (generation !== viewGeneration || panel.hidden) return false;
     if (previous && previous.id !== signedActor.id) revoke();
     actor = signedActor;
     if (suspendedDrafts) {
@@ -446,15 +455,17 @@ export function mountAnnotations({
     }
     const authorizedView = viewGeneration;
     await loadThreads();
-    if (authorizedView !== viewGeneration || panel.hidden || actor?.id !== signedActor.id) return;
+    if (authorizedView !== viewGeneration || panel.hidden || actor?.id !== signedActor.id) return false;
     staySignedIn.hidden = false;
     sessionMessage.textContent = "Your discussion session ends soon. Stay signed in to keep working.";
     sessionNotice.hidden = true;
     sessionTimer.update(actor.timing, receivedAt);
-    if (actor?.id !== signedActor.id) return;
+    if (actor?.id !== signedActor.id) return false;
     member.hidden = false;
     login.hidden = true;
     identity.textContent = `Signed in as ${actor.name}`;
+    finishChecking(checking, "Signed in.");
+    return true;
   }
   async function open(value, replay = false) {
     viewGeneration++;
@@ -474,7 +485,7 @@ export function mountAnnotations({
     if (busy) {
       queuedOpen = { value };
       login.hidden = true;
-      say("Checking sign-in…");
+      checkingStatus = say("Checking sign-in…");
       close.focus({ preventScroll: true });
       return;
     }
@@ -640,10 +651,13 @@ export function mountAnnotations({
   login.addEventListener("submit", (e) => {
     e.preventDefault();
     run(async () => {
+      const generation = viewGeneration, revision = statusRevision;
       await client.login(username.value, password.value);
       password.value = "";
-      await authorize();
-      say("Signed in.");
+      if (generation !== viewGeneration || panel.hidden) return;
+      const authorized = await authorize();
+      if (authorized && generation === viewGeneration && statusRevision === revision)
+        say("Signed in.");
     });
   });
   question.addEventListener("submit", (e) => {
