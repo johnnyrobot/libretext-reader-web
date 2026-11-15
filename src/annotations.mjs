@@ -909,8 +909,16 @@ export function mountAnnotations({
   });
   // Capture while the range still exists; clicking the entry button can collapse it.
   let captured = null;
+  const selectionControlFocused = () => doc.activeElement === entry || quick.contains(doc.activeElement);
+  const clearUnfocusedSelection = () => {
+    if (!panel.hidden || selectionControlFocused() || !doc.getSelection()?.isCollapsed) return;
+    captured = null; quick.hidden = true; entry.textContent = "Discuss this page";
+  };
+  for (const control of [entry, quick])
+    control.addEventListener("focusout", () => queueMicrotask(clearUnfocusedSelection));
   doc.addEventListener("selectionchange", () => {
     if (!panel.hidden) return;
+    if (captured && doc.getSelection()?.isCollapsed && selectionControlFocused()) return;
     try {
       captured = captureSelection(main, manifest, doc.getSelection());
       quick.hidden = !captured || !!captured.error;

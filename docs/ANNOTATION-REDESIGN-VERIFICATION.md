@@ -62,3 +62,6 @@ The two production-code guard lines are reviewed against e35e037rather than buyi
 
 
 Keyboard finishing check reproduced a lost-focus case introduced by the selection toolbar: its originating Highlight button is hidden when the panel opens, so restoring focus to it on Escape fails. Close now falls back to the visible annotation entry when the original focus target is hidden, disconnected or the body; visible reading-context targets and the original scroll position remain preserved. The new keyboard regression failed first and passed after correction.
+
+
+WebKit finishing run initially passed20cases and failed the new keyboard selection-action case before reaching the panel. Focusing the action collapses the DOM selection there. The annotation controls now retain the already validated capture while they own keyboard focus, and clear a collapsed capture when focus leaves. The same WebKit keyboard case passes after this scoped correction; the failed full-shard receipt remains retained. No Reader/Listen code changes were needed; its existing hotkey guard already excludes buttons.
