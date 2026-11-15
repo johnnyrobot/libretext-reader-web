@@ -1,6 +1,6 @@
 # LT-549 WCAG 2.1 A/AA applicability and evidence matrix
 
-**RELEASE HOLD. No WCAG conformance claim. Actual screen-reader testing: NOT TESTED.** Chief has not authorized foreground VoiceOver; no VoiceOver activation or foreground workaround was attempted.
+**RELEASE HOLD. No WCAG conformance claim. Actual screen-reader testing: PARTIAL; full walkthrough incomplete.** Foreground VoiceOver was authorized for the2026-11-14walkthrough; public-control observations and restoration are recorded in LT-549-VOICEOVER-2026-11-14.md. Protected/timed/Listen AT coverage remains untested.
 
 Current tested executable source: `5e554b86e13cf67f345423580352c0f8d9d36ae3`; documentation at `c3f3860` has an independently checked empty src/scripts/pipeline/tests diff from that source. Mirror: `297976ca5518f9a786867bde9a557fe063342fd7`. Runtime/source hashes: `.scratch/lt549/a11y/source-evidence.json`. Browser: Chromium151.0.7922.34; axe-core4.14.0. Tests use local synthetic accounts; no humanAT evidence is implied.
 
@@ -59,7 +59,7 @@ Scope: annotation login/logout, keyboard/pointer passage selection, exact quote/
 | [3.3.4](https://www.w3.org/TR/WCAG21/#error-prevention-legal-financial-data) | Error Prevention (Legal, Financial, Data) | AA | Modification/deletion of stored user data | NOT TESTED | Question/reply creation and moderation semantics require applicability decision; annotation exposes no edit/delete/moderation controls currently. Backend moderation journey separately untested. |
 | [4.1.1](https://www.w3.org/TR/WCAG21/#parsing) | Parsing | A | Parsing in requested WCAG2.1 scope | SATISFIED for HTML per current WCAG2.1 guidance | Retained in all50rows. WCAG2.1 current Note1 treats HTML/XML parsing as satisfied; role/name/state defects still belong under other criteria. This is not importing WCAG2.2 removal. |
 | [4.1.2](https://www.w3.org/TR/WCAG21/#name-role-value) | Name, Role, Value | A | Name/role/value and programmatic state | PASS — sampled programmatic controls; AT NOT TESTED | Native HTML controls,labels,expanded/controls andfieldstate tested/inspected. Generic baselineSponsors aria-label remains an advisory contextual check, not a claimed introduced failure. |
-| [4.1.3](https://www.w3.org/TR/WCAG21/#status-messages) | Status Messages | AA | Status/error announcements without focus theft | NOT TESTED | role=status exists; actual screen-reader announcement testing not available. Focus recovery changes need AT confirmation. |
+| [4.1.3](https://www.w3.org/TR/WCAG21/#status-messages) | Status Messages | AA | Status/error announcements without focus theft | NOT TESTED | Actual VoiceOver captions captured public quote-error,quote-success and failed-sign-in announcements. Protected/session announcements and full focus/AT walkthrough remain untested. |
 
 ## Evidence ledger
 
@@ -90,9 +90,9 @@ The prior TestSprite run remains FAILED14/15, with uncertain key-action mapping;
 - `.sponsors` is a noninteractive generic div with aria-label but no role: scanner compatibility advisory/context check, not an automatically confirmed introduced4.1.2failure. Symbol-only corner spans measure4.48:1againstwhite, exceeding3:1nontext contrast; their static/noninteractive aria-hidden status was independently inspected; no normal-text contrast pass is claimed.
 - Remaining enlarged/spacing warning contrast-incomplete nodes and cross-browser rendering need contextual visual checks before broad claims.
 
-## Blocked AT gate
+## Incomplete AT gate
 
-[Exact operator walkthrough](LT-549-MANUAL-AT.md) is prepared, NOT RUN. It records required browser/ATversions, source/hash, URL, controls, expected focus and spoken announcements. Chief retains the foreground-permission decision. No AXsnapshot, axe score, source review or Listen playback substitutes for actual VoiceOver/NVDA evidence.
+[Exact operator walkthrough](LT-549-MANUAL-AT.md) has a partial actual-VoiceOver execution recorded in [the attempt report](LT-549-VOICEOVER-2026-11-14.md); protected/timed/Listen portions remain incomplete. It records required browser/ATversions, source/hash, URL, controls, expected focus and spoken announcements. Chief retains the foreground-permission decision. No AXsnapshot, axe score, source review or Listen playback substitutes for actual VoiceOver/NVDA evidence.
 
 Baseline contextual disposition, complete-process AT results and final-artifact review remain release gates. No deployment or merge is authorized by this matrix.
 
@@ -100,4 +100,8 @@ Baseline contextual disposition, complete-process AT results and final-artifact 
 
 Accessibility Chief inspected and independently executed the seven-profile script in Chromium151 after starting the authorized local frontend when8788was unavailable. All7profiles passed the script assertions; no backend/private-state changes or AT/foreground actions were performed. Ratios were independently recalculated, and the heading screenshot was visually inspected. No new confirmed introduced defect was identified. The independent run regenerated raw JSON; calculated ratios are retained separately in `contrast-calculations.json`, not implied to be script output.
 
-This accepts only the stated sample checks. Actual browser zoom, clipping/overlap outside exercised cases, complete-process AT, baseline/contextual media/image/table review and final-release conformance remain unverified. Chief retains manualAT/deployment hold and foreground authorization control.
+This accepts only the stated sample checks. Actual browser zoom, clipping/overlap outside exercised cases, complete-process AT, baseline/contextual media/image/table review and final-release conformance remain unverified. Chief retains the deployment hold; foreground VoiceOver authorization was subsequently granted for the recorded walkthrough.
+
+## Actual VoiceOver attempt
+
+[2026-11-14 report](LT-549-VOICEOVER-2026-11-14.md): actual VoiceOver10/Safari26.6.2 caption evidence observed entry/close focus, exact-quote validation and success announcements, ordinary Escape restoration and negative-sign-in announcement. This is a bounded public-flow result, not a full AT pass. StandardVO activation conflicted with host dictation; native Return provided a partial workaround. The agent did not grant microphone permission. Original VoiceOveroff/captionoff/test-appsclosed/foreground restored were verified. Successful authentication, discussion persistence, session timing/recovery, Listen coexistence and actual zoom remainNOTTESTED in this AT run. No release/conformance claim.
