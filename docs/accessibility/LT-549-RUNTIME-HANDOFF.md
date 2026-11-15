@@ -1,5 +1,14 @@
 # LT-549 runtime handoff to Social Reading
 
+## Authoritative release disposition — 2026-11-14
+
+Current findings and finite owner/action rows are consolidated in [final bounded release closeout](LT-549-FINAL-RELEASE-CLOSEOUT.md). Published Reader source24d83a8 is executable-equivalent to d3efb5d; LT-552/LT-553 and the Space major are corrected. R2 is closed as a source defect. R13 is a hosted-CI/source-merge/composition gate: the correct pull_request run exists, observed in progress once; no hosted pass, merge or deployment claimed. Earlier local/publication/CI-pending statements below are historical checkpoints.
+
+R9 now separates a proven inline-config fixture mismatch from PageIndex's still-missing verified definition. R11 selected demo targets are desktop Chromium, Firefox and Safari/WebKit plus320CSSpx keyboard coverage; Firefox selection/panel checks pass, but Listen is blocked before mounting by its unresolved persistent-storage request. New actual VoiceOver captions confirm only final-stage discussion Open/Close and focus restoration. R1 automatic login/save/loading speech remains UNCONFIRMED under the existing finite protocol. Source-content R3–R8 and final-process acceptance remain held; no physical-touch or1,488-page conformance claim.
+
+## Historical source/evidence checkpoints
+
+
 ## Current keyboard integration correction
 
 **Release HOLD.** Executable `d3efb5d69da4cb6252c7013c466da0f8ef945de0`, stage `/Users/johnnyrobot/code/lt553-at-space-fix`. First-round Standards and Spec found no major/critical issues at `5ae3b4d`; fresh Correctness found one major: Listen intercepted Space on discussion buttons. Native regression reproduced the closed panel after Space. The fix respects already-handled events and native interactive Space/arrow activation while retaining Escape behavior. Second, fix-only Standards/Spec/fresh Correctness reviews of `cbc770a448d2474750502b405e7f9d8d1014d6dc` returned no major/critical findings; Correctness confirmed the original major resolved. Final publication and the single exact-head hosted-CI disposition are recorded in PR18/LT-553; source review does not lift the release hold.
