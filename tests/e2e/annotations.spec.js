@@ -1,5 +1,5 @@
-import { test, expect as baseExpect } from "@playwright/test";
-import { readFileSync } from "node:fs";
+import { test, expect as baseExpect, webkit } from "@playwright/test";
+import { readFileSync, existsSync } from "node:fs";
 const URL =
   "/social_psychology/13%3A_Competition_and_Cooperation_in_Our_Social_Worlds/13.01%3A_Conflict_Cooperation_Morality_and_Fairness/";
 const credentialsFile = process.env.SR_CREDENTIALS_FILE;
@@ -58,6 +58,50 @@ test("keyboard focus survives login and logout", async ({ page }) => {
   await page.getByRole("button", { name: "Sign out", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+});
+
+for (const [width, height, textScale] of [[1440, 1000, 1], [320, 1000, 1], [320, 256, 1], [320, 256, 2]]) {
+  test(`backward keyboard focus remains unobscured at ${width}x${height} text ${textScale}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto(URL);
+    await page.evaluate(scale => { document.documentElement.style.fontSize = `${scale * 100}%`; }, textScale);
+    await page.locator("#sr-entry").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => page.evaluate(() => {
+      const e = document.activeElement, r = e.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return e !== document.body && x >= 0 && x < innerWidth && y >= 0 && y < innerHeight && (hit === e || e.contains(hit));
+    }), { timeout: 1500 }).toBe(true);
+    await page.getByRole("button", { name: "Close discussion", exact: true }).click();
+    await expect(page.locator("#sr-entry")).toBeFocused();
+    await expect(page.locator("#sr-entry")).toBeVisible();
+    await expect.poll(() => page.locator("#sr-entry").evaluate(e => {
+      const r = e.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    }), { timeout: 1500 }).toBe(true);
+  });
+}
+
+test("WebKit keeps enlarged short-viewport source focus above the panel", async ({ baseURL }) => {
+  test.skip(!existsSync(webkit.executablePath()), "Installed WebKit required");
+  const browser = await webkit.launch();
+  try {
+    const page = await browser.newPage({ baseURL, viewport: { width: 320, height: 256 } });
+    await page.goto("/chem_4b/AGENDA1/Example_Final_Conceptual_Questions/");
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    await page.locator("#sr-entry").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => page.evaluate(() => {
+      const e = document.activeElement, r = e.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return r.top >= 0 && r.bottom <= innerHeight && (hit === e || e.contains(hit));
+    }), { timeout: 1500 }).toBe(true);
+  } finally { await browser.close(); }
 });
 
 test("keyboard exact quote and repeated occurrence are available without page dragging", async ({ page }) => {
@@ -119,6 +163,39 @@ test("session warning stays operable at 320px with enlarged spaced text", async 
   await expect(page.locator("#sr-session-notice")).toBeHidden();
   await page.getByRole("button", { name: "Sign out", exact: true }).click({ timeout: 1500 });
   await expect(page.locator("#sr-panel input[name=username]")).toBeFocused();
+});
+
+test("enlarged session warning is reachable by ordinary wheel scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.route("**/social-reading/api/session", async route => {
+    const response = await route.fetch();
+    if (response.status() !== 200) return route.fulfill({ response });
+    const body = await response.json();
+    body.timing = { serverNow: 1000, expiresAt: 61000, warningSeconds: 300, canExtend: true, extensionSeconds: 28800 };
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto(URL);
+  await page.locator("#sr-entry").click();
+  await login(page, "alice");
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+    for (const el of document.querySelectorAll("#sr-panel,#sr-panel *")) {
+      el.style.setProperty("line-height", "1.5", "important");
+      el.style.setProperty("letter-spacing", ".12em", "important");
+      el.style.setProperty("word-spacing", ".16em", "important");
+      if (el.tagName === "P") el.style.setProperty("margin-bottom", "2em", "important");
+    }
+  });
+  const panel = await page.locator("#sr-panel").boundingBox();
+  await page.mouse.move(panel.x + panel.width / 2, panel.y + panel.height / 2);
+  await page.mouse.wheel(0, 800);
+  // A locator click would auto-scroll this control and mask the user's wheel failure.
+  await expect.poll(() => page.evaluate(() => {
+    const button = document.querySelector("#sr-session-notice button"), r = button.getBoundingClientRect();
+    const x = r.x + r.width / 2, y = r.y + r.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    return x >= 0 && x < innerWidth && y >= 0 && y < innerHeight && (hit === button || button.contains(hit));
+  }), { timeout: 2000 }).toBe(true);
 });
 
 test("failed session extension keeps warning draft and keyboard focus", async ({ page }) => {
