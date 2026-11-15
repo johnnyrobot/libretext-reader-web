@@ -19,6 +19,13 @@ async function login(page, who) {
     page.getByRole("button", { name: "Sign out", exact: true }),
   ).toBeVisible();
 }
+async function accountRequest(page, path, data) {
+  const response = await page.request.post(`/social-reading/api/${path}`, {
+    headers: { Origin: new globalThis.URL(page.url()).origin },
+    data,
+  });
+  expect(response.status()).toBe(200);
+}
 async function selection(page) {
   await page.evaluate(() => {
     const m = JSON.parse(
@@ -185,7 +192,7 @@ for (const account of ["alice", "bob"]) {
   });
 }
 
-test("expiry during reauthorization cannot restore a member view", async ({ page }) => {
+test("expiry during reauthorization preserves its error status and cannot restore a member view", async ({ page }) => {
   await page.clock.install();
   await page.route("**/social-reading/api/session", async route => {
     const response = await route.fetch();
@@ -215,6 +222,7 @@ test("expiry during reauthorization cannot restore a member view", async ({ page
     await expect(page.getByRole("button", { name: "Use whole passage", exact: true })).toBeEnabled();
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible({ timeout: 1000 });
     await expect(page.getByRole("textbox", { name: "Your question", exact: true })).toBeHidden();
+    await expect(page.getByRole("status")).toContainText("Session expired.");
   } finally { release(); }
 });
 
@@ -338,10 +346,7 @@ test("delayed authentication honors immediate keyboard reopen and final close", 
 test("stale authentication cannot reveal private content after sign-out", async ({ page }) => {
   await page.goto(URL);
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
-  await page.request.post("/social-reading/api/login", {
-    headers: { Origin: "http://127.0.0.1:8788" },
-    data: { username: "alice", password: credentials.alice },
-  });
+  await accountRequest(page, "login", { username: "alice", password: credentials.alice });
   let release, started;
   const gate = new Promise(resolve => { release = resolve; });
   const requestStarted = new Promise(resolve => { started = resolve; });
@@ -354,7 +359,7 @@ test("stale authentication cannot reveal private content after sign-out", async 
   try {
     await page.locator("#sr-entry").click();
     await requestStarted;
-    await page.request.post("/social-reading/api/logout", { headers: { Origin: "http://127.0.0.1:8788" }, data: {} });
+    await accountRequest(page, "logout", {});
     await page.keyboard.press("Escape");
     await page.keyboard.press("Enter");
     await expect(page.locator("#sr-panel")).toBeVisible({ timeout: 1000 });
@@ -541,10 +546,7 @@ test("rejects unsupported selections and clears drafts when another tab changes 
     .getByRole("button", { name: "Close discussion", exact: true })
     .click();
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
-  await page.request.post("/social-reading/api/login", {
-    headers: { Origin: "http://127.0.0.1:8788" },
-    data: { username: "bob", password: credentials.bob },
-  });
+  await accountRequest(page, "login", { username: "bob", password: credentials.bob });
   await page
     .getByRole("button", { name: "Discuss this page", exact: true })
     .click();
@@ -590,10 +592,7 @@ test("refresh revokes drafts when another tab changes accounts", async ({ page }
   });
   await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
-  await page.request.post("/social-reading/api/login", {
-    headers: { Origin: "http://127.0.0.1:8788" },
-    data: { username: "bob", password: credentials.bob },
-  });
+  await accountRequest(page, "login", { username: "bob", password: credentials.bob });
   await page.getByRole("button", { name: "Refresh discussion", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Account changed", { timeout: 1000 });
   await expect(page.locator(".sr-thread")).toHaveCount(0);
@@ -640,10 +639,7 @@ test("reconciles a lost acknowledgment and distinguishes saved data from failed 
   await page
     .getByRole("button", { name: "Close discussion", exact: true })
     .click();
-  await page.request.post("/social-reading/api/login", {
-    headers: { Origin: "http://127.0.0.1:8788" },
-    data: { username: "bob", password: credentials.bob },
-  });
+  await accountRequest(page, "login", { username: "bob", password: credentials.bob });
   await page
     .getByRole("button", { name: "Discuss this page", exact: true })
     .click();
