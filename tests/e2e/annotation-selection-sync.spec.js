@@ -31,12 +31,12 @@ async function signIn(page,actor='alice'){
  await page.reload();
 }
 // Real pointer drag over `quote` inside the paragraph for manifest block `block`.
-async function drag(page,{block,quote}){
- const points=await page.evaluate(({block,quote})=>{
+async function drag(page,{block,quote,nth=1}){
+ const points=await page.evaluate(({block,quote,nth})=>{
   const paragraph=document.querySelectorAll('main p')[Number(block.slice(2))];
   paragraph.scrollIntoView({block:'center'});
   const text=document.createTreeWalker(paragraph,NodeFilter.SHOW_TEXT).nextNode();
-  const offset=text.data.indexOf(quote);
+  let offset=-1;for(let i=0;i<nth;i++){offset=text.data.indexOf(quote,offset+1);if(offset<0)break;}
   if(offset<0)throw Error('fixture quote not in first text node: '+quote);
   const measurement=document.createRange();measurement.setStart(text,offset);measurement.setEnd(text,offset+quote.length);
   const rects=measurement.getClientRects();if(rects.length!==1)throw Error('quote wraps lines: '+quote);
@@ -44,7 +44,7 @@ async function drag(page,{block,quote}){
   // Precondition: the pointer lands on the reading text, not on the panel or quick actions.
   for(const p of [start,{x:r.right-0.5,y}])if(!paragraph.contains(document.elementFromPoint(p.x,p.y)))throw Error('reading text is covered at drag point for '+quote);
   return {start,end};
- },{block,quote});
+ },{block,quote,nth});
  await page.mouse.move(points.start.x,points.start.y);await page.mouse.down();
  await page.mouse.move(points.end.x,points.end.y,{steps:20});await page.mouse.up();
  // Precondition: the browser's own selection is exactly the intended text.
@@ -361,4 +361,56 @@ test('session revoked during a queued reselection drops the queue and posts only
  const found=await search(page,nonce);
  expect(found.threads).toHaveLength(1);
  expect(found.threads[0].anchor.selector.quote,'posted anchor must equal the quotation the box showed').toBe(shown);
+});
+
+// Repeated quote: "in part" occurs twice in p-0. A pointer selection of the second one must
+// fill occurrence 2, and pressing "Use exact quote" again must keep that occurrence and anchor
+// (it used to reset the occurrence to 1 and re-anchor on the first "in part").
+const REPEAT={block:'p-0',quote:'in part',nth:2};
+test('pressing "Use exact quote" again keeps a repeated quote on its selected occurrence',async({page,browserName})=>{
+ await signIn(page);
+ await drag(page,A);await openWith(page,'Discuss',A.quote);
+ const manifest=await page.locator('#sr-page-context').evaluate(node=>JSON.parse(node.textContent));
+ const text=manifest.blocks.find(b=>b.block===REPEAT.block).quote;
+ const first=text.indexOf(REPEAT.quote),second=text.indexOf(REPEAT.quote,first+1);
+ expect(second,'precondition: the fixture quote repeats in the passage').toBeGreaterThan(first);
+ await drag(page,REPEAT);await adopt(page,REPEAT.quote);
+ await page.waitForLoadState('networkidle');
+ const panel=page.locator('#sr-panel');
+ await panel.getByText('Choose a passage with the keyboard',{exact:true}).click();
+ const occurrence=panel.getByLabel('Quote occurrence',{exact:true});
+ await expect(occurrence,'the pointer selection is the second occurrence').toHaveValue('2');
+ await panel.getByRole('button',{name:'Use exact quote',exact:true}).click();
+ await page.waitForLoadState('networkidle');
+ await expect(occurrence,'Use exact quote must not reset the occurrence').toHaveValue('2');
+ await expect(passage(page)).toHaveText(REPEAT.quote);
+ const nonce=`lt560-o-${browserName}-${Date.now()}`;
+ await panelBox(page,'Your question').fill('Occurrence '+nonce);
+ await panel.getByRole('button',{name:'Post question',exact:true}).click();
+ await expect(page.locator('.sr-thread').filter({hasText:nonce})).toContainText(REPEAT.quote);
+ const found=await search(page,nonce);
+ expect(found.threads).toHaveLength(1);
+ expect(found.threads[0].anchor.block).toBe(REPEAT.block);
+ expect(found.threads[0].anchor.selector,'posted anchor must be the second occurrence').toMatchObject({quote:REPEAT.quote,start:second,end:second+REPEAT.quote.length});
+});
+
+// Close and reopen: after the open box follows a pointer reselection A -> B, closing it and
+// reopening from the page's entry button must open on B, the latest selection, not on A.
+test('closing after a pointer reselection and reopening from the entry keeps the latest passage',async({page})=>{
+ await signIn(page);
+ await drag(page,A);await openWith(page,'Discuss',A.quote);
+ await drag(page,OTHER);await adopt(page,OTHER.quote);
+ await page.waitForLoadState('networkidle');
+ const panel=page.locator('#sr-panel');
+ await panel.getByRole('button',{name:'Close discussion',exact:true}).click();
+ await expect(panel).toBeHidden();
+ // Record every quotation the box shows from here on: a stale A that is later corrected
+ // still fails (observed on b495ef5: reopened on A, then flipped to B on a later selection event).
+ await page.locator('#sr-panel blockquote[aria-label="Selected passage"]').evaluate(node=>{window.__seen=[];new MutationObserver(()=>window.__seen.push(node.textContent)).observe(node,{childList:true,characterData:true,subtree:true});});
+ await page.locator('#sr-entry').click();
+ await expect(panel).toBeVisible();
+ await expect(passage(page),'reopening must show the latest selection').toHaveText(OTHER.quote,{timeout:5000});
+ await page.waitForLoadState('networkidle');
+ await expect(passage(page)).toHaveText(OTHER.quote);
+ expect(await page.evaluate(()=>window.__seen),'reopening must never show the earlier selection A').not.toContain(A.quote);
 });
