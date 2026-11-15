@@ -1,6 +1,6 @@
 # LT-549 finite status-message operator check
 
-**SC4.1.3 remains PARTIAL.** Reader185cbfe/executable-equivalent ef34231; current stage `/Users/johnnyrobot/code/lt549-at-status-fix`. Queued reauthorization completion **Signed in.** has actual VoiceOver caption evidence already. This check targets only credential-login success, save acknowledgment and the initial queued-loading message. It is not a repeat of unrelated AT journeys or a whole-site acceptance script.
+**SC4.1.3 remains PARTIAL.** Current LT-553 candidate executable `e2feddd7af7a1d97539ec6a0226e3a3f152f9d11`; stage `/Users/johnnyrobot/code/lt553-at-toolbar-fix`. Prior185cbfe/ef34231 status diagnosis remains scoped evidence for unchanged annotation JavaScript; it is not final-artifact speech acceptance. Queued reauthorization completion **Signed in.** has actual VoiceOver caption evidence already. This check targets only credential-login success, save acknowledgment and the initial queued-loading message. It is not a repeat of unrelated AT journeys or a whole-site acceptance script.
 
 ## Source/native diagnosis completed
 
