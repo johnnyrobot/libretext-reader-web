@@ -14,7 +14,7 @@ python content-corrections/LT549/apply.py --source /path/to/frozen-public-snapsh
 
 Every target and expected output digest is checked before copying. Paths must be disjoint; existing output, linked source entries, drift, ambiguous literals, duplicate/overlapping targets and malformed coordinate preimages are refused. No DOM serialization is used to write pages: only the approved byte ranges change. All other files are copied intact. A repeat is a clear refusal. The completion receipt `.lt549-source-corrections.json` is diagnostic metadata, not a catalog-admission or deployment instruction.
 
-Seventeen portable public-seam safety tests live in `pipeline/tests/test_lt549_content_corrections.py`. They cover actual header promotion, drift/preflight, duplicate/ambiguous targets, repeated application, disjoint/linked paths, scientific-text/energy refusal, bracket preservation, reproducibility and bundle integrity. Full-snapshot application to two distinct new destinations produced identical 1,489-file outputs: 1,488 original HTML files plus the receipt. Only the approved 14 pages differ from source.
+Twenty portable public-seam safety tests live in `pipeline/tests/test_lt549_content_corrections.py`. They cover actual header promotion, drift/preflight, duplicate/ambiguous targets, repeated application, disjoint/linked paths, scientific-text/energy refusal, bracket preservation, reproducibility and bundle integrity. Full-snapshot application to two distinct new destinations produced identical 1,489-file outputs: 1,488 original HTML files plus the receipt. Only the approved 14 pages differ from source.
 
 ## Reproduce speech and native evidence
 

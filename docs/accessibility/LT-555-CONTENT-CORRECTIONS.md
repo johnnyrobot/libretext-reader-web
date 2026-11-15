@@ -6,13 +6,13 @@ Current implementation is confined to `content-corrections/LT549/` and its safet
 
 ## Verification
 
-- 17portable safety tests pass. Full Python:793passed,8skipped; JavaScript1712passed,8skipped.
+- 20portable safety tests pass. Full Python:796passed,8skipped; JavaScript1714passed,8skipped.
 - 42paired native page/engine cases pass:14pages each in Chromium,Firefox,WebKit. The fourteen corrected tables expose0headers before and79native/AXheaders after in each engine. Explicit vapor-pressure ID/header references resolve uniquely within the same table; row/column geometry and scientific source order remain consistent. Off-origin embed requests were blocked; no hosted pronunciation/media acceptance is inferred.
 - Native headers adopt default bold/centred presentation:74individual promoted cells per engine change computed font weight;68also change start alignment to centre. The five grouped reaction headers also use native header presentation. Original attributes/styles are retained, no stylesheet normalization is invented, and source table values remain in their measured rows/columns. Narrow wide-table geometry remains recorded separately; this is not a blanket reflow/conformance pass.
 - 28before/after speech manifests bind exact source bytes and splitter version and pass identity/count/span checks. Weak-acid worksheet math changes197spoken/2failed to199spoken/0failed. Corpus fallback total9→7:the seven other failures are inherited and unchanged. One pre-existing zero-width-BOM empty sentence in5.E remains unchanged; no new empty sentence is introduced. Existing unsupported-table skip notices are retained honestly, including the reaction table's structure notice.
 - All 14affected revisions change, while selectable paragraph IDs/quotes remain identical. All 1,474 other source/catalog-page projections remain equal; their speech was not regenerated. Reader's existing matchesAnchor rejects all old-vs-new revision comparisons; no historical anchor/comment is moved. Before/after public page manifests and the precise delta are in `.scratch/lt555/anchor-delta.json`, labelled diagnostic/not admitted.
 
-Evidence directories: `.scratch/lt555/`, `/Users/johnnyrobot/code/lt549-correction-native-v2/`, `/Users/johnnyrobot/code/lt549-correction-speech-v2/`. Corrected rendering copy `/Users/johnnyrobot/code/lt549-corrected-render-v1` uses copied, unchanged public assets from the currently merged d3efb5d Reader stage; it is not a production package. Reader runtime integration follows canonical PR19 merge through its existing sole closeout chain; no competing storage patch is introduced here.
+Evidence directories: `.scratch/lt555/`, `/Users/johnnyrobot/code/lt549-correction-native-v3/`, `/Users/johnnyrobot/code/lt549-correction-speech-v2/`. Corrected rendering copy `/Users/johnnyrobot/code/lt549-corrected-render-v1` uses copied, unchanged public assets from the currently merged d3efb5d Reader stage; it is not a production package. Reader runtime integration follows canonical PR19 merge through its existing sole closeout chain; no competing storage patch is introduced here.
 
 ## Current owner decision and remaining execution gates
 
@@ -23,3 +23,7 @@ Chief deferred inherited missing graphs, uncertain extra Q26illustration and R4p
 Still required: close introduced source defects if found; complete applicable source reviews and genuine exact-head CI; admit exact source/speech/catalog/runtime/dependency identities; preserve historical state; perform owner composition and Chief's host/deployment validation. Chief performs live deployment under the owner's authorization. Reader does not edit backend/catalog/composition/live state.
 
 All fourteen affected-page manifests have nonzero sentence counts in the actual run and are candidates for the composition owner's source/lineage admission. No source-page rewrite or Reader injection was performed by speech verification.
+
+## Verifier review corrections
+
+PR-Agent review/improve on e2f1a81 completed with two verifier findings ($0.3973). Both were confirmed and corrected before publication: native evidence destinations now resolve real parents and must be disjoint from both source roots; every recorded local HTTP failure now invalidates the case. A native CLI regression reproduced an output directory created inside a synthetic source root before the fix and proves refusal afterward, including parent aliases. A controlled missing-CSS server demonstrated old false passes and corrected failures; focused original/fixed runs cover all three engines, with fresh process exits0and1respectively. The normal final42paired cases pass with zero missing local resources. No approved page bytes or bundle hashes changed in these verifier fixes.

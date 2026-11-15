@@ -230,3 +230,34 @@ def test_noncanonical_alias_page_path_is_refused(tmp_path):
     bundle['pages'][0]['path'] = 'chem_4b//example/index.html'
     with pytest.raises(ValueError, match='Unsafe'):
         patch.apply_bundle(source, tmp_path / 'out', bundle)
+
+
+@pytest.mark.parametrize('which', ['before', 'after'])
+def test_native_evidence_cannot_write_inside_either_source(tmp_path, which):
+    import subprocess
+    before, after = tmp_path / 'before', tmp_path / 'after'
+    before.mkdir()
+    after.mkdir()
+    verifier = MODULE.with_name('verify_render.mjs')
+    output = {'before': before, 'after': after}[which] / 'accidental-evidence'
+    result = subprocess.run(['node', str(verifier), '--before', str(before), '--after', str(after),
+                             '--base', 'http://127.0.0.1:8797/', '--output', str(output)],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode != 0
+    assert not output.exists()
+
+
+def test_native_evidence_resolves_parent_aliases_before_writing(tmp_path):
+    import subprocess
+    before, after = tmp_path / 'before', tmp_path / 'after'
+    before.mkdir()
+    after.mkdir()
+    alias = tmp_path / 'alias'
+    alias.symlink_to(before, target_is_directory=True)
+    output = alias / 'evidence'
+    result = subprocess.run(['node', str(MODULE.with_name('verify_render.mjs')),
+                             '--before', str(before), '--after', str(after),
+                             '--base', 'http://127.0.0.1:8797/', '--output', str(output)],
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode != 0
+    assert not output.exists()

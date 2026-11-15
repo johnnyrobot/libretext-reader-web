@@ -4,12 +4,14 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createHash } from 'node:crypto';
+import { evidenceDirectory, localResourceFailures } from './render_checks.mjs';
 const { values } = parseArgs({ options: { before: {type:'string'}, after:{type:'string'}, base:{type:'string'}, output:{type:'string'} } });
 for (const key of ['before','after','base','output']) if (!values[key]) throw Error('--'+key+' required');
 const base = new URL(values.base);
 if (!['127.0.0.1','localhost'].includes(base.hostname)) throw Error('Only an isolated loopback stage is permitted');
 const bundle = JSON.parse(await readFile(new URL('./bundle.json',import.meta.url)));
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+values.output = await evidenceDirectory(values.before, values.after, values.output);
 await mkdir(values.output); // Refuse an existing evidence directory.
 const results=[];
 const inspect = () => {
@@ -78,6 +80,7 @@ for(const [engine,type] of [['Chromium',chromium],['Firefox',firefox],['WebKit',
     await p.close();
    }
    const before=states.before,after=states.after;
+   failures.push(...localResourceFailures(states));
    if(JSON.stringify(before.sourceOrder)!==JSON.stringify(after.sourceOrder))failures.push('Table scientific text/order changed');
    for(const edit of page.edits) {
     const t=edit.target;
