@@ -127,6 +127,7 @@ for (const outcome of ['saved', 'unknown']) {
 test('late login completion cannot replace status after final close', async ({ page }) => {
   await signIn(page);
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Signed out. Page drafts were cleared.');
   const previousStatus = await page.getByRole('status').textContent();
   let release, started;
   const gate = new Promise(resolve => { release = resolve; });
