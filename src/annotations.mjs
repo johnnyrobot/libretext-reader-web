@@ -255,9 +255,13 @@ export function mountAnnotations({
   const query = make("input"); query.type = "search";
   query.placeholder = "Quote, note or topic";
   const authorFilter = make("input"); authorFilter.placeholder = "Name or username";
+  const audience = make("select");
+  for (const [value, label] of [["all", "All permitted annotations"], ["mine", "Mine"], ["course", "Course discussion"]]) {
+    const option = make("option", label); option.value = value; audience.append(option);
+  }
   const searchForm = make("form");
   const searchButton = make("button", "Search annotations"); searchButton.type = "submit";
-  searchForm.append(field("Search this page", query), field("Author (optional)", authorFilter), searchButton);
+  searchForm.append(field("Search this page", query), field("Author (optional)", authorFilter), field("Search audience", audience), searchButton);
   const results = make("div"); results.id = "sr-search-results";
   searchForm.addEventListener("submit", event => { event.preventDefault(); run(searchAnnotations); });
   const exportButton = button("Export JSON", () => run(exportAnnotations));
@@ -660,7 +664,7 @@ export function mountAnnotations({
     }
   }
   function parseTopics(value) { return value.split(",").map(v => v.trim()).filter(Boolean); }
-  function searchFilters() { return { book: manifest.book, page: manifest.page, q: query.value.trim(), author: authorFilter.value.trim(), scope: "all" }; }
+  function searchFilters() { return { book: manifest.book, page: manifest.page, q: query.value.trim(), author: authorFilter.value.trim(), scope: audience.value }; }
   function markSelection(mark) {
     if (mark.orphan || mark.anchor.revision !== manifest.revision) throw Error("This saved passage is stale. It has not been moved.");
     const value = blockSelection(mark.anchor.block);
@@ -727,15 +731,20 @@ export function mountAnnotations({
     if (actor?.id !== original.command.actor) throw Error("Sign in with the original account to reconcile this highlight.");
     try { receipt = receipt ?? await client.highlightCommand(original.command); }
     catch (error) {
+      if (error.code === "IDENTITY_CHANGED") revoke();
       if (error.status && error.status < 500 && ![401,403].includes(error.status)) { highlightPending = null; throw error; }
       if ([401,403].includes(error.status)) revoke(error.status === 401);
       say("Highlight outcome unknown. Use Check pending highlight after signing in with the original account."); return;
     }
     if (highlightPending !== original) return;
-    noteDrafts.delete(`${original.command.actor}:${key()}`);
-    highlightPending = null; editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
-    try { await loadMarks(); say("Personal highlight saved. Only you can see it."); }
-    catch(error) { say(`Highlight saved. Refresh to view it: ${error.message}`); }
+    const deleting = original.command.kind === "delete";
+    if (!deleting || editingMark?.id === original.command.highlight) {
+      noteDrafts.delete(`${original.command.actor}:${key()}`);
+      editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
+    }
+    highlightPending = null;
+    try { await loadMarks(); say(deleting ? "Personal highlight deleted. Other drafts are unchanged." : "Personal highlight saved. Only you can see it."); }
+    catch(error) { say(`Highlight ${deleting ? "deleted" : "saved"}. Refresh to view it: ${error.message}`); }
   }
   async function checkHighlight() {
     if (!highlightPending || actor?.id !== highlightPending.command.actor) return;
@@ -768,6 +777,7 @@ export function mountAnnotations({
     const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/ld+json"}));
     const download = make("a", "Download permitted annotations"); download.href = url; download.download = "libretexts-annotations.json";
     results.replaceChildren(download); download.click();
+    results.replaceChildren(make("p", "JSON download started. Choose Export JSON again for another copy."));
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     say("Permitted annotations exported as JSON with their original source references.");
   }
@@ -894,6 +904,7 @@ export function mountAnnotations({
   });
   async function restorePageMarks() {
     if (!client.annotationSearch || busy) return;
+    renderer.clear();
     const generation = ++restoreGeneration;
     try {
       const current = await client.session();
@@ -902,12 +913,12 @@ export function mountAnnotations({
       actor = current; sessionTimer.update(current.timing);
       await loadMarks(true);
     } catch(error) {
-      if (generation === restoreGeneration && [401,403].includes(error.status)) revoke();
+      if (generation === restoreGeneration && [401,403].includes(error.status)) revoke(error.status === 401);
     }
   }
   void restorePageMarks();
   doc.addEventListener("visibilitychange", () => {
-    if (doc.visibilityState === "visible") { renderer.clear(); void restorePageMarks(); }
+    if (doc.visibilityState === "visible") void restorePageMarks();
   });
   return { panel, close: closePanel };
 }

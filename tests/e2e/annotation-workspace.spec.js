@@ -41,6 +41,7 @@ test('topic search and standards JSON export include only permitted results',asy
  await page.goto(route);await signIn(page);const note='export-'+Date.now();await save(page,note,'unique-study-topic');
  await page.getByRole('button',{name:'Find & export',exact:true}).click();await page.getByRole('searchbox',{name:'Search this page',exact:true}).fill('unique-study-topic');await page.getByRole('button',{name:'Search annotations',exact:true}).click();await expect(page.locator('#sr-search-results')).toContainText(note);
  const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Export JSON',exact:true}).click();const download=await downloadPromise;const data=JSON.parse(readFileSync(await download.path(),'utf8'));expect(data.type).toBe('AnnotationPage');expect(data.items.length).toBeGreaterThan(0);expect(JSON.stringify(data)).toContain(note);expect(JSON.stringify(data)).toContain('TextQuoteSelector');
+ await expect(page.getByRole('link',{name:'Download permitted annotations',exact:true})).toHaveCount(0);
 });
 for(const width of [1440,360,320])test(`workspace keyboard and panel bounds ${width}`,async({page})=>{
  await page.setViewportSize({width,height:900});await page.goto(route);await page.locator('#sr-entry').focus();await page.keyboard.press('Enter');
@@ -159,4 +160,102 @@ test('sign-out clears an unsaved personal note and topics before another account
  await expect(page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('');
  await page.getByRole('button',{name:'Discuss',exact:true}).click();
  await expect(page.locator('#sr-course').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('');
+});
+
+test('returning to an expired session preserves private drafts for same-actor sign-in',async({page})=>{
+ await page.clock.install();
+ await page.route('**/social-reading/api/session',async route=>{
+  const response=await route.fetch();if(response.status()!==200)return route.fulfill({response});
+  const body=await response.json();body.timing={serverNow:1000,expiresAt:3000,warningSeconds:300,canExtend:true,extensionSeconds:28800};
+  await route.fulfill({response,json:body});
+ });
+ await page.goto(route);await page.locator('#sr-entry').click();
+ const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+ async function login(){
+  await page.locator('input[name=username]').fill('alice');await page.locator('input[name=password]').fill(credentials.alice);
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ }
+ await login();await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Private return-to-tab question');
+ await page.getByText('Add topics',{exact:true}).click();
+ await page.locator('#sr-course').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true}).fill('return-to-tab-topic');
+ await page.getByRole('button',{name:'My highlights',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ await page.getByRole('textbox',{name:'Personal note (optional)',exact:true}).fill('Private return-to-tab note');
+ await page.clock.runFor(2100);await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+ await page.unroute('**/social-reading/api/session');
+ await page.route('**/social-reading/api/session',route=>route.fulfill({status:401,json:{error:'Sign in to view private discussion.'}}));
+ const denied=page.waitForResponse(r=>r.url().endsWith('/social-reading/api/session')&&r.status()===401);
+ await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await denied;
+ await page.evaluate(()=>new Promise(requestAnimationFrame));
+ await page.unroute('**/social-reading/api/session');await login();
+ await page.getByRole('button',{name:'My highlights',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Personal note (optional)',exact:true})).toHaveValue('Private return-to-tab note');
+ await page.getByRole('button',{name:'Discuss',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Your question',exact:true})).toHaveValue('Private return-to-tab question');
+ await expect(page.locator('#sr-course').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('return-to-tab-topic');
+});
+
+test('deleting another saved highlight preserves the active unsaved note',async({page})=>{
+ await page.goto(route);await signIn(page);const saved='delete-other-'+Date.now();await save(page,saved);
+ await page.getByRole('button',{name:'Close discussion',exact:true}).click();await select(page,30,55);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ const note=page.getByRole('textbox',{name:'Personal note (optional)',exact:true});
+ await note.fill('Different passage unsaved note');
+ await page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true}).fill('retain-this-topic');
+ await page.locator('.sr-mark').filter({hasText:saved}).getByRole('button',{name:'Delete my highlight',exact:true}).click();
+ await expect(page.locator('#sr-highlight-list')).not.toContainText(saved);
+ await expect(note).toHaveValue('Different passage unsaved note');
+ await expect(page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('retain-this-topic');
+});
+
+test('a rejected previous-account highlight clears private views and drafts immediately',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ await page.getByRole('textbox',{name:'Personal note (optional)',exact:true}).fill('Alice account-bound highlight draft');
+ const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+ expect((await page.request.post('/social-reading/api/login',{headers:{Origin:new URL(page.url()).origin},data:{username:'bob',password:credentials.bob}})).status()).toBe(200);
+ await page.getByRole('button',{name:'Save highlight',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+ await expect(page.locator('#sr-highlight-list .sr-mark')).toHaveCount(0);
+ await page.locator('input[name=username]').fill('bob');await page.locator('input[name=password]').fill(credentials.bob);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'My highlights',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Personal note (optional)',exact:true})).toHaveValue('');
+});
+
+test('audience selection filters both search results and downloaded JSON',async({page})=>{
+ await page.goto(route);await signIn(page);const prefix='audience-'+Date.now();await save(page,prefix+'-private');
+ await page.locator('.sr-mark').filter({hasText:prefix+'-private'}).getByRole('button',{name:'Discuss this highlight',exact:true}).click();
+ await page.getByRole('textbox',{name:'Your question',exact:true}).fill(prefix+'-course');
+ await page.getByRole('button',{name:'Post question',exact:true}).click();
+ await expect(page.locator('#sr-threads')).toContainText(prefix+'-course');
+ await page.getByRole('button',{name:'Find & export',exact:true}).click();
+ await page.getByRole('searchbox',{name:'Search this page',exact:true}).fill(prefix);
+ await page.getByRole('combobox',{name:'Search audience',exact:true}).selectOption('course');
+ await page.getByRole('button',{name:'Search annotations',exact:true}).click();
+ await expect(page.locator('#sr-search-results')).toContainText(prefix+'-course');
+ await expect(page.locator('#sr-search-results')).not.toContainText(prefix+'-private');
+ const downloading=page.waitForEvent('download');await page.getByRole('button',{name:'Export JSON',exact:true}).click();
+ const downloaded=await downloading,data=JSON.parse(readFileSync(await downloaded.path(),'utf8'));
+ expect(data.items.length).toBeGreaterThan(0);expect(data.items.every(item=>item['sr:audience']==='course')).toBe(true);
+ await page.getByRole('combobox',{name:'Search audience',exact:true}).selectOption('mine');
+ await page.getByRole('button',{name:'Search annotations',exact:true}).click();
+ await expect(page.locator('#sr-search-results')).toContainText(prefix+'-private');
+ await expect(page.locator('#sr-search-results')).toContainText(prefix+'-course');
+});
+
+test('returning while a search is busy does not erase existing exact marks',async({page})=>{
+ await page.goto(route);await signIn(page);await save(page,'busy-visibility-'+Date.now());
+ await page.getByRole('button',{name:'Find & export',exact:true}).click();
+ let release,started;
+ const gate=new Promise(resolve=>release=resolve),requestStarted=new Promise(resolve=>started=resolve);
+ await page.route('**/social-reading/api/annotation-search?*',async route=>{started();await gate;await route.continue();},{times:1});
+ try{
+  await page.getByRole('button',{name:'Search annotations',exact:true}).click();await requestStarted;
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
+  expect(await page.evaluate(()=>CSS.highlights.get('sr-personal')?.size??0)).toBeGreaterThan(0);
+ }finally{release();}
+ await expect(page.getByRole('button',{name:'Search annotations',exact:true})).toBeEnabled();
 });

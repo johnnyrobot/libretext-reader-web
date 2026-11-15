@@ -34,3 +34,12 @@ TestSprite run b98717b8-8d74-4a29-b096-f77183e8fdd2 is BLOCKED, not passed. It o
 ## PR-Agent correction disposition
 
 UI pre-open PR-Agent at ca5721e completed, recorded$0.2953 (review$0.1049; improve$0.1171+$0.0733). It identified two confirmed defects: unsent course-topic disclosure after account change, and editing a personal search result without showing the editor. Both were reproduced as failing browser cases, corrected, then passed. Topics now share the existing actor-quarantined question-draft map; expiry restores them only for the original actor, as separately verified for Alice and Bob. An additional suggestion to delete orphan personal marks is rebutted by the accepted backend spec and `src/highlights.ts` orphan-read-only check (all update/delete mutations reject409); no deletion affordance is added for an operation the server deliberately refuses. Independent final UI axes and premerge review remain required.
+
+
+## Independent UI correction round
+
+The first independent UI review at c97436e found one major expiry-recovery defect, plus smaller draft/navigation issues. Returning to a tab after local expiry triggered a second unauthorized background refresh that discarded suspended drafts. The regression failed with an empty personal note after same-actor login; preserving draft quarantine for401and clearing it for403fixed the case. Question/topic/personal-note recovery is asserted through the real UI.
+
+Separate failing→passing cases cover deletion of another mark erasing the active note;409IDENTITY_CHANGED leaving prior-owner private UI visible; missing Mine/Course audience selection for search/export; and a dead download link left after its blob URL expired. The busy-visibility paint check also passes after moving renderer clearing behind the restore busy guard. Search audience follows the backend's existing all|mine|course contract; no access rights change.
+
+The reviewer observed no tests or runtime. Its source-only browser-support caveat does not negate our explicit CLI-driven Firefox/WebKit runs recorded above; the default config alone does not select those engines. Backend null-filter input remains outside the documented optional-string adapter contract; the literal string null may be a legitimate search value and is not silently dropped. This is a nonblocking adapter-consistency nit, not a privacy defect.
