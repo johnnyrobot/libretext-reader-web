@@ -239,3 +239,13 @@ html[data-sr-panel="open"] body {
 ::highlight(sr-course) { background-color: #cbe8fa; color: #172b3a; }
 ::highlight(sr-active) { background-color: #ffd36b; color: #172b3a; text-decoration: underline; }
 @media(max-width:760px) { #sr-panel { padding: .75rem 1rem; } #sr-panel .sr-header h2 { font-size: 1.1rem; } #sr-quick-actions { right: .5rem; left: .5rem; justify-content: center; } }
+
+/* Keep each author attached to their message; indentation also works without colour. */
+#sr-panel .sr-thread > h3 { color: #174b65; margin-bottom: .4rem; }
+#sr-panel .sr-thread > h3 + p { margin-top: .4rem; line-height: 1.6; }
+#sr-panel .sr-reply { margin: 1rem 0 1rem 1rem; padding: .75rem; border-inline-start: 1px solid #8ca9b8; background: #f3f6f8; overflow-wrap: anywhere; }
+#sr-panel .sr-reply strong { color: #174b65; font-size: .9rem; }
+#sr-panel .sr-reply p { margin: .35rem 0 0; line-height: 1.6; }
+#sr-panel .sr-thread:focus-within { border-top-color: #005d85; }
+#sr-panel .sr-thread textarea:focus-visible { outline: 2px solid #005d85; outline-offset: 2px; }
+@media (max-width: 480px) { #sr-panel .sr-reply { margin-inline-start: .5rem; } }

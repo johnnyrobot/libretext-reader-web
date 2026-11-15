@@ -655,7 +655,12 @@ export function mountAnnotations({
         threadQuote.tabIndex = 0;
         row.append(threadQuote);
       }
-      for (const r of t.replies) row.append(make("p", `${r.name}: ${r.text}`));
+      for (const r of t.replies) {
+        const message = make("div");
+        message.className = "sr-reply";
+        message.append(make("strong", r.name), make("p", r.text));
+        row.append(message);
+      }
       const form = make("form"),
         reply = make("textarea"),
         submit = make("button", "Post reply");
