@@ -19,4 +19,13 @@ The current local stage is `/Users/johnnyrobot/code/annotation-redesign-stage`. 
 
 ## Open gates
 
-Independent final UI Standards/Spec/fresh Correctness; backend fix-only re-review; PR-Agent outcomes; exactly one CodeRabbit per PR at final readiness; source/postmerge CI; bounded TestSprite verdict with explicit coverage limits; complete final restart/source-hash/release validation. Actual VoiceOver is SKIPPED BY OWNER, not passed. Existing textbook source limitations and Reader LT-555 corrections remain excluded. No live deployment is authorized by this redesign assignment.
+Independent final UI Standards/Spec/fresh Correctness; backend fix-only re-review; PR-Agent outcomes; exactly one CodeRabbit per PR at final readiness; source/postmerge CI; bounded TestSprite verdict with explicit coverage limits; complete release packaging and final source-hash validation. Actual VoiceOver is SKIPPED BY OWNER, not passed. Existing textbook source limitations and Reader LT-555 corrections remain excluded. No live deployment is authorized by this redesign assignment.
+
+
+## Additional recovery evidence
+
+The full36-case incumbent run passed the first20 cases, then hit the real15-account-sign-ins/minute protection; it was stopped with failures retained. Eleven expiry/privacy/validation/focus cases subsequently passed in an isolated bounded group. Five of the final six recovery/cross-book cases passed; the refresh-revocation test expected the toolbar before its asynchronous open had completed. It now waits for the authorized open before switching accounts, preserving the intended explicit-refresh seam. A separate unsaved-personal-note/topic sign-out-to-Bob regression passed.
+
+The isolated API was restarted through its separately named local lifecycle. Exact saved personal and course marker IDs and content digest matched before/after, while preserving the existing synthetic database. Seven staged annotation assets were individually checked against source with zero mismatches.
+
+TestSprite run b98717b8-8d74-4a29-b096-f77183e8fdd2 is BLOCKED, not passed. It observed the anonymous panel/keyboard return path, then reported that its browser could not select paragraph text with the mouse. Native Chromium/Firefox/WebKit tests cover the missing selection actions. The failure-artifact request was refused by the service with environment_changed; the scrubbed run summary remains in local evidence. Exactly one new run used0.5credit (680.9before→680.4after, actual plan Standard). No upgrade or automatic rerun occurred; authenticated feature coverage is native evidence, not TestSprite evidence.

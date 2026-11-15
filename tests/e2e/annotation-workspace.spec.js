@@ -134,3 +134,20 @@ test('personal notes edit and author search stay explicit at desktop and mobile 
  await page.locator('.sr-mark').filter({hasText:note+'-edited'}).getByRole('button',{name:'Delete my highlight',exact:true}).click();
  await expect(page.locator('#sr-highlight-list')).not.toContainText(note+'-edited');
 });
+
+test('sign-out clears an unsaved personal note and topics before another account signs in',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ const note=page.getByRole('textbox',{name:'Personal note (optional)',exact:true});
+ await note.fill('Alice private unsaved thought');
+ await page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true}).fill('alice-private-topic');
+ await page.getByRole('button',{name:'Sign out',exact:true}).click();
+ const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+ await page.locator('input[name=username]').fill('bob');await page.locator('input[name=password]').fill(credentials.bob);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'My highlights',exact:true}).click();
+ await expect(note).toHaveValue('');
+ await expect(page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true})).toHaveValue('');
+});

@@ -670,6 +670,7 @@ test("refresh revokes drafts when another tab changes accounts", async ({ page }
     getSelection().addRange(range);
   });
   await page.getByRole("button", { name: "Selection unavailable", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
   const credentials = JSON.parse(readFileSync(credentialsFile, "utf8"));
   await accountRequest(page, "login", { username: "bob", password: credentials.bob });
   await page.getByRole("button", { name: "Refresh discussion", exact: true }).click();
