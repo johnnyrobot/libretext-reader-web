@@ -494,6 +494,11 @@ export function mountAnnotations({
       const savedNote = noteDrafts.get(`${actor.id}:${key()}`);
       if (savedNote) { note.value = savedNote.text; topics.value = savedNote.tags; editingMark = savedNote.editing; saveMark.textContent = editingMark ? "Save changes" : "Save highlight"; }
     }
+    exactQuote.value = value.selector?.quote ?? "";
+    occurrence.value = "1";
+    exactQuote.removeAttribute("aria-invalid");
+    occurrence.removeAttribute("aria-invalid");
+    quoteError.textContent = "";
     chooser.value = value.block.block;
     quote.textContent = value.selector?.quote ?? value.block.quote;
     input.value = drafts.get(key()) ?? "";
@@ -618,7 +623,7 @@ export function mountAnnotations({
     const loaded = await client.threads(c);
     if (view !== viewGeneration || panel.hidden) return;
     await verifyActor();
-    if (generation !== threadLoadGeneration || !actor) return;
+    if (generation !== threadLoadGeneration || view !== viewGeneration || panel.hidden || actor?.id !== expectedActor) return;
     threads.replaceChildren();
     if (!loaded.length)
       threads.append(make("p", "No questions on this passage yet."));
@@ -916,8 +921,47 @@ export function mountAnnotations({
   };
   for (const control of [entry, quick])
     control.addEventListener("focusout", () => queueMicrotask(clearUnfocusedSelection));
+  let selectingText = false;
+  function syncOpenSelection() {
+    if (panel.hidden) return;
+    const selection = doc.getSelection();
+    if (!selection || selection.isCollapsed || !main.contains(selection.anchorNode)) return;
+    const origin = selection.anchorNode.nodeType === 1 ? selection.anchorNode : selection.anchorNode.parentElement;
+    if (origin?.closest("button, input, textarea, select, [contenteditable], [data-tts-ui]")) return;
+    if (busy || pending || highlightPending) {
+      say("Check the pending operation before changing passages. The current passage is unchanged.");
+      return;
+    }
+    let value;
+    try { value = captureSelection(main, manifest, selection); }
+    catch (error) {
+      if (selected) { drafts.set(key(), input.value); drafts.set(`topics:${key()}`, courseTopics.value); saveNoteDraft(); }
+      selected = null;
+      threadLoadGeneration++;
+      threads.replaceChildren();
+      quote.textContent = error.message;
+      exactQuote.value = "";
+      say(error.message);
+      lock();
+      return;
+    }
+    if (!value || (selected?.block.block === value.block.block &&
+        JSON.stringify(selected.selector) === JSON.stringify(value.selector))) return;
+    pick(value);
+    threadLoadGeneration++;
+    if (actor) void run(loadThreads);
+  }
+  doc.addEventListener("pointerdown", event => {
+    selectingText = main.contains(event.target) && !event.target.closest("button, input, textarea, select, [contenteditable], [data-tts-ui]");
+  });
+  doc.addEventListener("pointerup", () => {
+    if (!selectingText) return;
+    selectingText = false;
+    syncOpenSelection();
+  });
+  doc.addEventListener("pointercancel", () => { selectingText = false; });
   doc.addEventListener("selectionchange", () => {
-    if (!panel.hidden) return;
+    if (!panel.hidden) { if (!selectingText) syncOpenSelection(); return; }
     if (captured && doc.getSelection()?.isCollapsed && selectionControlFocused()) return;
     try {
       captured = captureSelection(main, manifest, doc.getSelection());
