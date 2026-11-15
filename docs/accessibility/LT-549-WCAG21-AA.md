@@ -1,6 +1,13 @@
 # LT-549 WCAG 2.1 A/AA applicability and evidence matrix
 
-## Current LT-553 candidate — 2026-11-14
+## Current keyboard integration correction
+
+**Release HOLD.** Executable `d3efb5d69da4cb6252c7013c466da0f8ef945de0`, stage `/Users/johnnyrobot/code/lt553-at-space-fix`. First-round Standards and Spec found no major/critical issues at `5ae3b4d`; fresh Correctness found one major: Listen intercepted Space on discussion buttons. Native regression reproduced the closed panel after Space. The fix respects already-handled events and native interactive Space/arrow activation while retaining Escape behavior. Second, fix-only review is pending before publication and the one final hosted-CI observation.
+
+Final reruns: 11 layout cases, 36 distinct discussion/status cases, 3 Listen regressions including Space on Open/Sign in/Post/Close without starting audio, and 1,712 JavaScript tests pass (8 skipped); build/diff checks pass. Evidence: `.scratch/lt553/space-fix/`. Both prior stages/packages are preserved; their affected executable/runtime evidence is superseded by this candidate. All 94 sampled catalog revisions/passages remain unchanged. R1 audible status, R3–R9 source/context decisions, final-artifact AT/target coverage and production admission remain held. No new moderation/edit/delete UI per Chief's R12 disposition.
+
+
+## Prior pre-shortcut candidate — 2026-11-14
 
 **Release HOLD.** Executable source `e2feddd7af7a1d97539ec6a0226e3a3f152f9d11`; independent Standards/Spec/fresh Correctness review and final publication/hosted CI are pending. LT-552 source/docs are published through `3528413`; no merge or deployment. The new candidate supersedes the affected Listen/control/layout executable and package evidence from `67b6dc2` and `185cbfe/ef34231`; historical artifacts remain intact. Annotation status JavaScript/API/anchor semantics and all 94 catalog revisions/passages are unchanged.
 
