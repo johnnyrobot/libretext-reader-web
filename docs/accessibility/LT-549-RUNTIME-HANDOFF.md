@@ -1,5 +1,10 @@
 # LT-549 runtime handoff to Social Reading
 
+## LT-554 source follow-up (candidate; integrated release HOLD)
+
+PR18 source is merged at9f4026b after green required hosted checks; its one postmerge observation found workflow43676910579 in progress, not a claimed postmerge pass. [LT-554](LT-554-STORAGE-PERSISTENCE.md) fixes the subsequent optional-persistence wait on a separate current-base branch. Candidate d5d5ea2 now passes real cold Firefox153 initialized Listen/Space/layout at desktop,320px and short/enlarged sizes without pregrant or seeded cache. Twelve fault/consent cases and relevant existing checks pass. This supersedes the prior Firefox pre-mount blocker only for the candidate and tested scope. Source review/new-PR/hosted gates and production admission remain pending; actual Firefox playback/AT is not inferred. No new VoiceOver attempt occurred; R1, source/context, final-process and deployment gates remain held. Current candidate runtime/stage hashes are in the LT-554 receipt; previous packets are preserved.
+
+
 ## Authoritative release disposition — 2026-11-14
 
 Current findings and finite owner/action rows are consolidated in [final bounded release closeout](LT-549-FINAL-RELEASE-CLOSEOUT.md). Published Reader source24d83a8 is executable-equivalent to d3efb5d; LT-552/LT-553 and the Space major are corrected. R2 is closed as a source defect. R13 is a hosted-CI/source-merge/composition gate: the correct pull_request run exists, observed in progress once; no hosted pass, merge or deployment claimed. Earlier local/publication/CI-pending statements below are historical checkpoints.

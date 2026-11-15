@@ -1,5 +1,10 @@
 # LT-549 final bounded release closeout — 2026-11-14
 
+## LT-554 source follow-up (candidate; integrated release HOLD)
+
+PR18 source is merged at9f4026b after green required hosted checks; its one postmerge observation found workflow43676910579 in progress, not a claimed postmerge pass. [LT-554](LT-554-STORAGE-PERSISTENCE.md) fixes the subsequent optional-persistence wait on a separate current-base branch. Candidate d5d5ea2 now passes real cold Firefox153 initialized Listen/Space/layout at desktop,320px and short/enlarged sizes without pregrant or seeded cache. Twelve fault/consent cases and relevant existing checks pass. This supersedes the prior Firefox pre-mount blocker only for the candidate and tested scope. Source review/new-PR/hosted gates and production admission remain pending; actual Firefox playback/AT is not inferred. No new VoiceOver attempt occurred; R1, source/context, final-process and deployment gates remain held. Current candidate runtime/stage hashes are in the LT-554 receipt; previous packets are preserved.
+
+
 Release HOLD. Source/runtime executable is `d3efb5d69da4cb6252c7013c466da0f8ef945de0`, published through PR18 head `24d83a8d2e5b8397ef27cc16a959bb575cb35420` before this documentation-only closeout. LT-552 and LT-553 corrections, including the major Space-interception fix, are accepted by the completed source reviews. No new product source, textbook, backend or production asset changes were made in this continuation.
 
 ## Hosted CI and PR records
