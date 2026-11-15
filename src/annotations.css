@@ -34,12 +34,15 @@ html[data-sr-enabled] .crumb-inner .contents {
 #sr-entry {
   position: fixed;
   right: 1rem;
-  bottom: min(6rem, 35dvh);
+  bottom: var(--tts-entry-bottom, min(6rem, 35dvh));
   z-index: 44;
   background: white;
   border: 1px solid var(--lt-blue, #3f7fbd);
   padding: 0.65rem 1rem;
   cursor: pointer;
+}
+html[data-tts-reader="on"] {
+  --tts-entry-bottom: calc(var(--tts-bar-height, 5.5rem) + 0.5rem);
 }
 html[data-sr-panel="open"] #sr-entry {
   visibility: hidden;
@@ -48,7 +51,7 @@ html[data-sr-panel="open"] #sr-entry {
   position: fixed;
   right: 0;
   top: 0;
-  bottom: 5.5rem;
+  bottom: var(--tts-bar-height, 5.5rem);
   width: 23rem;
   display: flex;
   flex-direction: column;
@@ -151,22 +154,22 @@ html[data-sr-panel="open"] body {
   padding-top: 0.5rem;
 }
 @media (max-width: 760px) {
-  html[data-sr-panel="open"] {
+  :root[data-sr-panel="open"] {
     /* Use 60% of the space above Listen, leaving source focus unobscured. */
-    --sr-panel-height: max(0px, calc((100dvh - 5.5rem) * 0.6));
+    --sr-panel-height: max(0px, calc((100dvh - var(--tts-bar-height, 5.5rem)) * 0.6));
     /* Same reserved space, using root em to track WebKit text enlargement. */
-    scroll-padding-bottom: calc(60dvh + 2.2em);
+    scroll-padding-bottom: calc(60dvh + var(--tts-bar-height, 5.5em) * 0.4);
   }
   html[data-sr-panel="open"] body {
     padding-right: 0;
-    padding-bottom: calc(var(--sr-panel-height) + 5.5rem);
+    padding-bottom: calc(var(--sr-panel-height) + var(--tts-bar-height, 5.5rem));
   }
   #sr-panel {
     top: auto;
-    bottom: 5.5rem;
+    bottom: var(--tts-bar-height, 5.5rem);
     width: 100%;
     height: var(--sr-panel-height, 70dvh);
-    max-height: calc(100dvh - 5.5rem);
+    max-height: calc(100dvh - var(--tts-bar-height, 5.5rem));
     border-left: 0;
     border-top: 1px solid var(--lt-line, #b8d7e8);
   }

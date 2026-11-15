@@ -97,6 +97,22 @@ export function mountControls(host, {
 
   host.appendChild(bar);
 
+  // Wrapped controls may change height with viewport, text or status updates.
+  // Share the actual occupied space with source scrolling and discussion CSS.
+  const root = document.documentElement;
+  const previousHeight = root.style.getPropertyValue('--tts-bar-height');
+  const previousPriority = root.style.getPropertyPriority('--tts-bar-height');
+  const measureBar = () => {
+    const value = `${bar.getBoundingClientRect().height}px`;
+    if (root.style.getPropertyValue('--tts-bar-height') !== value) {
+      root.style.setProperty('--tts-bar-height', value);
+    }
+  };
+  const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measureBar);
+  resizeObserver?.observe(bar);
+  window.addEventListener('resize', measureBar);
+  measureBar();
+
   return {
     setState({ playing: isPlaying, buffering, message }) {
       playing = isPlaying;
@@ -132,6 +148,13 @@ export function mountControls(host, {
       entry.bytes = bytes;
       paintLanguage(entry);
     },
-    destroy() { document.removeEventListener('keydown', onKey); bar.remove(); },
+    destroy() {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', measureBar);
+      document.removeEventListener('keydown', onKey);
+      bar.remove();
+      if (previousHeight) root.style.setProperty('--tts-bar-height', previousHeight, previousPriority);
+      else root.style.removeProperty('--tts-bar-height');
+    },
   };
 }
