@@ -265,3 +265,37 @@ html[data-sr-panel="open"] body {
 #sr-panel .sr-thread button[type=submit]:enabled { background: white; color: #005d85; }
 #sr-panel .sr-thread button[type=submit]:enabled:hover { background: #e7f1f7; }
 @media (forced-colors: active) { #sr-panel .sr-initials { border: 1px solid CanvasText; } #sr-panel .sr-author { color: CanvasText; } }
+
+/* Participation has a continuous structural rule; utilities remain outside it. */
+#sr-panel .sr-passage,
+#sr-panel .sr-question,
+#sr-panel .sr-conversations {
+  border-inline-start: 4px solid #425766;
+  padding-inline-start: 1rem;
+  margin-block: 1.5rem;
+}
+#sr-panel .sr-passage > h3,
+#sr-panel .sr-question > h3,
+#sr-panel .sr-conversations > h3 { font-size: 1.05rem; line-height: 1.4; margin: 0 0 .75rem; }
+#sr-panel .sr-passage blockquote { margin-block: 0; }
+#sr-panel .sr-utilities { border-block: 1px solid #8ca9b8; padding-block: .75rem; margin-block: 1.5rem; }
+#sr-panel .sr-utilities .sr-views { margin-block: .75rem; }
+#sr-panel .sr-question { border-bottom: 0; padding-block: .25rem; }
+#sr-panel .sr-conversations { padding-block: .25rem; }
+#sr-panel .sr-thread { margin-block-start: 1.5rem; padding-block-start: 1.25rem; border-top: 1px solid #8ca9b8; }
+#sr-panel .sr-thread:first-child { margin-block-start: 0; padding-block-start: 0; border-top: 0; }
+#sr-panel .sr-thread > h3 { font-size: 1rem; }
+#sr-panel .sr-reply,
+#sr-panel .sr-reply-composer { margin-inline: 1.5rem 0; padding-inline: .75rem 0; border-inline-start: 2px solid #718391; }
+#sr-panel .sr-reply { margin-block: 1.25rem; padding-block: .25rem; }
+#sr-panel .sr-reply-composer { margin-block: 1.5rem .5rem; padding-block: .25rem; }
+#sr-panel .sr-reply-composer > p:first-child { margin-block-start: 0; }
+#sr-panel #sr-search { border-block-start: 1px solid #8ca9b8; padding-block-start: .75rem; margin-block-start: 1.5rem; }
+@media (max-width: 480px) {
+  #sr-panel .sr-passage, #sr-panel .sr-question, #sr-panel .sr-conversations { padding-inline-start: .75rem; }
+  #sr-panel .sr-reply, #sr-panel .sr-reply-composer { margin-inline-start: 1.25rem; }
+}
+@media (forced-colors: active) {
+  #sr-panel .sr-passage, #sr-panel .sr-question, #sr-panel .sr-conversations,
+  #sr-panel .sr-reply, #sr-panel .sr-reply-composer, #sr-panel .sr-utilities { border-color: CanvasText; }
+}
