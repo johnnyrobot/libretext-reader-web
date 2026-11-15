@@ -1,0 +1,11 @@
+# Passage annotation controls
+
+This design applies only to the annotation workspace embedded in the existing LibreTexts textbook. The textbook, navigation, Listen and translation retain their existing design and owners.
+
+Use the inherited font and restrained textbook blue. Primary actions use #005d85 with white text; body text uses #172b3a on white. Muted text #425766, borders #8ca9b8 and pale #f3f6f8 quote surfaces separate controls without decorative depth. Personal marks are warm yellow and course marks pale blue; visible audience text and row actions convey meaning independently of color.
+
+The primary sequence is selected passage, explicit Highlight or Discuss, then deliberate Save or Post. The panel offers Discuss, My highlights and Find & export as named views. Exact quote/occurrence controls live in a native details element as a keyboard alternative. Keep the source visible and all annotation DOM outside main.
+
+Desktop uses a 26rem side panel with an independently scrolling body. At 760px and below, use the existing source-preserving bottom-panel layout. Compact account/close controls leave space for tasks. The selection toolbar sits above the existing annotation entry, including during Listen. Controls have at least44px height and a visible3px focus ring. Keep focus on the user's current action during jumps and restore the entry on close.
+
+Use explicit loading, acknowledgment, unknown-outcome, authorization and stale-source messages. Never display a validation error before submission or imply a failed refresh erased an acknowledged save. No decorative animation is needed for this task surface.

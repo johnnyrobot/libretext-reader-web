@@ -1,5 +1,6 @@
-import { createClient } from "./social-reading/client.mjs";
+import { createAnnotationClient as createClient } from "./annotations/client.mjs";
 import { normalizeText, validSelector } from "./social-reading/anchor.mjs";
+import { createMarkRenderer } from "./annotations/marks.mjs";
 import { createSessionTimer } from "./session-timer.mjs";
 
 export function canonicalText(node) {
@@ -78,8 +79,9 @@ export function mountAnnotations({
   panel.id = "sr-panel";
   panel.hidden = true;
   panel.setAttribute("aria-label", "Textbook discussion");
-  const heading = make("h2", "Discuss this passage");
-  const close = button("Close discussion", () => closePanel());
+  const heading = make("h2", "Passage notes");
+  const close = button("Close", () => closePanel());
+  close.setAttribute("aria-label", "Close discussion");
   const header = make("div");
   header.className = "sr-header";
   header.append(heading, close);
@@ -177,7 +179,7 @@ export function mountAnnotations({
   const signIn = make("button", "Sign in");
   signIn.type = "submit";
   login.append(
-    make("p", "Both sign-in fields are required."),
+    make("p", "Sign in to save personal highlights or join your course discussion."),
     field("Username", username),
     field("Password", password),
     signIn,
@@ -200,7 +202,7 @@ export function mountAnnotations({
   sessionMessage.setAttribute("role", "alert");
   const staySignedIn = button("Stay signed in", () => run(extendSession));
   sessionNotice.append(sessionMessage, staySignedIn);
-  const refresh = button("Refresh discussion", () => run(loadThreads));
+  const refresh = button("Refresh discussion", () => run(async () => { await loadThreads(); await loadMarks(); }));
   const question = make("form");
   const input = make("textarea");
   input.required = true;
@@ -228,24 +230,72 @@ export function mountAnnotations({
   const threads = make("div");
   threads.id = "sr-threads";
   member.append(identity, signOut, refresh, question, recover, threads);
+  const course = make("section");
+  course.id = "sr-course";
+  const courseTopics = make("input");
+  courseTopics.placeholder = "e.g. evidence, question";
+  const courseDetails = make("details"); courseDetails.append(make("summary", "Add topics"), field("Topics (optional, comma separated)", courseTopics));
+  question.insertBefore(courseDetails, post);
+  course.append(make("p", "Course discussion · visible to admitted course members"), question, recover, threads);
+  const personal = make("section");
+  personal.id = "sr-personal";
+  const note = make("textarea");
+  note.maxLength = 4000;
+  const topics = make("input");
+  topics.placeholder = "e.g. revisit, exam";
+  const saveMark = button("Save highlight", () => run(saveHighlight));
+  const checkMark = button("Check pending highlight", () => run(checkHighlight));
+  checkMark.hidden = true;
+  const personalList = make("div");
+  personalList.id = "sr-highlight-list";
+  const noteDetails = make("details"); noteDetails.append(make("summary", "Add a personal note or topics"), field("Personal note (optional)", note), field("Topics (optional, comma separated)", topics));
+  personal.append(make("p", "Only you · your highlights and notes are private"), saveMark, checkMark, noteDetails, personalList);
+  const finding = make("section");
+  finding.id = "sr-search";
+  const query = make("input"); query.type = "search";
+  query.placeholder = "Quote, note or topic";
+  const authorFilter = make("input"); authorFilter.placeholder = "Name or username";
+  const searchForm = make("form");
+  const searchButton = make("button", "Search annotations"); searchButton.type = "submit";
+  searchForm.append(field("Search this page", query), field("Author (optional)", authorFilter), searchButton);
+  const results = make("div"); results.id = "sr-search-results";
+  searchForm.addEventListener("submit", event => { event.preventDefault(); run(searchAnnotations); });
+  const exportButton = button("Export JSON", () => run(exportAnnotations));
+  finding.append(searchForm, exportButton, make("p", "Export includes only your permitted results, with exact source references."), results);
+  const viewBar = make("nav"); viewBar.setAttribute("aria-label", "Annotation view"); viewBar.className = "sr-views";
+  let activeView = "course", editingMark = null, highlightPending = null, pageRecords = [], marksVisible = true, markGeneration = 0, restoreGeneration = 0;
+  const views = { course, personal, search: finding };
+  const viewButtons = new Map();
+  for (const [name, label] of [["course", "Discuss"], ["personal", "My highlights"], ["search", "Find & export"]]) {
+    const control = button(label, () => chooseView(name));
+    control.setAttribute("aria-controls", views[name].id);
+    viewButtons.set(name, control); viewBar.append(control);
+  }
+  const visibility = button("Hide highlights", () => {
+    marksVisible = !marksVisible; renderer.setVisible(marksVisible);
+    visibility.textContent = marksVisible ? "Hide highlights" : "Show highlights";
+    visibility.setAttribute("aria-pressed", String(marksVisible));
+  });
+  visibility.setAttribute("aria-pressed", "true");
+  const navigation = make("div"); navigation.className = "sr-tools"; navigation.append(refresh, visibility);
+  const account = make("div"); account.className = "sr-account"; account.append(identity, signOut);
+  member.replaceChildren(account, viewBar, navigation, course, personal, finding);
+  function chooseView(name) {
+    activeView = name;
+    for (const [key, surface] of Object.entries(views)) {
+      surface.hidden = name !== key; viewButtons.get(key).setAttribute("aria-pressed", String(name === key));
+    }
+  }
+  chooseView("course");
+  const advanced = make("details"); advanced.className = "sr-passage-tools";
+  advanced.append(make("summary", "Choose a passage with the keyboard"), chooser, use,
+    make("p", "Choose a whole passage, or enter an exact quote. Choose its occurrence when the text repeats."),
+    field("Exact quote (optional)", exactQuote), field("Quote occurrence", occurrence), useQuote, quoteError);
   const content = make("div");
   content.className = "sr-content";
   content.append(
-    make(
-      "p",
-      "Private discussion · invented demonstration course and accounts",
-    ),
-    chooser,
-    use,
-    make("p", "To discuss part of a passage using the keyboard, enter its exact text. If it appears more than once, choose the occurrence."),
-    field("Exact quote (optional)", exactQuote),
-    field("Quote occurrence", occurrence),
-    useQuote,
-    quoteError,
-    quote,
-    status,
-    login,
-    member,
+    make("p", "Select text in the reading to highlight it or discuss it with your course."),
+    quote, status, login, member, advanced,
   );
   panel.append(header, content);
   doc.body.append(entry, panel, sessionNotice);
@@ -257,7 +307,17 @@ export function mountAnnotations({
     queuedOpen = null,
     threadLoadGeneration = 0,
     restore = null;
+  const renderer = createMarkRenderer({ document: doc, main, manifest, onSelect: showMarkChoices });
+  const quick = make("div"); quick.id = "sr-quick-actions"; quick.hidden = true;
+  quick.setAttribute("aria-label", "Selected text actions");
+  quick.append(button("Highlight", async () => { const value = captured; if (value && !value.error) { await open(value); chooseView("personal"); if (actor) saveMark.focus({ preventScroll: true }); }}),
+    button("Discuss", async () => { const value = captured; if (value && !value.error) { await open(value); chooseView("course"); if (actor) input.focus({ preventScroll: true }); }}));
+  quick.addEventListener("pointerdown", event => event.preventDefault());
+  doc.body.append(quick);
   const drafts = new Map();
+  const noteDrafts = new Map();
+  const saveNoteDraft = () => { if (actor && selected) noteDrafts.set(`${actor.id}:${key()}`, {text:note.value,tags:topics.value,editing:editingMark}); };
+  note.addEventListener("input", saveNoteDraft); topics.addEventListener("input", saveNoteDraft);
   let suspendedDrafts = null;
   const sessionTimer = createSessionTimer({
     onWarning: () => { if (actor) sessionNotice.hidden = false; },
@@ -319,6 +379,8 @@ export function mountAnnotations({
     occurrence.disabled = busy || !!pending;
     chooser.disabled = busy || !!pending;
     recover.hidden = !pending;
+    saveMark.disabled = busy || !actor || !selected || !!highlightPending;
+    checkMark.hidden = !highlightPending || highlightPending.command.actor !== actor?.id;
   };
   function revoke(preserveDrafts = false) {
     const focused = doc.activeElement;
@@ -331,6 +393,10 @@ export function mountAnnotations({
     sessionTimer.clear();
     sessionNotice.hidden = true;
     threadLoadGeneration++;
+    if (preserveDrafts) saveNoteDraft(); else noteDrafts.clear();
+    restoreGeneration++; markGeneration++;
+    renderer.clear(); pageRecords = []; personalList.replaceChildren(); results.replaceChildren();
+    note.value = ""; topics.value = ""; query.value = ""; authorFilter.value = ""; editingMark = null;
     actor = null;
     drafts.clear();
     input.value = "";
@@ -387,7 +453,7 @@ export function mountAnnotations({
         const reply = [...threads.querySelectorAll(".sr-thread")]
           .find(row => row.dataset.srThread === replyThread)?.querySelector("textarea");
         const survivingInitiator = initiator?.isConnected && !initiator.closest("[hidden]") && !initiator.disabled ? initiator : null;
-        const target = survivingInitiator ?? (panel.hidden ? entry : actor ? (reply ?? (pending ? recover : input)) : username);
+        const target = survivingInitiator ?? (panel.hidden ? entry : actor ? (activeView === "personal" ? (highlightPending ? checkMark : saveMark) : activeView === "search" ? query : (reply ?? (pending ? recover : input))) : username);
         (target.disabled ? close : target).focus();
       }
       if (queuedOpen && !panel.hidden) {
@@ -411,10 +477,15 @@ export function mountAnnotations({
     return { block, paragraph };
   }
   function pick(value) {
-    if (pending)
+    if (pending || highlightPending)
       throw Error("Check the pending submission before changing passages.");
-    if (selected) drafts.set(key(), input.value);
+    if (selected) { drafts.set(key(), input.value); saveNoteDraft(); }
     selected = value;
+    editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
+    if (actor) {
+      const savedNote = noteDrafts.get(`${actor.id}:${key()}`);
+      if (savedNote) { note.value = savedNote.text; topics.value = savedNote.tags; editingMark = savedNote.editing; saveMark.textContent = editingMark ? "Save changes" : "Save highlight"; }
+    }
     chooser.value = value.block.block;
     quote.textContent = value.selector?.quote ?? value.block.quote;
     input.value = drafts.get(key()) ?? "";
@@ -425,7 +496,7 @@ export function mountAnnotations({
     finishChecking(checkingStatus, "");
     viewGeneration++;
     queuedOpen = null;
-    if (selected) drafts.set(key(), input.value);
+    if (selected) { drafts.set(key(), input.value); saveNoteDraft(); }
     panel.hidden = true;
     doc.body.append(sessionNotice);
     entry.setAttribute("aria-expanded", "false");
@@ -446,6 +517,8 @@ export function mountAnnotations({
     if (generation !== viewGeneration || panel.hidden) return false;
     if (previous && previous.id !== signedActor.id) revoke();
     actor = signedActor;
+    const savedNote = noteDrafts.get(`${actor.id}:${key()}`);
+    if (savedNote) { note.value = savedNote.text; topics.value = savedNote.tags; editingMark = savedNote.editing; saveMark.textContent = editingMark ? "Save changes" : "Save highlight"; }
     if (suspendedDrafts) {
       if (suspendedDrafts.actor === actor.id) {
         for (const [name, value] of suspendedDrafts.entries) drafts.set(name, value);
@@ -455,6 +528,7 @@ export function mountAnnotations({
     }
     const authorizedView = viewGeneration;
     await loadThreads();
+    await loadMarks();
     if (authorizedView !== viewGeneration || panel.hidden || actor?.id !== signedActor.id) return false;
     staySignedIn.hidden = false;
     sessionMessage.textContent = "Your discussion session ends soon. Stay signed in to keep working.";
@@ -475,6 +549,7 @@ export function mountAnnotations({
       y: window.scrollY,
     };
     panel.hidden = false;
+    quick.hidden = true;
     header.append(sessionNotice);
     entry.setAttribute("aria-expanded", "true");
     member.hidden = true;
@@ -540,6 +615,7 @@ export function mountAnnotations({
       row.className = "sr-thread";
       row.dataset.srThread = t.id;
       row.append(make("h3", t.name), make("p", t.text));
+      if (t.tags?.length) row.append(make("p", t.tags.map(tag => `#${tag}`).join(" ")));
       if (t.anchor.selector) {
         const threadQuote = make("blockquote", t.anchor.selector.quote);
         threadQuote.tabIndex = 0;
@@ -579,6 +655,118 @@ export function mountAnnotations({
       row.append(form);
       threads.append(row);
     }
+  }
+  function parseTopics(value) { return value.split(",").map(v => v.trim()).filter(Boolean); }
+  function searchFilters() { return { book: manifest.book, page: manifest.page, q: query.value.trim(), author: authorFilter.value.trim(), scope: "all" }; }
+  function markSelection(mark) {
+    if (mark.orphan || mark.anchor.revision !== manifest.revision) throw Error("This saved passage is stale. It has not been moved.");
+    const value = blockSelection(mark.anchor.block);
+    if (value.block.quote !== mark.anchor.quote || (mark.anchor.selector && !validSelector(value.block.quote, mark.anchor.selector))) throw Error("This saved quote no longer matches the source.");
+    return { ...value, ...(mark.anchor.selector ? { selector: mark.anchor.selector } : {}) };
+  }
+  async function loadMarks(allowClosed = false) {
+    if (!actor || !client.annotationSearch) return;
+    const generation = ++markGeneration, expected = actor.id;
+    const loaded = await client.annotationSearch({ book: manifest.book, page: manifest.page, scope: "all" });
+    const current = await client.session();
+    if (current.id !== expected) { revoke(); throw Error("Account changed. Private highlights were cleared."); }
+    if (generation !== markGeneration || actor?.id !== expected || (panel.hidden && !allowClosed)) return;
+    pageRecords = [...loaded.highlights.map(m => ({ ...m, kind: "personal" })), ...loaded.threads.map(t => ({ ...t, kind: "course" }))];
+    renderer.render(pageRecords); renderer.setVisible(marksVisible);
+    renderPersonal(loaded.highlights);
+  }
+  function showMarkChoices(records) {
+    if (!actor || !records.length) return;
+    const expected = actor.id;
+    if (pending || highlightPending) { say("Reconcile the pending submission before opening another annotation."); return; }
+    let target; try { target = markSelection(records[0]); } catch(error) { say(error.message); return; }
+    void open(target).then(() => {
+      if (actor?.id !== expected || panel.hidden) return;
+      chooseView("personal");
+      personalList.replaceChildren(make("h3", records.length > 1 ? "Choose an overlapping annotation" : "Selected annotation"));
+      for (const record of records) personalList.append(markRow(record));
+    });
+  }
+  function markRow(mark) {
+    const row = make("section"); row.className = "sr-mark";
+    row.append(make("p", mark.kind === "course" ? `Course discussion · ${mark.name ?? mark.author}` : "Only you"),
+      make("blockquote", mark.anchor.selector?.quote ?? mark.anchor.quote));
+    if (mark.text) row.append(make("p", mark.text));
+    if (mark.tags?.length) row.append(make("p", mark.tags.map(t => `#${t}`).join(" ")));
+    if (mark.orphan) { row.append(make("p", "Stale source · saved history retained; this mark has not moved.")); return row; }
+    row.append(button("Jump to passage", () => { if (!renderer.jump(mark)) { say("This passage cannot be located in the current reading view. Return to the original source."); return; } say("Passage located in the reading."); }),
+      button(mark.kind === "course" ? "Open discussion" : "Discuss this highlight", () => run(async () => { pick(markSelection(mark)); chooseView("course"); await loadThreads(); const target = mark.kind === "course" ? [...threads.querySelectorAll(".sr-thread")].find(row => row.dataset.srThread === mark.id)?.querySelector("h3") : input; if (target) { target.tabIndex = target.tabIndex || 0; target.focus({ preventScroll: true }); target.scrollIntoView({block:"nearest"}); } })));
+    if (mark.kind !== "course") {
+      row.append(button("Edit personal note", () => { try { pick(markSelection(mark)); editingMark = mark; note.value = mark.text; topics.value = mark.tags.join(", "); saveMark.textContent = "Save changes"; noteDetails.open = true; note.focus({ preventScroll: true }); } catch(e) { say(e.message); } }),
+        button("Delete my highlight", () => run(() => writeHighlight({ kind: "delete", highlight: mark.id, version: mark.version, context: mark.context }))));
+    }
+    return row;
+  }
+  function renderPersonal(records) {
+    personalList.replaceChildren(make("h3", "Saved on this page"));
+    if (!records.length) personalList.append(make("p", "No personal highlights yet. Select a passage and choose Highlight to keep it here."));
+    for (const mark of records) personalList.append(markRow(mark));
+  }
+  async function saveHighlight() {
+    if (!actor || !selected || highlightPending) return;
+    const content = await client.passage(context());
+    if (content.anchor.revision !== manifest.revision || content.anchor.quote !== selected.block.quote) throw Error("Source changed. Reload before saving a highlight.");
+    const anchor = { ...content.anchor, ...(selected.selector ? {selector:selected.selector} : {}) };
+    await writeHighlight({ kind: editingMark ? "update" : "create", context: context(),
+      ...(editingMark ? { highlight: editingMark.id, version: editingMark.version } : {anchor}), text: note.value, tags: parseTopics(topics.value) });
+  }
+  async function writeHighlight(command) {
+    if (!actor || highlightPending) return;
+    highlightPending = { command: JSON.parse(JSON.stringify({ ...command, actor: actor.id, key: crypto.randomUUID() })) };
+    await finishHighlight(highlightPending);
+  }
+  async function finishHighlight(original, receipt) {
+    if (actor?.id !== original.command.actor) throw Error("Sign in with the original account to reconcile this highlight.");
+    try { receipt = receipt ?? await client.highlightCommand(original.command); }
+    catch (error) {
+      if (error.status && error.status < 500 && ![401,403].includes(error.status)) { highlightPending = null; throw error; }
+      if ([401,403].includes(error.status)) revoke(error.status === 401);
+      say("Highlight outcome unknown. Use Check pending highlight after signing in with the original account."); return;
+    }
+    if (highlightPending !== original) return;
+    noteDrafts.delete(`${original.command.actor}:${key()}`);
+    highlightPending = null; editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
+    try { await loadMarks(); say("Personal highlight saved. Only you can see it."); }
+    catch(error) { say(`Highlight saved. Refresh to view it: ${error.message}`); }
+  }
+  async function checkHighlight() {
+    if (!highlightPending || actor?.id !== highlightPending.command.actor) return;
+    const original = highlightPending;
+    const receipt = await client.highlightReceipt(original.command.key, original.command.context);
+    if (!receipt) { say("No receipt found. Retry uses the same highlight request."); await finishHighlight(original); }
+    else await finishHighlight(original, receipt);
+  }
+  async function searchAnnotations() {
+    if (!actor) return;
+    const expected = actor.id, generation = ++markGeneration;
+    const data = await client.annotationSearch(searchFilters());
+    const current = await client.session();
+    if (current.id !== expected) { revoke(); throw Error("Account changed. Search results were cleared."); }
+    if (actor?.id !== expected || generation !== markGeneration || panel.hidden) return;
+    results.replaceChildren(make("h3", "Permitted results"));
+    const records = [...data.highlights.map(m => ({...m,kind:"personal"})), ...data.threads.map(t=>({...t,kind:"course"}))];
+    if (!records.length) results.append(make("p", "No matching annotations on this page. Try a different quote, name or topic."));
+    for (const record of records) results.append(markRow(record));
+    say(`${records.length} permitted annotation results.`);
+  }
+  async function exportAnnotations() {
+    if (!actor) return;
+    const expected = actor.id;
+    const data = await client.exportAnnotations(searchFilters());
+    const current = await client.session();
+    if (current.id !== expected) { revoke(); throw Error("Account changed. Export cancelled."); }
+    if (actor?.id !== expected || panel.hidden) return;
+    if (data.type !== "AnnotationPage" || !Array.isArray(data.items)) throw Error("Export structure was not valid.");
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/ld+json"}));
+    const download = make("a", "Download permitted annotations"); download.href = url; download.download = "libretexts-annotations.json";
+    results.replaceChildren(download); download.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say("Permitted annotations exported as JSON with their original source references.");
   }
   async function submitCommand(command, clear, field = input) {
     if (pending || !actor || !selected) return;
@@ -640,6 +828,7 @@ export function mountAnnotations({
     lock();
     try {
       await loadThreads();
+      await loadMarks();
       say(`Saved and acknowledged. Thread version ${result.version}.`);
     } catch (e) {
       if (e.status === 401 || e.status === 403) revoke(e.status === 401);
@@ -663,7 +852,7 @@ export function mountAnnotations({
   question.addEventListener("submit", (e) => {
     e.preventDefault();
     run(() =>
-      submitCommand({ kind: "question", text: input.value }, () => {
+      submitCommand({ kind: "question", text: input.value, tags: parseTopics(courseTopics.value) }, () => {
         input.value = "";
         drafts.delete(key());
       }),
@@ -682,12 +871,14 @@ export function mountAnnotations({
     if (!panel.hidden) return;
     try {
       captured = captureSelection(main, manifest, doc.getSelection());
+      quick.hidden = !captured || !!captured.error;
       entry.textContent = captured?.error
         ? "Selection unavailable"
         : captured
           ? "Discuss selected text"
           : "Discuss this page";
     } catch (e) {
+      quick.hidden = true;
       captured = { error: e.message };
       entry.textContent = "Selection unavailable";
       say(e.message);
@@ -695,6 +886,23 @@ export function mountAnnotations({
   });
   entry.addEventListener("pointerdown", (e) => {
     if (captured) e.preventDefault();
+  });
+  async function restorePageMarks() {
+    if (!client.annotationSearch || busy) return;
+    const generation = ++restoreGeneration;
+    try {
+      const current = await client.session();
+      if (generation !== restoreGeneration) return;
+      if (actor && actor.id !== current.id) revoke();
+      actor = current; sessionTimer.update(current.timing);
+      await loadMarks(true);
+    } catch(error) {
+      if (generation === restoreGeneration && [401,403].includes(error.status)) revoke();
+    }
+  }
+  void restorePageMarks();
+  doc.addEventListener("visibilitychange", () => {
+    if (doc.visibilityState === "visible") { renderer.clear(); void restorePageMarks(); }
   });
   return { panel, close: closePanel };
 }
