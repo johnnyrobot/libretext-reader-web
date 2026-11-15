@@ -87,7 +87,11 @@ export function mountControls(host, {
   }
 
   const onKey = (event) => {
-    if (event.target?.matches?.('input, select, textarea')) return;
+    if (event.defaultPrevented) return;
+    if (event.target?.closest?.('input, select, textarea, [contenteditable]:not([contenteditable="false"])')) return;
+    // Native controls own Space/arrow activation, including discussion buttons.
+    // Escape remains the reader exit shortcut unless a dialog already handled it.
+    if (event.key !== 'Escape' && event.target?.closest?.('button, a[href], summary, [role="button"], [role="link"]')) return;
     if (event.key === ' ') { event.preventDefault(); (playing ? onPause : onPlay)(); }
     if (event.key === 'ArrowRight') { event.preventDefault(); onNext(); }
     if (event.key === 'ArrowLeft') { event.preventDefault(); onPrev(); }

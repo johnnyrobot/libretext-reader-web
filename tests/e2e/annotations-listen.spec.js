@@ -100,3 +100,38 @@ test("Listen selection does not seek; discussion preserves playback and Escape o
   await page.locator("#tts-enter").click();
   await expect(page.locator(".tts-bar")).toBeVisible({ timeout: 60000 });
 });
+
+test('Space activates discussion buttons during Listen without starting playback', async ({ page }) => {
+  test.skip(!process.env.SR_CREDENTIALS_FILE, 'Designated synthetic credentials required');
+  await page.addInitScript(() => {
+    window.srAudioStarts = 0;
+    const start = AudioBufferSourceNode.prototype.start;
+    AudioBufferSourceNode.prototype.start = function (...args) {
+      window.srAudioStarts++;
+      return start.apply(this, args);
+    };
+  });
+  await page.goto(URL);
+  await page.locator('#tts-enter').click();
+  await page.locator('[data-act=accept]').click();
+  await expect(page.locator('.tts-bar')).toBeVisible();
+  await page.locator('#sr-entry').focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('#sr-panel')).toBeVisible({ timeout: 1500 });
+  const credentials = JSON.parse(readFileSync(process.env.SR_CREDENTIALS_FILE, 'utf8'));
+  await page.locator('input[name=username]').fill('alice');
+  await page.locator('input[name=password]').fill(credentials.alice);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('textbox', { name: 'Your question', exact: true })).toBeEnabled({ timeout: 3000 });
+  const text = `SPACE_ACTIVATION_553_${Date.now()}`;
+  await page.getByRole('textbox', { name: 'Your question', exact: true }).fill(text);
+  await page.getByRole('button', { name: 'Post question', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('.sr-thread').filter({ hasText: text })).toHaveCount(1, { timeout: 3000 });
+  await page.getByRole('button', { name: 'Close discussion', exact: true }).focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('#sr-panel')).toBeHidden({ timeout: 1500 });
+  await expect(page.locator('[data-act=toggle]')).toHaveAttribute('aria-label', 'Play');
+  expect(await page.evaluate(() => window.srAudioStarts)).toBe(0);
+});

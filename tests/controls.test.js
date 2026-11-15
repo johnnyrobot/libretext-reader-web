@@ -91,6 +91,28 @@ describe('controls.mjs', () => {
     controls.destroy();
   });
 
+  it('leaves native interactive activation and handled events to their owner', () => {
+    const h = handlers();
+    const controls = mountControls(document.body, h);
+    const discussion = document.createElement('button');
+    const label = document.createElement('span');
+    discussion.append(label);
+    document.body.append(discussion);
+    const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    expect(label.dispatchEvent(space)).toBe(true);
+    expect(h.onPlay).not.toHaveBeenCalled();
+    const next = document.querySelector('[data-act="next"]');
+    expect(next.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }))).toBe(true);
+    expect(h.onPlay).not.toHaveBeenCalled();
+    next.click();
+    expect(h.onNext).toHaveBeenCalledTimes(1);
+    const handled = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    handled.preventDefault();
+    document.dispatchEvent(handled);
+    expect(h.onExit).not.toHaveBeenCalled();
+    controls.destroy();
+  });
+
   it('destroy removes the bar and unbinds the keyboard', () => {
     const h = handlers();
     const controls = mountControls(document.body, h);
