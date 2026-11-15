@@ -382,6 +382,8 @@ export function mountAnnotations({
     exactQuote.disabled = busy || !!pending;
     occurrence.disabled = busy || !!pending;
     chooser.disabled = busy || !!pending;
+    note.disabled = topics.disabled = busy || !!pending || !!highlightPending;
+    courseTopics.disabled = busy || !!pending;
     recover.hidden = !pending;
     saveMark.disabled = busy || !actor || !selected || !!highlightPending;
     checkMark.hidden = !highlightPending || highlightPending.command.actor !== actor?.id;
@@ -673,11 +675,16 @@ export function mountAnnotations({
   }
   async function loadMarks(allowClosed = false) {
     if (!actor || !client.annotationSearch) return;
-    const generation = ++markGeneration, expected = actor.id;
-    const loaded = await client.annotationSearch({ book: manifest.book, page: manifest.page, scope: "all" });
-    const current = await client.session();
+    const generation = ++markGeneration, expected = actor.id, view = viewGeneration;
+    const active = () => generation === markGeneration && actor?.id === expected && view === viewGeneration && (!panel.hidden || allowClosed);
+    let loaded, current;
+    try {
+      loaded = await client.annotationSearch({ book: manifest.book, page: manifest.page, scope: "all" });
+      if (!active()) return;
+      current = await client.session();
+    } catch(error) { if (!active()) return; throw error; }
+    if (!active()) return;
     if (current.id !== expected) { revoke(); throw Error("Account changed. Private highlights were cleared."); }
-    if (generation !== markGeneration || actor?.id !== expected || (panel.hidden && !allowClosed)) return;
     pageRecords = [...loaded.highlights.map(m => ({ ...m, kind: "personal" })), ...loaded.threads.map(t => ({ ...t, kind: "course" }))];
     renderer.render(pageRecords); renderer.setVisible(marksVisible);
     renderPersonal(loaded.highlights);
@@ -736,15 +743,22 @@ export function mountAnnotations({
       if ([401,403].includes(error.status)) revoke(error.status === 401);
       say("Highlight outcome unknown. Use Check pending highlight after signing in with the original account."); return;
     }
-    if (highlightPending !== original) return;
+    if (highlightPending !== original || actor?.id !== original.command.actor) return;
     const deleting = original.command.kind === "delete";
     if (!deleting || editingMark?.id === original.command.highlight) {
       noteDrafts.delete(`${original.command.actor}:${key()}`);
       editingMark = null; note.value = ""; topics.value = ""; saveMark.textContent = "Save highlight";
     }
     highlightPending = null;
-    try { await loadMarks(); say(deleting ? "Personal highlight deleted. Other drafts are unchanged." : "Personal highlight saved. Only you can see it."); }
-    catch(error) { say(`Highlight ${deleting ? "deleted" : "saved"}. Refresh to view it: ${error.message}`); }
+    try {
+      await loadMarks();
+      if (actor?.id === original.command.actor) say(deleting ? "Personal highlight deleted. Other drafts are unchanged." : "Personal highlight saved. Only you can see it.");
+    }
+    catch(error) {
+      if (actor && actor.id !== original.command.actor) return;
+      if (error.status === 401 || error.status === 403) revoke(error.status === 401);
+      say(`Highlight ${deleting ? "deleted" : "saved"}. Refresh to view it: ${error.message}`);
+    }
   }
   async function checkHighlight() {
     if (!highlightPending || actor?.id !== highlightPending.command.actor) return;
@@ -755,11 +769,16 @@ export function mountAnnotations({
   }
   async function searchAnnotations() {
     if (!actor) return;
-    const expected = actor.id, generation = ++markGeneration;
-    const data = await client.annotationSearch(searchFilters());
-    const current = await client.session();
+    const expected = actor.id, generation = ++markGeneration, view = viewGeneration;
+    const active = () => actor?.id === expected && generation === markGeneration && view === viewGeneration && !panel.hidden;
+    let data, current;
+    try {
+      data = await client.annotationSearch(searchFilters());
+      if (!active()) return;
+      current = await client.session();
+    } catch(error) { if (!active()) return; throw error; }
+    if (!active()) return;
     if (current.id !== expected) { revoke(); throw Error("Account changed. Search results were cleared."); }
-    if (actor?.id !== expected || generation !== markGeneration || panel.hidden) return;
     results.replaceChildren(make("h3", "Permitted results"));
     const records = [...data.highlights.map(m => ({...m,kind:"personal"})), ...data.threads.map(t=>({...t,kind:"course"}))];
     if (!records.length) results.append(make("p", "No matching annotations on this page. Try a different quote, name or topic."));
@@ -768,11 +787,16 @@ export function mountAnnotations({
   }
   async function exportAnnotations() {
     if (!actor) return;
-    const expected = actor.id;
-    const data = await client.exportAnnotations(searchFilters());
-    const current = await client.session();
+    const expected = actor.id, view = viewGeneration;
+    const active = () => actor?.id === expected && view === viewGeneration && !panel.hidden;
+    let data, current;
+    try {
+      data = await client.exportAnnotations(searchFilters());
+      if (!active()) return;
+      current = await client.session();
+    } catch(error) { if (!active()) return; throw error; }
+    if (!active()) return;
     if (current.id !== expected) { revoke(); throw Error("Account changed. Export cancelled."); }
-    if (actor?.id !== expected || panel.hidden) return;
     if (data.type !== "AnnotationPage" || !Array.isArray(data.items)) throw Error("Export structure was not valid.");
     const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/ld+json"}));
     const download = make("a", "Download permitted annotations"); download.href = url; download.download = "libretexts-annotations.json";

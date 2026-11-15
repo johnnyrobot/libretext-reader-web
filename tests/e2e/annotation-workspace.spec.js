@@ -259,3 +259,51 @@ test('returning while a search is busy does not erase existing exact marks',asyn
  }finally{release();}
  await expect(page.getByRole('button',{name:'Search annotations',exact:true})).toBeEnabled();
 });
+
+test('an acknowledged highlight clears private views when its refresh loses authorization',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ const note='ack-then-denied-'+Date.now();await page.getByRole('textbox',{name:'Personal note (optional)',exact:true}).fill(note);
+ await page.route('**/social-reading/api/annotation-search?*',route=>route.fulfill({status:401,json:{error:'Session expired.'}}),{times:1});
+ await page.getByRole('button',{name:'Save highlight',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Highlight saved. Refresh to view it:');
+ await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+ await expect(page.locator('#sr-highlight-list .sr-mark')).toHaveCount(0);
+ const actual=await(await page.request.get('/social-reading/api/highlights')).json();expect(actual.some(mark=>mark.text===note)).toBe(true);
+});
+
+test('an obsolete background mark load cannot revoke a newer account and its draft',async({page})=>{
+ await page.goto(route);await signIn(page);await save(page,'old-background-'+Date.now());
+ await page.getByRole('button',{name:'Close discussion',exact:true}).click();
+ let release,started;
+ const gate=new Promise(resolve=>release=resolve),requestStarted=new Promise(resolve=>started=resolve);
+ await page.route('**/social-reading/api/annotation-search?*',async route=>{started();await gate;await route.continue();},{times:1});
+ try{
+  await page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));await requestStarted;
+  const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+  expect((await page.request.post('/social-reading/api/login',{headers:{Origin:new URL(page.url()).origin},data:{username:'bob',password:credentials.bob}})).status()).toBe(200);
+  await page.locator('#sr-entry').click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Discuss',exact:true}).click();
+  await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Bob newer-account draft must survive');
+  const older=page.waitForResponse(response=>response.url().includes('/social-reading/api/annotation-search?'));
+  release();await older;await page.evaluate(()=>new Promise(requestAnimationFrame));
+  await expect(page.getByRole('textbox',{name:'Your question',exact:true})).toHaveValue('Bob newer-account draft must survive');
+  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ }finally{release();}
+});
+
+test('uncertain highlight commands lock their submitted note and topics until reconciliation',async({page})=>{
+ await page.goto(route);await signIn(page);await select(page);
+ await page.getByRole('button',{name:'Highlight',exact:true}).click();
+ await page.getByText('Add a personal note or topics',{exact:true}).click();
+ const note=page.getByRole('textbox',{name:'Personal note (optional)',exact:true}),topics=page.locator('#sr-personal').getByRole('textbox',{name:'Topics (optional, comma separated)',exact:true});
+ await note.fill('Immutable uncertain personal note');await topics.fill('immutable-topic');
+ await page.route('**/social-reading/api/highlights',async route=>{if(route.request().method()!=='POST')return route.continue();await route.fetch();await route.abort('failed');},{times:1});
+ await page.getByRole('button',{name:'Save highlight',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Highlight outcome unknown');
+ await expect(note).toBeDisabled();await expect(topics).toBeDisabled();
+ await page.getByRole('button',{name:'Check pending highlight',exact:true}).click();
+ await expect(page.locator('#sr-highlight-list')).toContainText('Immutable uncertain personal note');
+ await expect(note).toBeEnabled();await expect(topics).toBeEnabled();
+});

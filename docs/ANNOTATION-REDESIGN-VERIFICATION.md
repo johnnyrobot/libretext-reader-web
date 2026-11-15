@@ -43,3 +43,12 @@ The first independent UI review at c97436e found one major expiry-recovery defec
 Separate failing→passing cases cover deletion of another mark erasing the active note;409IDENTITY_CHANGED leaving prior-owner private UI visible; missing Mine/Course audience selection for search/export; and a dead download link left after its blob URL expired. The busy-visibility paint check also passes after moving renderer clearing behind the restore busy guard. Search audience follows the backend's existing all|mine|course contract; no access rights change.
 
 The reviewer observed no tests or runtime. Its source-only browser-support caveat does not negate our explicit CLI-driven Firefox/WebKit runs recorded above; the default config alone does not select those engines. Backend null-filter input remains outside the documented optional-string adapter contract; the literal string null may be a legitimate search value and is not silently dropped. This is a nonblocking adapter-consistency nit, not a privacy defect.
+
+
+## Final-head authorization correction
+
+Final premerge PR-Agent at4643b69 completed297seconds,$0.3377. It identified three confirmed async-state defects: post-save refresh401/403left private UI visible; obsolete mark loads could revoke a newer account; unknown highlight acknowledgments left fields editable and later discarded those edits. Each was reproduced with a failing browser test, then corrected and passed. The stale-background red test first needed its own explicit Discuss navigation before it reached the actual revocation symptom; both receipts are retained.
+
+Mark/search/export loads now check current actor, request generation and panel generation before authorization side effects, and discard stale errors. Highlight completion does not clear another account's editor. Authorization loss after acknowledgment revokes protected views while retaining the saved result. Personal note/topic fields remain disabled during unresolved immutable commands; course-topic fields follow the existing question-command lock. These corrections add no new product scope or endpoint.
+
+The expanded18-case suite runs in two shards per browser with `--fully-parallel --workers=1 --shard=1/2` or2/2, restarting only the managed isolated API between shards. This keeps each group below the real15-account-login/minute guard; it does not weaken the service limiter or reset any SQLite data.
