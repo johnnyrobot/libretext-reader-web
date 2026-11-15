@@ -52,3 +52,10 @@ Final premerge PR-Agent at4643b69 completed297seconds,$0.3377. It identified thr
 Mark/search/export loads now check current actor, request generation and panel generation before authorization side effects, and discard stale errors. Highlight completion does not clear another account's editor. Authorization loss after acknowledgment revokes protected views while retaining the saved result. Personal note/topic fields remain disabled during unresolved immutable commands; course-topic fields follow the existing question-command lock. These corrections add no new product scope or endpoint.
 
 The expanded18-case suite runs in two shards per browser with `--fully-parallel --workers=1 --shard=1/2` or2/2, restarting only the managed isolated API between shards. This keeps each group below the real15-account-login/minute guard; it does not weaken the service limiter or reset any SQLite data.
+
+
+## Background-restoration final guard
+
+The e35e037full PR-Agent pass cost$0.3706 and raised two related background-restoration ordering cases. A foreground action now invalidates outstanding background session checks, and a resumed background check verifies foreground activity before continuing. The startup-account regression failed against the prior source and passed after correction. The search-race test initially had gated-route teardown errors; replacing its timing control with a browser-fetch wrapper produced a clean missing-results failure against the exact e35e037module fixture, then passed against the corrected module. This fixture affects only the explicitly selected local reproduction (`SR_REVIEW_BASELINE`); default tests load the real prepared stage.
+
+The two production-code guard lines are reviewed against e35e037rather than buying another full identical-diff review. Installed Playwright used for the browser evidence is1.62.1; explicit three-engine local runs remain separate from hosted unit/build CI. Existing source, private-state and owner-only deployment boundaries are unchanged.

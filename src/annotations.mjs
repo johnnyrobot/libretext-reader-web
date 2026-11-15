@@ -423,6 +423,7 @@ export function mountAnnotations({
   }
   async function run(action) {
     if (busy) return;
+    restoreGeneration++;
     const initiator = doc.activeElement;
     const replyThread = initiator?.closest(".sr-thread")?.dataset.srThread;
     let userMoved = false;
@@ -932,7 +933,7 @@ export function mountAnnotations({
     const generation = ++restoreGeneration;
     try {
       const current = await client.session();
-      if (generation !== restoreGeneration) return;
+      if (generation !== restoreGeneration || busy) return;
       if (actor && actor.id !== current.id) revoke();
       actor = current; sessionTimer.update(current.timing);
       await loadMarks(true);

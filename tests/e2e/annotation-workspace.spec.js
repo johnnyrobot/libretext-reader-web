@@ -307,3 +307,49 @@ test('uncertain highlight commands lock their submitted note and topics until re
  await expect(page.locator('#sr-highlight-list')).toContainText('Immutable uncertain personal note');
  await expect(note).toBeEnabled();await expect(topics).toBeEnabled();
 });
+
+test('a delayed startup session cannot replace a foreground account and its draft',async({page})=>{
+ await page.goto(route);await signIn(page);
+ let release,started;
+ const gate=new Promise(resolve=>release=resolve),requestStarted=new Promise(resolve=>started=resolve);
+ await page.route('**/social-reading/api/session',async route=>{const response=await route.fetch();started();await gate;await route.fulfill({response});},{times:1});
+ try{
+  await page.reload();await requestStarted;
+  const credentials=JSON.parse(readFileSync(credentialsFile,'utf8'));
+  expect((await page.request.post('/social-reading/api/login',{headers:{Origin:new URL(page.url()).origin},data:{username:'bob',password:credentials.bob}})).status()).toBe(200);
+  await page.locator('#sr-entry').click();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+  await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Foreground account draft survives startup');
+  const old=page.waitForResponse(response=>response.url().endsWith('/social-reading/api/session'));
+  release();await old;await page.evaluate(()=>new Promise(requestAnimationFrame));
+  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+  await expect(page.getByRole('textbox',{name:'Your question',exact:true})).toHaveValue('Foreground account draft survives startup');
+ }finally{release();}
+});
+
+test('a delayed visibility check cannot cancel a newer foreground search',async({page})=>{
+ if(process.env.SR_REVIEW_BASELINE)await page.route('**/_assets/reader/annotations.mjs',route=>route.fulfill({path:process.env.SR_REVIEW_BASELINE,contentType:'text/javascript'}));
+ await page.addInitScript(()=>{
+  const transport=window.fetch.bind(window);
+  window.fetch=async(input,init)=>{
+   const response=await transport(input,init),url=new URL(typeof input==='string'?input:input.url,location.href);
+   if(url.pathname.endsWith('/api/session')&&window.holdNextSession){
+    window.holdNextSession=false;window.sessionHeld=true;await new Promise(resolve=>window.releaseSession=resolve);
+   }
+   if(url.pathname.endsWith('/api/annotation-search')&&url.searchParams.get('q')===window.holdSearchQuery){
+    window.searchHeld=true;await new Promise(resolve=>window.releaseSearch=resolve);
+   }
+   return response;
+  };
+ });
+ await page.goto(route);await signIn(page);const note='foreground-search-'+Date.now();await save(page,note);
+ await page.getByRole('button',{name:'Find & export',exact:true}).click();
+ await page.getByRole('searchbox',{name:'Search this page',exact:true}).fill(note);
+ await page.evaluate(query=>{window.holdNextSession=true;window.holdSearchQuery=query;document.dispatchEvent(new Event('visibilitychange'));},note);
+ await page.waitForFunction(()=>window.sessionHeld);
+ try{
+  await page.getByRole('button',{name:'Search annotations',exact:true}).click();await page.waitForFunction(()=>window.searchHeld);
+  await page.evaluate(()=>window.releaseSession());await page.evaluate(()=>new Promise(requestAnimationFrame));
+  await page.evaluate(()=>window.releaseSearch());
+  await expect(page.locator('#sr-search-results')).toContainText(note,{timeout:1500});
+ }finally{if(!page.isClosed())await page.evaluate(()=>{window.releaseSession?.();window.releaseSearch?.();}).catch(()=>{});}
+});
