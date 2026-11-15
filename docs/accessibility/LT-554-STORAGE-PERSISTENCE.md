@@ -18,10 +18,18 @@ Twelve native persistence cases pass: pending English entry with late resolution
 
 Actual cold Firefox153 native checks now pass source selection/panel/Escape and initialized Listen controls, Space discussion activation, panel placement, reverse focus, ordinary wheel/exit at1440x1000,320x800 and320x256 with doubled root/bar text. Temporary contexts have no permission override, pregrant or seeded cache. This is initialized runtime/UI evidence, not actual audio, browser zoom, touch or audible AT acceptance. Evidence: `.scratch/lt554/firefox.json` and screenshots.
 
-JavaScript1712 passed,8skipped; fresh build/diff checks pass. Eleven existing Chromium/WebKit layout/keyboard/wheel/resize cases pass. Existing36distinct discussion/status and3Listen/private-exclusion/Space checks are recorded separately when complete. These are source checks, not a whole-site conformance claim.
+JavaScript1712 passed,8skipped; fresh build/diff checks pass. Eleven existing Chromium/WebKit layout/keyboard/wheel/resize cases pass. All36distinct discussion/status and3Listen/private-exclusion/Space checks also pass on this source. These are source checks, not a whole-site conformance claim.
 
 ## Review and release boundaries
 
 Separate LT554 branch/new PR from current merged base. Full Standards/Spec/fresh Correctness and PR-Agent are required before publication/merge; exactly one new CodeRabbit request is authorized for the new code PR only. No additional CodeRabbit/PR-Agent/TestSprite on PR18 and no paid TestSprite run. Final review, hosted CI and artifact pins are recorded below when complete.
 
 R1 credential-login/save/loading automatic speech remains UNCONFIRMED. No foreground VoiceOver attempt is authorized until listener-ready coordination. Source/content decisions, PageIndex/policy admission, final-process AT and production composition remain separate gates. No textbook/backend/composition/live changes or deployment.
+
+## Current candidate receipt
+
+Executable source `d5d5ea2f035485d0e0496af2f030143a056aeeb5`. Complete stage `/Users/johnnyrobot/code/lt554-at-storage-fix` has665files, all94catalog revisions/passages unchanged, inventory SHA256 `d99ab4548a8455b7a3faa593eb0971645bb05c51f75ce0422b9d30e71790dd1e`. Only built `_assets/tts/reader.js` changes from the prior d3efb5d stage; its new SHA256 is `848f55b47ec24cb59f6f8c0c41760a36ad2b93394cb584dc344b0c6b9aa5f153`. Prior stages/packages remain intact.
+
+Runtime archive `/Users/johnnyrobot/code/libretexts-dev/libretext-reader-web-storage/.scratch/lt554/reader-runtime-d5d5ea2-HOLD.tar.gz`, SHA256 `e877e7497ff995d752561e88415f0e1122698d7a58c6075d3b1653acfabde7eb`;15members verified against the manifest. Runtime manifest SHA256 `be3ea7a3e388a29f7040f2e172ebeef8144d931117478e0263c8600c1e5b0749`. Full staging dependency inventory `.scratch/lt554/staging-dependencies.json`, SHA256 `7b0ab9d226501146012bd81b3072b89a93e30a3c77bda5b3e55ff4aab96d8daa`. Dependency member bytes are unchanged; metadata is repinned to this source. Production language offerings and composition remain separately owned and must not be replaced by the local English/Spanish fixture index.
+
+Pre-open PR-Agent: initial setup failed before review because its local provider requires a branch name rather than a SHA; terminal wrapper exit0 was not accepted as proof. Allowed retry used local `lt554-review-base` pinned to9f4026b. Actual review/improve artifacts both completed with terminal0, no major issues and no suggestions, cost$0.0272, Sol. Receipts: `/tmp/pr-agent-libretext-reader-web-storage-1794717342/`. Full independent review axes and new-PR CodeRabbit/hosted gates remain pending. PR18 review counts are unchanged.

@@ -26,7 +26,7 @@ We started with **Supertonic**. We replaced it with **Phonon** from Gradium:
 
 ### Does closing the browser mean downloading again?
 
-No. The voice is saved in the browser's own storage the first time. It's checked for damage before every use, and the browser is asked to keep it. Closing or force-quitting the browser only means loading the saved voice back into memory, which takes a few seconds on a fast computer. A new download happens only in a private/incognito window, after the reader clears their site data, or if the browser frees up space on its own.
+No. The voice is saved in the browser's own storage the first time. It's checked for damage before every use, and the browser is asked to keep it. The request to protect saved files from automatic removal is optional; listening continues if it is delayed or denied. Closing or force-quitting the browser only means loading the saved voice back into memory, which takes a few seconds on a fast computer. A new download happens only in a private/incognito window, after the reader clears their site data, or if the browser frees up space on its own.
 
 ### Equations
 
