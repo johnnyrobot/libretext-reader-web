@@ -695,7 +695,7 @@ export function mountAnnotations({
       reply.value = drafts.get(draftKey) ?? "";
       reply.addEventListener("input", () => drafts.set(draftKey, reply.value));
       submit.disabled = t.orphan || !!pending;
-      form.append(make("p", "A reply is required; maximum 4,000 characters."), field("Your reply", reply), submit);
+      form.append(field("Your reply", reply), submit);
       form.addEventListener("submit", (e) => {
         e.preventDefault();
         run(() =>
