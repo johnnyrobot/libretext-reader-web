@@ -289,7 +289,6 @@ html[data-sr-panel="open"] body {
 #sr-panel .sr-reply-composer { margin-inline: 1.5rem 0; padding-inline: .75rem 0; border-inline-start: 2px solid #718391; }
 #sr-panel .sr-reply { margin-block: 1.25rem; padding-block: .25rem; }
 #sr-panel .sr-reply-composer { margin-block: 1.5rem .5rem; padding-block: .25rem; }
-#sr-panel .sr-reply-composer > p:first-child { margin-block-start: 0; }
 #sr-panel #sr-search { padding-block-start: .75rem; margin-block-start: 1.5rem; }
 @media (max-width: 480px) {
   #sr-panel .sr-passage, #sr-panel .sr-question, #sr-panel .sr-conversations { padding-inline-start: .75rem; }
