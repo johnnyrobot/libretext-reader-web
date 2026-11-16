@@ -36,7 +36,7 @@ node scripts/stage-annotations.mjs --stage /absolute/fresh-stage \
   --output /absolute/catalog-final.json
 ```
 
-The publisher verifies all source files and asset destinations first, preserves main-content bytes, installs the seven assets, stamps outside main and emits the final published-page hashes. Configure the backend with the final catalog and independently verified digest. Full two-repository commands, service and reverse-proxy setup are in the [backend deployment guide](https://github.com/johnnyrobot/libretexts-social-annotation/blob/main/docs/DEPLOYMENT.md).
+The publisher verifies all source files and asset destinations first, preserves main-content bytes, installs the seven assets, stamps outside main and emits the final published-page hashes. Configure the backend with the final catalog and independently verified digest. Full two-repository commands, service and reverse-proxy setup are in `docs/DEPLOYMENT.md` in the service checkout at the exact commit recorded in the completed paired release manifest. Use the guide from that checkout rather than an independently moving default branch.
 
 Existing mirror integration may call this publisher through `reader_assets.py` in its own repository. Confirm that publisher's interface against the reviewed institution checkout; do not assume it exists in every frontend. A page can alternatively embed the same public stamp, stylesheet and module without using the mirror pipeline, provided it satisfies identical source verification.
 
