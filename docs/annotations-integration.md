@@ -1,55 +1,64 @@
-# Existing textbook discussion integration (LT-549)
+# Integrate social annotations into a textbook reader
 
-The annotation module mounts its controls and discussion panel outside `main#main-content`. It consumes a public `social-reading-page-v1` stamp; private text is fetched only after server authorization. It never replaces textbook content or injects discussion text into the speech manifest.
+The annotation module mounts its controls outside `main#main-content`, preserves textbook content and uses a public page-context stamp for exact source selection. Private data comes only from the authenticated same-origin service. Service source and production instructions: [libretexts-social-annotation](https://github.com/johnnyrobot/libretexts-social-annotation).
 
-`src/social-reading/client.mjs` is copied from social-reading commit `73ee211a41891c5bab6ce550cfc5edc30b52c358`, SHA256 `0f3e65a2be6e28b5bb40df49bdc9b4fc17c0ccf22d98fd20c66949de85ba1cdb`. It includes server-relative timing, deliberate session extension and field-error passthrough. `anchor.mjs` remains the exact `5578aec6b0a25423600bdcf04c79445e4b881bca` copy, SHA256 `39d3a5307e54abc223359bf12d524f69326cbff284e3b97bfc4e4855dcb03c67`.
+## Files to integrate
 
-Session warnings remain available when the panel is closed. Extension is deliberate, preserves drafts, and reconciles uncertain transport failures through a session read. Expiry hides private content and keeps unsent drafts only in page memory, restoring them only to the same authenticated actor. Deliberate logout and a different actor discard them. Pending commands retain their original immutable identity/context/key. The keyboard exact-quote input and occurrence chooser create the same validated selector as native range selection.
+| Source in this repository | Published path |
+| --- | --- |
+| `src/annotations.mjs` | `/_assets/reader/annotations.mjs` |
+| `src/annotations.css` | `/_assets/reader/annotations.css` |
+| `src/annotations/client.mjs` | `/_assets/reader/annotations/client.mjs` |
+| `src/annotations/marks.mjs` | `/_assets/reader/annotations/marks.mjs` |
+| `src/session-timer.mjs` | `/_assets/reader/session-timer.mjs` |
+| `src/social-reading/client.mjs` | `/_assets/reader/social-reading/client.mjs` |
+| `src/social-reading/anchor.mjs` | `/_assets/reader/social-reading/anchor.mjs` |
 
-## Local staging
+Keep the relative module layout. These seven assets implement annotations; the wider Reader repository also contains separate audio/translation features. Integrating this panel does not require replacing an institution's whole reader or rebuilding its voice models. Preserve existing keyboard, content-security, reading and Listen behavior.
 
-Use a fresh isolated stage, never a live root. Obtain the backend-owned catalog and its independently confirmed SHA-256. Every staged page must match its catalog source-file digest. Build the reader with `npm run build` and copy the resulting `dist/_assets/tts/` files into that stage's `/_assets/tts/`, retaining verified existing voice/runtime assets. No model regeneration is needed.
+The headless client/anchor helpers are pinned internal LibreTexts copies. The annotation adapter extends the core methods without changing the established same-origin transport or exact-anchor normalization. Match the reviewed service/Reader pair in the release manifest; do not replace a frozen adapter with an arbitrary latest backend file.
 
-```sh
-node scripts/stage-annotations.mjs --stage /path/to/stage --catalog /path/to/catalog.json --sha256 CONFIRMED_SHA256 --output /path/to/composed-catalog.json
-python3 scripts/serve-local.py --root /path/to/stage --port 8788 --api-port 4204
-```
+## Public page contract
 
-Staging validates all input page hashes before writing, rejects linked asset destinations, preserves the main-content bytes, installs the scoped modules/styles, stamps context outside main, and emits a catalog with final published-file hashes. Give that catalog/digest back to the backend owner for admission; do not restart or alter their service. The same-origin proxy preserves Origin and session cookies and forwards only `/social-reading/api/*` to the configured loopback port. Production proxy/session configuration remains the backend owner's responsibility.
+Each supported page has a `script[type="application/json"]#sr-page-context` outside main containing schema `social-reading-page-v1`, normalization `js-whitespace-v1`, book/page/revision and blocks `{block,quote,quoteSha256}`. Escape `<` in embedded JSON. It contains public source metadata, never accounts or private comments.
 
-The backend must bind the exact browser origin (`http://127.0.0.1:8788` locally). Do not relax Origin checks for a test tunnel. Private discussion text and credentials must never be added to public stage assets.
+Revision is the digest of original parsed main content before runtime transformation. `p-N` counts all descendant main paragraphs before eligibility exclusions. Canonical text collapses ECMAScript whitespace, contributes a space for `br`, ignores script/style/nav/footer/button text and preserves Unicode code units. The runtime must match exact eligible text before rendering or accepting a selection. Optional selectors retain start/end UTF-16 offsets and exact selected quote within the whole paragraph.
 
-## Verification
+Changed revisions, transformed text, unsupported selections and invalid surrogate boundaries are refused or shown as stale history. No fuzzy relocation is performed. Translation/Listen wrappers can make a block unsupported; retain a working original-text route rather than changing the anchor rules.
 
-`tests/annotations.test.js` exercises exact selection, altered-text refusal and scroll suppression. `tests/stage-annotations.test.js` covers immutable main bytes, final hashes, stale-source refusal and linked asset refusal. Python server tests cover forwarding Origin/cookies/body and preserving denial responses.
+## Stage a publication
 
-For the real two-account browser test, set `SR_CREDENTIALS_FILE` to the designated local demo-credential JSON file. The harness reads credentials without printing them. Run `tests/e2e/annotations.spec.js` against `TTS_BASE_URL=http://127.0.0.1:8788`. These tests add new synthetic questions/replies; they do not erase existing records. The separate `annotations-listen.spec.js` exercises actual speech, selection versus seek, composing coexistence, Escape and reentry; run it under the project's GPU lock.
-
-Unknown commands retain their original actor, key, context, selector and version until reconciled. Switching accounts clears visible private data and drafts while retaining the unresolved command for the original actor. Closing retains page-memory drafts; reloading loses local drafts/pending state. Failed refresh after acknowledgment remains a saved result.
-
-## Remaining release gates
-
-Local staging is not deployment. The bounded mirror publisher integration, PR-Agent, one CodeRabbit per code PR, and source/postmerge CI remain required. TestSprite results must identify their precise scope; anonymous panel checks do not establish authenticated or translation coverage. Actual translated-language playback requires its own verified staged voice/model assets. Existing missing source-image placeholders and MathJax CSP errors are not repaired by this change.
-
-## Mirror publication
-
-After rendering and Listen injection into a fresh local stage, generate a catalog with the backend importer. From the reviewed mirror checkout run:
+Use a fresh local copy of the textbook HTML and the matching backend-imported catalog. Never pass a live root.
 
 ```sh
-python3 reader_assets.py --stage /path/to/fresh-stage --reader /path/to/reviewed-reader-checkout --catalog /path/to/input-catalog.json --sha256 CONFIRMED_SHA256 --output /path/to/new-final-catalog.json
+node scripts/stage-annotations.mjs --stage /absolute/fresh-stage \
+  --catalog /absolute/catalog-input.json --sha256 VERIFIED_INPUT_DIGEST \
+  --output /absolute/catalog-final.json
 ```
 
-The mirror delegates stamping and scoped asset installation to this reader publisher so normalization and panel sources stay in one place. Its template includes a conditional boot hook outside main; unstamped pages do not import the client. Return the final catalog to the backend owner for admission. No live root or active catalog is changed by this workflow.
+The publisher verifies all source files and asset destinations first, preserves main-content bytes, installs the seven assets, stamps outside main and emits the final published-page hashes. Configure the backend with the final catalog and independently verified digest. Full two-repository commands, service and reverse-proxy setup are in the [backend deployment guide](https://github.com/johnnyrobot/libretexts-social-annotation/blob/main/docs/DEPLOYMENT.md).
 
-Translation coexistence was verified with pinned Bergamot3.0/en-es and cached Phonon40M Spanish, checking every voice file against its manifest and model/voice revisions against the staging script. The anonymous panel regression observes actual audio starts, preserved original main text, panel exclusion from translation/speech, close-focus restoration and return to English. This does not replace authenticated private-comment coverage.
+Existing mirror integration may call this publisher through `reader_assets.py` in its own repository. Confirm that publisher's interface against the reviewed institution checkout; do not assume it exists in every frontend. A page can alternatively embed the same public stamp, stylesheet and module without using the mirror pipeline, provided it satisfies identical source verification.
 
+## Browser and API behavior
 
-## Passage notes redesign (LT-556, LT-557, LT-558)
+The service namespace is `/social-reading/api`; this is independent of the backend repository rename. Cookies and requests are same-origin. Preserve Origin, bodies, cookies, denial statuses and no-store responses through the proxy. Exact production Origin and integrated READER_ENTRY configuration belong to the service operator; do not relax origin checks for a test tunnel.
 
-The new annotation workspace requires the backend annotation endpoints in `johnnyrobot/social-reading` (implementation branch `feat/annotation-highlights`, starting at a7972ca). The pinned legacy `src/social-reading/client.mjs` remains unchanged. `src/annotations/client.mjs` adds annotation-only requests using the same-origin/no-store/error contract; `src/annotations/marks.mjs` renders exact ranges through the Custom Highlight API without changing main HTML or speech content. The publisher installs both new helpers in addition to the existing five annotation assets. No additional third-party annotation library or copied application UI is introduced.
+Highlight saves an owner-private mark/note. Discuss opens a separate deliberate course contribution; it never silently publishes private note text. Search/export honor the same audience filters. Commands retain actor/key/context/payload/version until acknowledgment or receipt reconciliation. An unknown network outcome is not proof of a failed save. A different account cannot inherit private views, drafts or recovery identity.
 
-Select ordinary source text and choose Highlight (personal) or Discuss (course). Saving is deliberate and authenticated. The panel separates Discuss, My highlights and Find & export. A personal note stays private when its quote is used for a new course question. Show/hide affects visuals only; a marked-text click opens an explicit overlap list. Every row has a keyboard-operable jump and discussion action. Unsupported rich media or transformed Listen text refuse visual relocation; the exact-selection creation contract and saved records remain unchanged. Browser implementations without Custom Highlight retain the accessible list/jump path.
+Question/reply/note/topic drafts live in page memory. Same-account expiry recovery can restore them; explicit logout/different actor clears them; reloading can lose them. Session warnings remain reachable when the panel is closed. Extension is deliberate and uses server-relative deadlines. Visible focus, field errors, keyboard selection and status announcements are part of the integration contract.
 
-Search is scoped to the current exact book/page and authorized personal/course records. Quote, note/topic, author and All/Mine/Course audience filters use the server authority for both search and export. Mine includes owned highlights and discussions the viewer authored or visibly joined. Export downloads a permission-filtered W3C-oriented AnnotationPage, retaining source/revision/quote/range metadata; this does not promise automatic attachment in unrelated importers. No import, unread integration, realtime, ADAPT or grading is added. LT-551 remains separately Todo; LT-555/PR20 remains paused.
+Desktop uses a26rem side panel; at<=760px it uses a bottom panel preserving part of the source. Participation has named continuous-rule sections; account/view/refresh utilities form a separate band. Replies/reply composers retain indentation/connectors at narrow widths. Headings, borders and position provide structure independently of color. Author names remain visible and palette collisions confer no role or identity guarantee.
 
-Local verification uses isolated preview `http://127.0.0.1:8802` with API4210 and the designated private synthetic credential file. Never deploy its SQLite database or credentials. Reproducible native/browser commands and limitations are recorded in `ANNOTATION-REDESIGN-VERIFICATION.md`; final release source hashes and remaining owner gates belong to the composed release packet. VoiceOver stays SKIPPED BY OWNER and no site conformance claim is made.
+## Verify the integration
+
+Run the existing focused tests for the actual change rather than treating the whole Reader's unrelated pipelines as annotation acceptance:
+
+- `tests/annotations.test.js`, `tests/annotation-marks.test.js` and `tests/stage-annotations.test.js`: selection, exact ranges, rendering and publisher refusal/preservation.
+- `tests/e2e/annotation-author-focus.spec.js`, `annotation-participation.spec.js`: staged-module synthetic layout, authors, keyboard, drafts, empty/disabled/forced-color states.
+- `tests/e2e/annotations.spec.js`, `annotation-workspace.spec.js`, `annotation-selection-sync.spec.js`, `annotation-pointer-drag.spec.js`: authenticated service, privacy, persistence, receipt/reselection and actual pointer behavior.
+- `tests/e2e/annotations-listen.spec.js`: reading/audio coexistence when the target stage has the required verified runtime/models.
+
+With an explicitly prepared target, set `TTS_BASE_URL` and `SR_CREDENTIALS_FILE` to protected fixture inputs; run Playwright with `--browser=chromium`, `firefox` or `webkit` explicitly. Some authenticated tests skip without credentials, so a green result with skips does not establish authenticated coverage. These tests can create synthetic posts; never target a live course without an agreed data scope. The default local stage may be stale: verify the staged module hashes against the reviewed source before trusting it.
+
+Automated geometry, contrast and browser checks do not establish whole-site WCAG/assistive-technology conformance or educational gains. Production acceptance must verify the institution's actual frontend, identities, enrollment boundaries, proxy, data preservation and supported assistive technology.
