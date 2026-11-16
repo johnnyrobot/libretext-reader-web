@@ -252,7 +252,9 @@ export function mountAnnotations({
   courseTopics.placeholder = "e.g. evidence, question";
   const courseDetails = make("details"); courseDetails.append(make("summary", "Add topics"), field("Topics (optional, comma separated)", courseTopics));
   question.insertBefore(courseDetails, post);
-  course.append(make("p", "Course discussion · visible to admitted course members"), question, recover, threads);
+  const conversations = make("section"); conversations.className = "sr-conversations";
+  conversations.append(make("h3", "Conversations"), threads);
+  course.append(make("p", "Course discussion · visible to admitted course members"), question, recover, conversations);
   const personal = make("section");
   personal.id = "sr-personal";
   const note = make("textarea");
@@ -299,7 +301,9 @@ export function mountAnnotations({
   visibility.setAttribute("aria-pressed", "true");
   const navigation = make("div"); navigation.className = "sr-tools"; navigation.append(refresh, visibility);
   const account = make("div"); account.className = "sr-account"; account.append(identity, signOut);
-  member.replaceChildren(account, viewBar, navigation, course, personal, finding);
+  const utilities = make("div"); utilities.className = "sr-utilities";
+  utilities.append(account, viewBar, navigation);
+  member.replaceChildren(utilities, course, personal, finding);
   function chooseView(name) {
     activeView = name;
     for (const [key, surface] of Object.entries(views)) {
@@ -311,11 +315,13 @@ export function mountAnnotations({
   advanced.append(make("summary", "Choose a passage with the keyboard"), chooser, use,
     make("p", "Choose a whole passage, or enter an exact quote. Choose its occurrence when the text repeats."),
     field("Exact quote (optional)", exactQuote), field("Quote occurrence", occurrence), useQuote, quoteError);
+  const passage = make("section"); passage.className = "sr-passage";
+  passage.append(make("h3", "Passage context"), quote);
   const content = make("div");
   content.className = "sr-content";
   content.append(
     make("p", "Select text in the reading to highlight it or discuss it with your course."),
-    quote, status, login, member, advanced,
+    passage, status, login, member, advanced,
   );
   panel.append(header, content);
   doc.body.append(entry, panel, sessionNotice);
@@ -680,6 +686,7 @@ export function mountAnnotations({
       const form = make("form"),
         reply = make("textarea"),
         submit = make("button", "Post reply");
+      form.className = "sr-reply-composer";
       reply.required = true;
       reply.maxLength = 4000;
       submit.type = "submit";
