@@ -45,12 +45,12 @@ Path: `/Users/johnnyrobot/code/lt549-at-status-fix`.635files; inventory `.scratc
 Start each in a separate foreground terminal (all currently stopped):
 
 ```sh
-cd /Users/johnnyrobot/code/lt549-at-fixture-6980064
+cd /Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-at-fixture-6980064
 node --experimental-strip-types launch.mjs
 ```
 
 ```sh
-cd /Users/johnnyrobot/code/libretexts-dev/libretext-reader-web-lt549
+cd /Users/johnnyrobot/code/libretexts-dev/libretext-reader-web/.worktrees/lt549
 python3 scripts/serve-local.py --root /Users/johnnyrobot/code/lt549-at-status-fix --port 8796 --api-port 4206
 ```
 
