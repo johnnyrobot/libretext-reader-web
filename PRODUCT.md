@@ -32,4 +32,4 @@ WCAG2.1AA implementation checks, keyboard creation/navigation, visible focus, te
 
 ## Evidence on Hand
 
-Live anonymous baseline inspected2026-11-14; screenshot and request/scope evidence in /Users/johnnyrobot/code/social-reading-plan/ANNOTATION-REDESIGN-IMPLEMENTATION-BRIEF.md. Source backend85c229b, Reader82c8fdf. Confirmed delegated product decisions are in Chief amendment12bdcd57. No testimonials or learning-gain claims.
+Live anonymous baseline inspected2026-11-14; screenshot and request/scope evidence in /Users/johnnyrobot/code/libretexts-dev/records/social-annotation/social-reading-plan/ANNOTATION-REDESIGN-IMPLEMENTATION-BRIEF.md. Source backend85c229b, Reader82c8fdf. Confirmed delegated product decisions are in Chief amendment12bdcd57. No testimonials or learning-gain claims.
