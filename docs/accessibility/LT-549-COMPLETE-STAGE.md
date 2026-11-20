@@ -7,21 +7,21 @@
 Status: prepared and verified for scoped local testing; **release HOLD**. This replaces the stale stage instructions for further AT, preserving every previous artifact.
 
 Stage: `/Users/johnnyrobot/code/lt549-at-complete-5e554b8`
-Reader repository: `/Users/johnnyrobot/code/libretexts-dev/libretext-reader-web-lt549`, HEADa618f504e08b68bde1905fb8419207732911b7d7 before these uncommitted evidence changes. Executable source5e554b86e13cf67f345423580352c0f8d9d36ae3; subsequent committed changes touch only three accessibility documents. Fresh `npm run build` completed successfully.
+Reader repository: `/Users/johnnyrobot/code/libretexts-dev/libretext-reader-web/.worktrees/lt549`, HEADa618f504e08b68bde1905fb8419207732911b7d7 before these uncommitted evidence changes. Executable source5e554b86e13cf67f345423580352c0f8d9d36ae3; subsequent committed changes touch only three accessibility documents. Fresh `npm run build` completed successfully.
 
-Backend snapshot6980064df22fd2a65efaf3aec172b8c1a7da977e; isolated fixture `/Users/johnnyrobot/code/lt549-at-fixture-6980064`, catalog SHA25683c5d04eaa8c43af302bfcd5e35d62fd9642ad2f96d2aba2d7c9caab28514c8e. Only designated synthetic accounts/database. Never substitute a shared or live database.
+Backend snapshot6980064df22fd2a65efaf3aec172b8c1a7da977e; isolated fixture `/Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-at-fixture-6980064`, catalog SHA25683c5d04eaa8c43af302bfcd5e35d62fd9642ad2f96d2aba2d7c9caab28514c8e. Only designated synthetic accounts/database. Never substitute a shared or live database.
 
 ## Start
 
 Run each service in its own foreground terminal. Both are currently stopped.
 
 ```sh
-cd /Users/johnnyrobot/code/lt549-at-fixture-6980064
+cd /Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-at-fixture-6980064
 node --experimental-strip-types launch.mjs
 ```
 
 ```sh
-cd /Users/johnnyrobot/code/libretexts-dev/libretext-reader-web-lt549
+cd /Users/johnnyrobot/code/libretexts-dev/libretext-reader-web/.worktrees/lt549
 python3 scripts/serve-local.py --root /Users/johnnyrobot/code/lt549-at-complete-5e554b8 --port 8796 --api-port 4206
 ```
 
