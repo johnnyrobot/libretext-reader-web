@@ -2,7 +2,7 @@
 
 Scope: LT-556–558, five approved capabilities and the scoped Passage notes redesign. Backend is merged67b381b (reviewed f919b01) with successful source/postmergeCI. UI runtime baseline eac3d89 has63verified committed-suite passes:21distinct cases per installed Chromium/Firefox/WebKit, corroborated by six terminal logs and verified-shard-results.json. The earlier9-case and open-review statements below are historical, not current acceptance.
 
-Chief review and evidence ruling: /Users/johnnyrobot/code/social-reading-plan/ANNOTATION-REDESIGN-CHIEF-REVIEW-2026-11-15.md. Its accepted native substitution applies only to exercised behavior; TestSprite run b98717b8-8d74-4a29-b096-f77183e8fdd2 stays BLOCKED,0.5credit, no paid rerun.
+Chief review and evidence ruling: /Users/johnnyrobot/code/libretexts-dev/records/social-annotation/social-reading-plan/ANNOTATION-REDESIGN-CHIEF-REVIEW-2026-11-15.md. Its accepted native substitution applies only to exercised behavior; TestSprite run b98717b8-8d74-4a29-b096-f77183e8fdd2 stays BLOCKED,0.5credit, no paid rerun.
 
 ## Additional actual-pointer evidence
 
