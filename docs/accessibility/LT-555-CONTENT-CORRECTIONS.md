@@ -2,7 +2,7 @@
 
 Current implementation is confined to `content-corrections/LT549/` and its safety tests. The [bundle runbook](../../content-corrections/LT549/README.md) records approved scope, commands, refusal behavior and ownership. Decision packet SHA256 is `9b4f2d7cfd49f96d04db50f62455033db51baafe304189438682d331755a0841`; bundle SHA256 is `642347121d813ebd8ba22bd3e69c1fb6a3deee04af9439d47f06dab5d037cbbf`.
 
-111 exact replacements were applied to a NEW source-only stage `/Users/johnnyrobot/code/lt549-corrected-source-v1`:14pages changed;1,474other HTML files unchanged. A second application from original source to `/Users/johnnyrobot/code/lt549-corrected-source-v2` produced all1,489files byte-identical, including the receipt. The original snapshot was reconciled against the pinned original catalog with zero drift; no original source, old package, model or private state was changed.
+111 exact replacements were applied to a NEW source-only stage `/Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-corrected-source-v1`:14pages changed;1,474other HTML files unchanged. A second application from original source to `/Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-corrected-source-v2` produced all1,489files byte-identical, including the receipt. The original snapshot was reconciled against the pinned original catalog with zero drift; no original source, old package, model or private state was changed.
 
 ## Verification
 
@@ -12,7 +12,7 @@ Current implementation is confined to `content-corrections/LT549/` and its safet
 - 28before/after speech manifests bind exact source bytes and splitter version and pass identity/count/span checks. Weak-acid worksheet math changes197spoken/2failed to199spoken/0failed. Corpus fallback total9→7:the seven other failures are inherited and unchanged. One pre-existing zero-width-BOM empty sentence in5.E remains unchanged; no new empty sentence is introduced. Existing unsupported-table skip notices are retained honestly, including the reaction table's structure notice.
 - All 14affected revisions change, while selectable paragraph IDs/quotes remain identical. All 1,474 other source/catalog-page projections remain equal; their speech was not regenerated. Reader's existing matchesAnchor rejects all old-vs-new revision comparisons; no historical anchor/comment is moved. Before/after public page manifests and the precise delta are in `.scratch/lt555/anchor-delta.json`, labelled diagnostic/not admitted.
 
-Evidence directories: `.scratch/lt555/`, `/Users/johnnyrobot/code/lt549-correction-native-v3/`, `/Users/johnnyrobot/code/lt549-correction-speech-v2/`. Corrected rendering copy `/Users/johnnyrobot/code/lt549-corrected-render-v1` uses copied, unchanged public assets from the currently merged d3efb5d Reader stage; it is not a production package. Reader runtime integration follows canonical PR19 merge through its existing sole closeout chain; no competing storage patch is introduced here.
+Evidence directories: `.scratch/lt555/`, `/Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-correction-native-v3/`, `/Users/johnnyrobot/code/libretexts-dev/records/LT-549/lt549-correction-speech-v2/`. Corrected rendering copy `/Users/johnnyrobot/code/lt549-corrected-render-v1` uses copied, unchanged public assets from the currently merged d3efb5d Reader stage; it is not a production package. Reader runtime integration follows canonical PR19 merge through its existing sole closeout chain; no competing storage patch is introduced here.
 
 ## Current owner decision and remaining execution gates
 
